@@ -1,0 +1,28 @@
+[project]
+id = "your-project-ref"
+name = "tiktok-ads-ai"
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+
+[db]
+port = 54322
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://your-app.vercel.app"]
+jwt_expiry = 3600
+
+[auth.external.google]
+enabled = true
+client_id = ""
+secret = ""
+
+# Edge Functions
+[functions.sync-tiktok]
+verify_jwt = false
+
+[functions.ai-alerts]
+verify_jwt = false
