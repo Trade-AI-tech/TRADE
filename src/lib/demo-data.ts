@@ -24,21 +24,29 @@ export const DEMO_STATS: DashboardStats = {
 };
 
 // ============================================
-// Chart Data (30 days)
+// Chart Data (30 days) - fixed values to avoid hydration mismatch
 // ============================================
+
+// Pre-generated deterministic data (no Math.random)
+function seededValue(seed: number): number {
+  return ((Math.sin(seed * 9301 + 49297) % 1) + 1) % 1;
+}
 
 export function generateChartData() {
   return Array.from({ length: 30 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (29 - i));
     const base = 8000 + Math.sin(i / 3) * 2000;
+    const r1 = seededValue(i * 1);
+    const r2 = seededValue(i * 2);
+    const r3 = seededValue(i * 3);
+    const r4 = seededValue(i * 4);
+    const r5 = seededValue(i * 5);
     return {
-      date: `${date.getMonth() + 1}/${date.getDate()}`,
-      spend: Math.round(base + Math.random() * 2000),
-      revenue: Math.round(base * (2.5 + Math.random() * 2)),
-      impressions: Math.round(base * 15 + Math.random() * 50000),
-      clicks: Math.round(base * 0.7 + Math.random() * 500),
-      conversions: Math.round(base * 0.02 + Math.random() * 20),
+      date: `${Math.floor(i / 30) + 3}/${(i % 30) + 1}`,
+      spend: Math.round(base + r1 * 2000),
+      revenue: Math.round(base * (2.5 + r2 * 2)),
+      impressions: Math.round(base * 15 + r3 * 50000),
+      clicks: Math.round(base * 0.7 + r4 * 500),
+      conversions: Math.round(base * 0.02 + r5 * 20),
     };
   });
 }
@@ -98,7 +106,7 @@ export const DEMO_SUMMARIES: CampaignSummary[] = [
 ];
 
 // ============================================
-// AI Insights
+// AI Insights - fixed timestamps
 // ============================================
 
 export const DEMO_INSIGHTS: AIInsight[] = [
@@ -110,7 +118,7 @@ export const DEMO_INSIGHTS: AIInsight[] = [
       { action: 'เพิ่มงบเป็น ฿65,000/วัน', description: 'เพิ่มงบ 30% จาก ฿50,000', expected_impact: 'เพิ่ม revenue ~฿48,500', priority: 'high' },
       { action: 'ขยาย Lookalike Audience', description: 'สร้าง LAL 3% จากผู้ซื้อ', expected_impact: 'เพิ่ม reach 40%', priority: 'medium' },
     ],
-    confidence: 92, is_read: false, is_actioned: false, expires_at: null, created_at: new Date().toISOString(),
+    confidence: 92, is_read: false, is_actioned: false, expires_at: null, created_at: '2025-06-20T10:00:00Z',
   },
   {
     id: '2', user_id: 'demo', campaign_id: '2', type: 'PERFORMANCE_ALERT',
@@ -119,7 +127,7 @@ export const DEMO_INSIGHTS: AIInsight[] = [
     details: {}, recommendations: [
       { action: 'เปลี่ยน Creative ใหม่', description: 'Creative ปัจจุบันใช้มา 21 วันแล้ว', expected_impact: 'ลด CPC ลง 15-20%', priority: 'high' },
     ],
-    confidence: 85, is_read: false, is_actioned: false, expires_at: null, created_at: new Date().toISOString(),
+    confidence: 85, is_read: false, is_actioned: false, expires_at: null, created_at: '2025-06-20T09:30:00Z',
   },
   {
     id: '3', user_id: 'demo', campaign_id: '4', type: 'ANOMALY_DETECTION',
@@ -128,7 +136,7 @@ export const DEMO_INSIGHTS: AIInsight[] = [
     details: {}, recommendations: [
       { action: 'เปิดแคมเปญ Retargeting', description: 'Resume campaign ทันที', expected_impact: 'เพิ่ม revenue ฿66,640/เดือน', priority: 'high' },
     ],
-    confidence: 98, is_read: false, is_actioned: false, expires_at: null, created_at: new Date().toISOString(),
+    confidence: 98, is_read: false, is_actioned: false, expires_at: null, created_at: '2025-06-20T09:00:00Z',
   },
   {
     id: '4', user_id: 'demo', campaign_id: '3', type: 'TREND_PREDICTION',
@@ -137,17 +145,17 @@ export const DEMO_INSIGHTS: AIInsight[] = [
     details: {}, recommendations: [
       { action: 'รักษางบปัจจุบัน', description: 'ไม่ควรเปลี่ยนงบในช่วงขาขึ้น', expected_impact: 'ROAS อาจถึง 6x', priority: 'medium' },
     ],
-    confidence: 75, is_read: false, is_actioned: false, expires_at: null, created_at: new Date().toISOString(),
+    confidence: 75, is_read: false, is_actioned: false, expires_at: null, created_at: '2025-06-20T08:30:00Z',
   },
 ];
 
 // ============================================
-// Budget Data
+// Budget Data - fixed values
 // ============================================
 
-export const DEMO_BUDGET_DATA = DEMO_CAMPAIGNS.slice(0, 4).map((c) => ({
-  name: c.name.length > 15 ? c.name.slice(0, 15) + '...' : c.name,
-  allocated: c.budget,
-  spent: c.spent,
-  ai_recommended: Math.round(c.budget * (0.7 + Math.random() * 0.6)),
-}));
+export const DEMO_BUDGET_DATA = [
+  { name: 'Summer Sale 20...', allocated: 50000, spent: 38500, ai_recommended: 65000 },
+  { name: 'Brand Awareness...', allocated: 120000, spent: 67200, ai_recommended: 85000 },
+  { name: 'New Product Lau...', allocated: 30000, spent: 12400, ai_recommended: 45000 },
+  { name: 'Retargeting - C...', allocated: 15000, spent: 9800, ai_recommended: 35000 },
+];

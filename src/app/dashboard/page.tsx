@@ -47,14 +47,7 @@ export default function DashboardPage() {
     }
   }, [isAnalyzing, analyze, campaigns, setInsights, setIsAnalyzing]);
 
-  const budgetData = campaigns.length
-    ? campaigns.slice(0, 5).map((c) => ({
-        name: c.name.length > 15 ? c.name.slice(0, 15) + '...' : c.name,
-        allocated: c.budget,
-        spent: c.spent,
-        ai_recommended: Math.round(c.budget * (0.7 + Math.random() * 0.6)),
-      }))
-    : DEMO_BUDGET_DATA;
+  const budgetData = DEMO_BUDGET_DATA;
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -27,19 +27,9 @@ const performanceRadar = [
   { metric: 'Video Views', value: 60, benchmark: 55 },
 ];
 
-const chartData = Array.from({ length: 30 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - (29 - i));
-  const base = 8000 + Math.sin(i / 3) * 2000;
-  return {
-    date: `${date.getMonth() + 1}/${date.getDate()}`,
-    spend: Math.round(base + Math.random() * 2000),
-    revenue: Math.round(base * (2.5 + Math.random() * 2)),
-    impressions: Math.round(base * 15 + Math.random() * 50000),
-    clicks: Math.round(base * 0.7 + Math.random() * 500),
-    conversions: Math.round(base * 0.02 + Math.random() * 20),
-  };
-});
+// Use shared deterministic chart data
+import { generateChartData } from '@/lib/demo-data';
+const chartData = generateChartData();
 
 const funnelData = [
   { stage: 'Impressions', value: 3450000, pct: 100 },
