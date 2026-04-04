@@ -26,12 +26,18 @@ export default function DashboardPage() {
 
   const stats = DEMO_STATS;
 
-  // Sync data to global store
+  // Sync data to global store (run once on mount)
   useEffect(() => {
     setStats(stats);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (insights.length) setInsights(insights);
+  }, [insights.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (campaigns.length) setCampaigns(campaigns);
-  }, [campaigns, insights, stats, setStats, setInsights, setCampaigns]);
+  }, [campaigns.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle AI analysis
   useEffect(() => {
@@ -45,7 +51,7 @@ export default function DashboardPage() {
         .catch(() => {})
         .finally(() => setIsAnalyzing(false));
     }
-  }, [isAnalyzing, analyze, campaigns, setInsights, setIsAnalyzing]);
+  }, [isAnalyzing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const budgetData = DEMO_BUDGET_DATA;
 

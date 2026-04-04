@@ -30,8 +30,8 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   dateRange: {
-    start: new Date(Date.now() - 30 * 86400000),
-    end: new Date(),
+    start: new Date('2025-06-01'),
+    end: new Date('2025-06-30'),
     label: '30 วัน',
   },
   setDateRange: (range) => set({ dateRange: range }),
