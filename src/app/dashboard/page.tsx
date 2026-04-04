@@ -1,58 +1,26 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import MetricCard from '@/components/dashboard/MetricCard';
 import PerformanceChart from '@/components/charts/PerformanceChart';
 import BudgetChart from '@/components/charts/BudgetChart';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import CampaignTable from '@/components/campaigns/CampaignTable';
-import { useAppStore } from '@/hooks/useStore';
-import { useCampaigns, useAIInsights, useCampaignSummary, useAIAnalysis } from '@/hooks/useData';
+import { useCampaigns, useAIInsights, useCampaignSummary } from '@/hooks/useData';
 import { DEMO_STATS, DEMO_BUDGET_DATA, generateChartData } from '@/lib/demo-data';
-import type { AIInsight } from '@/types';
 import {
   DollarSign, Eye, MousePointerClick, ShoppingCart,
   Target, TrendingUp, Sparkles, RefreshCw,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { setStats, setInsights, setCampaigns, isAnalyzing, setIsAnalyzing } = useAppStore();
   const { data: campaigns } = useCampaigns();
   const { data: insights } = useAIInsights();
   const { data: summaries } = useCampaignSummary();
-  const { analyze } = useAIAnalysis();
 
   const chartData = useMemo(() => generateChartData(), []);
 
   const stats = DEMO_STATS;
-
-  // Sync data to global store (run once on mount)
-  useEffect(() => {
-    setStats(stats);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (insights.length) setInsights(insights);
-  }, [insights.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (campaigns.length) setCampaigns(campaigns);
-  }, [campaigns.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Handle AI analysis
-  useEffect(() => {
-    if (isAnalyzing) {
-      analyze('full', campaigns.map(c => c.id))
-        .then((result) => {
-          if (result?.insights) {
-            setInsights(result.insights);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setIsAnalyzing(false));
-    }
-  }, [isAnalyzing]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const budgetData = DEMO_BUDGET_DATA;
 
   return (
