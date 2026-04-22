@@ -6,12 +6,8 @@
   "regions": ["sin1"],
   "crons": [
     {
-      "path": "/api/cron/sync",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/ai-alerts",
-      "schedule": "0 12 * * *"
+      "path": "/api/cron/scan-markets",
+      "schedule": "0 1 * * *"
     }
   ]
 }

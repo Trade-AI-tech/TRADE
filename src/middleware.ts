@@ -30,10 +30,10 @@ function getSupabaseProjectRef(): string {
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/campaigns/:path*',
-    '/analytics/:path*',
-    '/budget/:path*',
-    '/creative/:path*',
+    '/signals/:path*',
+    '/markets/:path*',
+    '/trades/:path*',
+    '/news/:path*',
     '/settings/:path*',
   ],
 };

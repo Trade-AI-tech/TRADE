@@ -2,24 +2,21 @@
 
 import { cn } from '@/lib/utils';
 import {
-  Settings, Key, Globe, Bell, User, Link2,
-  Shield, Zap, CheckCircle2, XCircle, RefreshCw, Save,
+  Bell, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Zap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const tabs = [
+  { id: 'telegram', label: 'Telegram Bot', icon: Send },
+  { id: 'alerts', label: 'การแจ้งเตือน', icon: Bell },
   { id: 'account', label: 'บัญชี', icon: User },
-  { id: 'tiktok', label: 'TikTok API', icon: Link2 },
-  { id: 'ai', label: 'AI Settings', icon: Zap },
-  { id: 'notifications', label: 'การแจ้งเตือน', icon: Bell },
-  { id: 'security', label: 'ความปลอดภัย', icon: Shield },
+  { id: 'api', label: 'API Keys', icon: Key },
 ];
 
-// Load settings from localStorage
-function loadSettings(key: string, defaults: Record<string, unknown>) {
+function loadSettings<T>(key: string, defaults: T): T {
   if (typeof window === 'undefined') return defaults;
   try {
-    const stored = localStorage.getItem(`tiktok-ads-${key}`);
+    const stored = localStorage.getItem(`trading-ai-${key}`);
     return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
   } catch {
     return defaults;
@@ -27,42 +24,37 @@ function loadSettings(key: string, defaults: Record<string, unknown>) {
 }
 
 function saveSettings(key: string, data: Record<string, unknown>) {
-  localStorage.setItem(`tiktok-ads-${key}`, JSON.stringify(data));
+  localStorage.setItem(`trading-ai-${key}`, JSON.stringify(data));
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('tiktok');
+  const [activeTab, setActiveTab] = useState('telegram');
   const [saved, setSaved] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  // TikTok settings
-  const [tiktokSettings, setTiktokSettings] = useState({
-    appId: '', appSecret: '', accessToken: '', advertiserId: '',
+  const [telegram, setTelegram] = useState({
+    botToken: '', chatId: '', enabled: false,
   });
 
-  // AI settings
-  const [aiSettings, setAiSettings] = useState({
-    apiKey: '', model: 'claude-sonnet-4-20250514',
-    budgetOptimization: true, performanceAlerts: true, creativeAnalysis: true,
-    trendPrediction: false, autoOptimization: false,
+  const [alerts, setAlerts] = useState({
+    buySignals: true, sellSignals: true, holdSignals: false,
+    stopLossHit: true, takeProfitHit: true, newsAlerts: true,
+    strongSignalsOnly: false,
   });
 
-  // Account settings
-  const [accountSettings, setAccountSettings] = useState({
-    name: '', email: '', company: '', timezone: 'Asia/Bangkok',
+  const [account, setAccount] = useState({
+    name: '', email: '', timezone: 'Asia/Bangkok', defaultQuantity: 1,
   });
 
-  // Notification settings
-  const [notifSettings, setNotifSettings] = useState({
-    aiInsights: true, budgetAlert: true, performanceDrop: true,
-    dailySummary: false, weeklyReport: true,
+  const [apiKeys, setApiKeys] = useState({
+    anthropicKey: '', newsApiKey: '', alphaVantageKey: '',
   });
 
-  // Load from localStorage on mount
   useEffect(() => {
-    setTiktokSettings(loadSettings('tiktok', tiktokSettings) as typeof tiktokSettings);
-    setAiSettings(loadSettings('ai', aiSettings) as typeof aiSettings);
-    setAccountSettings(loadSettings('account', accountSettings) as typeof accountSettings);
-    setNotifSettings(loadSettings('notifications', notifSettings) as typeof notifSettings);
+    setTelegram(loadSettings('telegram', telegram));
+    setAlerts(loadSettings('alerts', alerts));
+    setAccount(loadSettings('account', account));
+    setApiKeys(loadSettings('api-keys', apiKeys));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,24 +64,48 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const testTelegram = async () => {
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/telegram/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telegram),
+      });
+      const data = await res.json();
+      setTestResult({ ok: data.success, msg: data.success ? 'ส่งข้อความทดสอบเรียบร้อย!' : data.error || 'ไม่สำเร็จ' });
+    } catch (err) {
+      setTestResult({ ok: false, msg: String(err) });
+    }
+    setTimeout(() => setTestResult(null), 5000);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-display text-white">ตั้งค่า</h1>
-        <p className="text-sm text-gray-500 mt-0.5">จัดการบัญชี, API connections และ AI settings</p>
+        <p className="text-sm text-gray-500 mt-0.5">จัดการ Telegram Bot, แจ้งเตือน และ API keys</p>
       </div>
 
-      {/* Save toast */}
       {saved && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm animate-slide-up">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm">
           <CheckCircle2 className="w-4 h-4" />
           บันทึกเรียบร้อยแล้ว
         </div>
       )}
 
+      {testResult && (
+        <div className={cn(
+          'fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm',
+          testResult.ok ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-red-500/20 border-red-500/30 text-red-400'
+        )}>
+          {testResult.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          {testResult.msg}
+        </div>
+      )}
+
       <div className="flex gap-6">
-        {/* Sidebar tabs */}
-        <div className="w-48 space-y-1 flex-shrink-0">
+        <div className="w-52 space-y-1 flex-shrink-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -107,170 +123,81 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1">
-          {activeTab === 'tiktok' && (
+        <div className="flex-1 space-y-6">
+          {activeTab === 'telegram' && (
             <div className="space-y-6">
               <div className="card">
-                <h3 className="text-sm font-semibold text-white mb-4">TikTok Marketing API</h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-tiktok-dark flex items-center justify-center">
-                        <Globe className="w-5 h-5 text-accent-glow" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">TikTok Advertiser Account</p>
-                        <p className="text-xs text-gray-500">
-                          ID: {tiktokSettings.advertiserId || 'ยังไม่ได้ตั้งค่า'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {tiktokSettings.accessToken ? (
-                        <>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span className="text-xs text-emerald-400">Connected</span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-4 h-4 text-gray-500" />
-                          <span className="text-xs text-gray-500">Not Connected</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">App ID</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="TikTok App ID"
-                      value={tiktokSettings.appId}
-                      onChange={(e) => setTiktokSettings({ ...tiktokSettings, appId: e.target.value })}
-                    />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                    <Send className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">App Secret</label>
-                    <input
-                      type="password"
-                      className="input-field"
-                      placeholder="••••••••••••"
-                      value={tiktokSettings.appSecret}
-                      onChange={(e) => setTiktokSettings({ ...tiktokSettings, appSecret: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">Access Token</label>
-                    <input
-                      type="password"
-                      className="input-field"
-                      placeholder="••••••••••••"
-                      value={tiktokSettings.accessToken}
-                      onChange={(e) => setTiktokSettings({ ...tiktokSettings, accessToken: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">Advertiser ID</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Advertiser ID"
-                      value={tiktokSettings.advertiserId}
-                      onChange={(e) => setTiktokSettings({ ...tiktokSettings, advertiserId: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Sync อัตโนมัติทุก 15 นาที
-                    </div>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleSave('tiktok', tiktokSettings)}
-                        className="btn-primary text-sm flex items-center gap-2"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        บันทึก
-                      </button>
-                    </div>
+                    <h3 className="text-sm font-semibold text-white">Telegram Bot</h3>
+                    <p className="text-xs text-gray-500">ส่งสัญญาณเข้า/ออก เข้าแชทของคุณอัตโนมัติ</p>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'ai' && (
-            <div className="space-y-6">
-              <div className="card">
-                <h3 className="text-sm font-semibold text-white mb-4">AI Analysis Settings</h3>
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-4">
+                  <p className="text-xs text-blue-300 font-medium mb-2">วิธีสร้าง Telegram Bot:</p>
+                  <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
+                    <li>เปิด Telegram แล้วค้นหา <span className="text-accent-glow">@BotFather</span></li>
+                    <li>พิมพ์ <span className="font-mono text-white">/newbot</span> แล้วตั้งชื่อ bot</li>
+                    <li>Copy Bot Token ที่ได้มาใส่ด้านล่าง</li>
+                    <li>เพิ่ม Bot ในแชท แล้วพิมพ์ข้อความใดก็ได้</li>
+                    <li>เปิด <span className="text-accent-glow">api.telegram.org/bot[TOKEN]/getUpdates</span> เพื่อดู chat_id</li>
+                  </ol>
+                </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">Anthropic API Key</label>
+                    <label className="text-xs text-gray-400 mb-1.5 block">Bot Token</label>
                     <input
                       type="password"
                       className="input-field"
-                      placeholder="sk-ant-••••••••••••"
-                      value={aiSettings.apiKey}
-                      onChange={(e) => setAiSettings({ ...aiSettings, apiKey: e.target.value })}
+                      placeholder="1234567890:ABCdefGHIjklMNOpqrs..."
+                      value={telegram.botToken}
+                      onChange={(e) => setTelegram({ ...telegram, botToken: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1.5 block">Chat ID</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="-1001234567890 หรือ 123456789"
+                      value={telegram.chatId}
+                      onChange={(e) => setTelegram({ ...telegram, chatId: e.target.value })}
                     />
                   </div>
 
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">AI Model</label>
-                    <select
-                      className="input-field"
-                      value={aiSettings.model}
-                      onChange={(e) => setAiSettings({ ...aiSettings, model: e.target.value })}
-                    >
-                      <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (แนะนำ)</option>
-                      <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (เร็ว, ประหยัด)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-gray-400 mb-3 block">AI Features</label>
-                    <div className="space-y-3">
-                      {[
-                        { key: 'budgetOptimization', label: 'Budget Optimization', desc: 'วิเคราะห์และแนะนำการจัดสรรงบ' },
-                        { key: 'performanceAlerts', label: 'Performance Alerts', desc: 'แจ้งเตือนเมื่อ metrics ผิดปกติ' },
-                        { key: 'creativeAnalysis', label: 'Creative Analysis', desc: 'วิเคราะห์คุณภาพ Ad Creative' },
-                        { key: 'trendPrediction', label: 'Trend Prediction', desc: 'ทำนายแนวโน้ม 7 วันล่วงหน้า' },
-                        { key: 'autoOptimization', label: 'Auto Optimization', desc: 'ปรับงบอัตโนมัติตาม AI' },
-                      ].map((feature) => (
-                        <div key={feature.key} className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
-                          <div>
-                            <p className="text-sm text-white">{feature.label}</p>
-                            <p className="text-xs text-gray-500">{feature.desc}</p>
-                          </div>
-                          <button
-                            onClick={() => setAiSettings({ ...aiSettings, [feature.key]: !aiSettings[feature.key as keyof typeof aiSettings] })}
-                            className={cn(
-                              'w-10 h-6 rounded-full transition-all relative',
-                              aiSettings[feature.key as keyof typeof aiSettings] ? 'bg-accent-glow' : 'bg-surface-4'
-                            )}
-                          >
-                            <div className={cn(
-                              'w-4 h-4 rounded-full bg-white absolute top-1 transition-all',
-                              aiSettings[feature.key as keyof typeof aiSettings] ? 'left-5' : 'left-1'
-                            )} />
-                          </button>
-                        </div>
-                      ))}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
+                    <div>
+                      <p className="text-sm text-white">เปิดใช้งาน Telegram Alerts</p>
+                      <p className="text-xs text-gray-500">ส่งสัญญาณเทรดเข้า Telegram อัตโนมัติ</p>
                     </div>
+                    <button
+                      onClick={() => setTelegram({ ...telegram, enabled: !telegram.enabled })}
+                      className={cn('w-10 h-6 rounded-full transition-all relative', telegram.enabled ? 'bg-emerald-400' : 'bg-white/10')}
+                    >
+                      <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', telegram.enabled ? 'left-5' : 'left-1')} />
+                    </button>
                   </div>
 
-                  <div className="flex justify-end pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-2">
                     <button
-                      onClick={() => handleSave('ai', aiSettings)}
+                      onClick={testTelegram}
+                      disabled={!telegram.botToken || !telegram.chatId}
+                      className="btn-ghost text-sm flex items-center gap-2 disabled:opacity-40"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      ทดสอบส่งข้อความ
+                    </button>
+                    <button
+                      onClick={() => handleSave('telegram', telegram)}
                       className="btn-primary text-sm flex items-center gap-2"
                     >
                       <Save className="w-3.5 h-3.5" />
-                      บันทึกการตั้งค่า
+                      บันทึก
                     </button>
                   </div>
                 </div>
@@ -278,37 +205,41 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'notifications' && (
+          {activeTab === 'alerts' && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-white mb-4">การแจ้งเตือน</h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">ประเภทการแจ้งเตือน</h3>
+                  <p className="text-xs text-gray-500">เลือกว่าต้องการให้ส่งแจ้งเตือนอะไรบ้าง</p>
+                </div>
+              </div>
               <div className="space-y-3">
                 {[
-                  { key: 'aiInsights', label: 'AI Insights ใหม่', desc: 'แจ้งเตือนเมื่อมี insight ที่ severity สูง' },
-                  { key: 'budgetAlert', label: 'Budget Alert', desc: 'แจ้งเมื่อใช้งบเกิน 80% ของที่ตั้งไว้' },
-                  { key: 'performanceDrop', label: 'Performance Drop', desc: 'แจ้งเมื่อ ROAS ลดลงเกิน 20%' },
-                  { key: 'dailySummary', label: 'Daily Summary', desc: 'สรุปประจำวันทาง Email' },
-                  { key: 'weeklyReport', label: 'Weekly Report', desc: 'รายงานประจำสัปดาห์' },
-                ].map((notif) => (
-                  <div key={notif.key} className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
+                  { key: 'buySignals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400' },
+                  { key: 'sellSignals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400' },
+                  { key: 'holdSignals', label: 'สัญญาณ HOLD', desc: 'แจ้งเมื่อมีสัญญาณถือ', color: 'text-amber-400' },
+                  { key: 'stopLossHit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาถึง Stop Loss', color: 'text-red-400' },
+                  { key: 'takeProfitHit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาถึง Take Profit', color: 'text-emerald-400' },
+                  { key: 'newsAlerts', label: 'ข่าวสำคัญ', desc: 'แจ้งเมื่อมีข่าวที่ส่งผลต่อ watchlist', color: 'text-blue-400' },
+                  { key: 'strongSignalsOnly', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะสัญญาณ strong/very_strong เท่านั้น', color: 'text-accent-glow' },
+                ].map((n) => (
+                  <div key={n.key} className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
                     <div>
-                      <p className="text-sm text-white">{notif.label}</p>
-                      <p className="text-xs text-gray-500">{notif.desc}</p>
+                      <p className={cn('text-sm font-medium', n.color)}>{n.label}</p>
+                      <p className="text-xs text-gray-500">{n.desc}</p>
                     </div>
                     <button
                       onClick={() => {
-                        const updated = { ...notifSettings, [notif.key]: !notifSettings[notif.key as keyof typeof notifSettings] };
-                        setNotifSettings(updated);
-                        handleSave('notifications', updated);
+                        const updated = { ...alerts, [n.key]: !alerts[n.key as keyof typeof alerts] };
+                        setAlerts(updated);
+                        handleSave('alerts', updated);
                       }}
-                      className={cn(
-                        'w-10 h-6 rounded-full transition-all relative',
-                        notifSettings[notif.key as keyof typeof notifSettings] ? 'bg-accent-glow' : 'bg-surface-4'
-                      )}
+                      className={cn('w-10 h-6 rounded-full transition-all relative', alerts[n.key as keyof typeof alerts] ? 'bg-accent-glow' : 'bg-white/10')}
                     >
-                      <div className={cn(
-                        'w-4 h-4 rounded-full bg-white absolute top-1 transition-all',
-                        notifSettings[notif.key as keyof typeof notifSettings] ? 'left-5' : 'left-1'
-                      )} />
+                      <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', alerts[n.key as keyof typeof alerts] ? 'left-5' : 'left-1')} />
                     </button>
                   </div>
                 ))}
@@ -322,70 +253,81 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">ชื่อ</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="ชื่อของคุณ"
-                    value={accountSettings.name}
-                    onChange={(e) => setAccountSettings({ ...accountSettings, name: e.target.value })}
-                  />
+                  <input type="text" className="input-field" placeholder="ชื่อของคุณ"
+                    value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Email</label>
-                  <input
-                    type="email"
-                    className="input-field"
-                    placeholder="email@example.com"
-                    value={accountSettings.email}
-                    onChange={(e) => setAccountSettings({ ...accountSettings, email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">บริษัท</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="ชื่อบริษัท"
-                    value={accountSettings.company}
-                    onChange={(e) => setAccountSettings({ ...accountSettings, company: e.target.value })}
-                  />
+                  <input type="email" className="input-field" placeholder="email@example.com"
+                    value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Timezone</label>
-                  <select
-                    className="input-field"
-                    value={accountSettings.timezone}
-                    onChange={(e) => setAccountSettings({ ...accountSettings, timezone: e.target.value })}
-                  >
+                  <select className="input-field" value={account.timezone}
+                    onChange={(e) => setAccount({ ...account, timezone: e.target.value })}>
                     <option value="Asia/Bangkok">Asia/Bangkok (GMT+7)</option>
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
                   </select>
                 </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">จำนวนเริ่มต้นเมื่อเทรด</label>
+                  <input type="number" className="input-field" placeholder="1"
+                    value={account.defaultQuantity} onChange={(e) => setAccount({ ...account, defaultQuantity: Number(e.target.value) })} />
+                </div>
                 <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => handleSave('account', accountSettings)}
-                    className="btn-primary text-sm flex items-center gap-2"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    บันทึก
+                  <button onClick={() => handleSave('account', account)} className="btn-primary text-sm flex items-center gap-2">
+                    <Save className="w-3.5 h-3.5" />บันทึก
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {activeTab === 'security' && (
+          {activeTab === 'api' && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-white mb-4">ความปลอดภัย</h3>
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
-                  <p className="text-sm text-white mb-1">เปลี่ยนรหัสผ่าน</p>
-                  <p className="text-xs text-gray-500">เปลี่ยนรหัสผ่านล่าสุดเมื่อ 30 วันที่แล้ว</p>
-                  <button className="btn-ghost text-sm mt-3">เปลี่ยนรหัสผ่าน</button>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                  <Key className="w-5 h-5 text-purple-400" />
                 </div>
-                <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
-                  <p className="text-sm text-white mb-1">Two-Factor Authentication</p>
-                  <p className="text-xs text-gray-500">เปิดใช้ 2FA เพื่อความปลอดภัยเพิ่มเติม</p>
-                  <button className="btn-primary text-sm mt-3">เปิดใช้งาน 2FA</button>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">API Keys</h3>
+                  <p className="text-xs text-gray-500">ใส่ API keys เพื่อเปิดใช้งานข้อมูลจริง</p>
+                </div>
+              </div>
+
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-4">
+                <p className="text-xs text-amber-300">
+                  <Shield className="w-3 h-3 inline mr-1" />
+                  ระบบใช้ Yahoo Finance สำหรับข้อมูลราคาฟรีอยู่แล้ว ไม่ต้องใส่ key ก็ใช้ได้
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block flex items-center gap-1">
+                    <Bot className="w-3 h-3" /> Anthropic Claude API
+                  </label>
+                  <input type="password" className="input-field" placeholder="sk-ant-..."
+                    value={apiKeys.anthropicKey} onChange={(e) => setApiKeys({ ...apiKeys, anthropicKey: e.target.value })} />
+                  <p className="text-[10px] text-gray-500 mt-1">สำหรับวิเคราะห์ข่าว + สรุปสัญญาณด้วย AI</p>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">NewsAPI Key</label>
+                  <input type="password" className="input-field" placeholder="..."
+                    value={apiKeys.newsApiKey} onChange={(e) => setApiKeys({ ...apiKeys, newsApiKey: e.target.value })} />
+                  <p className="text-[10px] text-gray-500 mt-1">สำหรับดึงข่าวจริง (newsapi.org)</p>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Alpha Vantage Key (ตัวเลือก)</label>
+                  <input type="password" className="input-field" placeholder="..."
+                    value={apiKeys.alphaVantageKey} onChange={(e) => setApiKeys({ ...apiKeys, alphaVantageKey: e.target.value })} />
+                  <p className="text-[10px] text-gray-500 mt-1">Backup สำหรับข้อมูลราคา</p>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button onClick={() => handleSave('api-keys', apiKeys)} className="btn-primary text-sm flex items-center gap-2">
+                    <Save className="w-3.5 h-3.5" />บันทึก
+                  </button>
                 </div>
               </div>
             </div>

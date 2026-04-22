@@ -5,24 +5,23 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
-  Megaphone,
-  BarChart3,
-  Wallet,
-  Sparkles,
-  Palette,
+  Zap,
+  LineChart,
+  Briefcase,
+  Newspaper,
   Settings,
   Bell,
   ChevronLeft,
-  Bot,
+  TrendingUp,
 } from 'lucide-react';
 import { useAppStore } from '@/hooks/useStore';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/campaigns', label: 'แคมเปญ', icon: Megaphone },
-  { href: '/analytics', label: 'วิเคราะห์', icon: BarChart3 },
-  { href: '/budget', label: 'งบประมาณ', icon: Wallet },
-  { href: '/creative', label: 'Creative', icon: Palette },
+  { href: '/signals', label: 'สัญญาณ AI', icon: Zap },
+  { href: '/markets', label: 'ตลาด', icon: LineChart },
+  { href: '/trades', label: 'พอร์ตเทรด', icon: Briefcase },
+  { href: '/news', label: 'ข่าวสาร', icon: Newspaper },
 ];
 
 const bottomItems = [
@@ -31,7 +30,7 @@ const bottomItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { sidebarOpen, toggleSidebar, unreadInsights } = useAppStore();
+  const { sidebarOpen, toggleSidebar, unreadSignals } = useAppStore();
 
   return (
     <aside
@@ -42,28 +41,27 @@ export default function Sidebar() {
         sidebarOpen ? 'w-64' : 'w-[72px]'
       )}
     >
-      {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-16 border-b border-white/5">
         <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-accent-glow to-accent-hot flex items-center justify-center flex-shrink-0">
-          <Bot className="w-5 h-5 text-white" />
+          <TrendingUp className="w-5 h-5 text-white" />
           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-surface-1" />
         </div>
         {sidebarOpen && (
           <div className="overflow-hidden">
             <h1 className="font-display text-lg tracking-tight text-white leading-none">
-              TikTok Ads
+              Trading AI
             </h1>
             <span className="text-[10px] font-mono text-accent-glow tracking-widest uppercase">
-              AI Manager
+              Pro Signals
             </span>
           </div>
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const showBadge = item.href === '/signals' && unreadSignals > 0;
           return (
             <Link
               key={item.href}
@@ -76,32 +74,17 @@ export default function Sidebar() {
               )}
             >
               <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'drop-shadow-[0_0_6px_rgba(37,244,238,0.5)]')} />
-              {sidebarOpen && <span>{item.label}</span>}
+              {sidebarOpen && <span className="flex-1">{item.label}</span>}
+              {showBadge && sidebarOpen && (
+                <span className="px-1.5 py-0.5 bg-accent-hot text-white text-[10px] rounded-full font-bold">
+                  {unreadSignals}
+                </span>
+              )}
             </Link>
           );
         })}
-
-        {/* AI Insights badge */}
-        <Link
-          href="/dashboard#insights"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-            'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-          )}
-        >
-          <div className="relative flex-shrink-0">
-            <Bell className="w-5 h-5" />
-            {unreadInsights > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent-hot rounded-full text-[10px] font-bold flex items-center justify-center text-white">
-                {unreadInsights > 9 ? '9+' : unreadInsights}
-              </span>
-            )}
-          </div>
-          {sidebarOpen && <span>AI Insights</span>}
-        </Link>
       </nav>
 
-      {/* Bottom */}
       <div className="px-3 py-4 border-t border-white/5 space-y-1">
         {bottomItems.map((item) => (
           <Link
@@ -114,7 +97,6 @@ export default function Sidebar() {
           </Link>
         ))}
 
-        {/* Collapse */}
         <button
           onClick={toggleSidebar}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white hover:bg-white/5 transition-all w-full"

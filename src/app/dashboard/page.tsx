@@ -2,111 +2,114 @@
 
 import { useMemo } from 'react';
 import MetricCard from '@/components/dashboard/MetricCard';
-import PerformanceChart from '@/components/charts/PerformanceChart';
-import BudgetChart from '@/components/charts/BudgetChart';
-import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
-import CampaignTable from '@/components/campaigns/CampaignTable';
-import { useCampaigns, useAIInsights, useCampaignSummary } from '@/hooks/useData';
-import { DEMO_STATS, DEMO_BUDGET_DATA, generateChartData } from '@/lib/demo-data';
+import EquityChart from '@/components/charts/EquityChart';
+import SignalCard from '@/components/trading/SignalCard';
+import MarketRow from '@/components/trading/MarketRow';
+import { useSignals, usePrices, useTrades, useDashboardStats } from '@/hooks/useData';
+import { generateEquityCurve } from '@/lib/demo-data';
+import Link from 'next/link';
 import {
-  DollarSign, Eye, MousePointerClick, ShoppingCart,
-  Target, TrendingUp, Sparkles, RefreshCw,
+  Zap, TrendingUp, Target, Wallet, Activity, ArrowRight, DollarSign, Percent,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { data: campaigns } = useCampaigns();
-  const { data: insights } = useAIInsights();
-  const { data: summaries } = useCampaignSummary();
+  const { data: signals } = useSignals('active');
+  const { data: prices } = usePrices();
+  const { data: trades } = useTrades();
+  const { data: stats } = useDashboardStats();
+  const equityData = useMemo(() => generateEquityCurve(), []);
 
-  const chartData = useMemo(() => generateChartData(), []);
-
-  const stats = DEMO_STATS;
-  const budgetData = DEMO_BUDGET_DATA;
+  const topSignals = signals.slice(0, 3);
+  const topMovers = [...prices].sort((a, b) => Math.abs(b.change_percent) - Math.abs(a.change_percent)).slice(0, 5);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page title */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display text-white">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            ภาพรวมประสิทธิภาพโฆษณา TikTok ทั้งหมด
+            ภาพรวมพอร์ต สัญญาณ AI และตลาดวันนี้
           </p>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="btn-ghost flex items-center gap-2 text-xs"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Refresh Data
-        </button>
       </div>
 
-      {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
-          label="ค่าใช้จ่ายรวม"
-          value={stats.total_spend}
-          change={stats.spend_change}
+          label="กำไร/ขาดทุนรวม"
+          value={stats.total_pnl}
+          change={stats.total_pnl_percent}
           format="currency"
           icon={DollarSign}
-          iconColor="text-accent-hot"
-          inverseChange
+          iconColor={stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}
           delay={0}
         />
         <MetricCard
-          label="รายได้รวม"
-          value={stats.total_revenue}
-          change={stats.revenue_change}
-          format="currency"
-          icon={TrendingUp}
+          label="Win Rate"
+          value={stats.win_rate}
+          change={0}
+          format="percent"
+          icon={Target}
           iconColor="text-accent-glow"
           delay={50}
         />
         <MetricCard
-          label="Impressions"
-          value={stats.total_impressions}
-          change={8.3}
+          label="สัญญาณวันนี้"
+          value={stats.total_signals_today}
+          change={0}
           format="number"
-          icon={Eye}
+          icon={Zap}
+          iconColor="text-accent-gold"
           delay={100}
         />
         <MetricCard
-          label="Conversions"
-          value={stats.total_conversions}
-          change={15.7}
+          label="กำลังเทรด"
+          value={stats.open_trades}
+          change={0}
           format="number"
-          icon={ShoppingCart}
-          iconColor="text-accent-gold"
+          icon={Activity}
+          iconColor="text-accent-purple"
           delay={150}
         />
       </div>
 
-      {/* Secondary metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard label="Clicks" value={stats.total_clicks} change={5.2} format="number" icon={MousePointerClick} delay={200} />
-        <MetricCard label="CTR เฉลี่ย" value={stats.avg_ctr} change={0.12} format="percent" icon={Target} delay={250} />
-        <MetricCard label="CPC เฉลี่ย" value={stats.avg_cpc} change={-3.2} format="currency" icon={DollarSign} inverseChange delay={300} />
-        <MetricCard label="ROAS เฉลี่ย" value={stats.avg_roas} change={8.5} format="decimal" icon={Sparkles} iconColor="text-accent-purple" delay={350} />
-      </div>
-
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <PerformanceChart data={chartData} />
+          <EquityChart data={equityData} />
         </div>
-        <div>
-          <AIInsightsPanel insights={insights} />
+
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white">ตลาดที่เคลื่อนไหวมาก</h3>
+            <Link href="/markets" className="text-xs text-accent-glow hover:underline flex items-center gap-1">
+              ดูทั้งหมด <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {topMovers.map((p) => (
+              <MarketRow key={p.symbol} price={p} />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Budget Chart */}
-      <BudgetChart data={budgetData} />
-
-      {/* Campaign Table */}
       <div>
-        <h2 className="text-lg font-display text-white mb-4">แคมเปญทั้งหมด</h2>
-        <CampaignTable campaigns={campaigns} summaries={summaries} />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-display text-white flex items-center gap-2">
+              <Zap className="w-5 h-5 text-accent-glow" />
+              สัญญาณ AI ล่าสุด
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">จุดเข้า/ออกจากการวิเคราะห์เทคนิค + ข่าว</p>
+          </div>
+          <Link href="/signals" className="text-sm text-accent-glow hover:underline flex items-center gap-1">
+            ดูทั้งหมด <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {topSignals.map((s) => (
+            <SignalCard key={s.id} signal={s} />
+          ))}
+        </div>
       </div>
     </div>
   );

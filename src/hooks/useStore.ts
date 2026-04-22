@@ -1,56 +1,40 @@
 import { create } from 'zustand';
-import type { Campaign, DashboardStats, AIInsight, DateRange } from '@/types';
+import type { Signal, Trade, MarketPrice } from '@/types';
 
 interface AppStore {
-  // Date range
-  dateRange: DateRange;
-  setDateRange: (range: DateRange) => void;
+  // Market data
+  prices: MarketPrice[];
+  setPrices: (prices: MarketPrice[]) => void;
 
-  // Campaigns
-  campaigns: Campaign[];
-  setCampaigns: (campaigns: Campaign[]) => void;
-  selectedCampaignId: string | null;
-  setSelectedCampaignId: (id: string | null) => void;
+  // Signals
+  signals: Signal[];
+  setSignals: (signals: Signal[]) => void;
 
-  // Dashboard
-  stats: DashboardStats | null;
-  setStats: (stats: DashboardStats) => void;
+  // Trades
+  trades: Trade[];
+  setTrades: (trades: Trade[]) => void;
 
-  // AI Insights
-  insights: AIInsight[];
-  setInsights: (insights: AIInsight[]) => void;
-  unreadInsights: number;
-
-  // UI State
+  // UI
   sidebarOpen: boolean;
   toggleSidebar: () => void;
-  isAnalyzing: boolean;
-  setIsAnalyzing: (v: boolean) => void;
+  selectedSymbol: string | null;
+  setSelectedSymbol: (s: string | null) => void;
+  unreadSignals: number;
 }
 
-export const useAppStore = create<AppStore>((set, get) => ({
-  dateRange: {
-    start: new Date('2025-06-01'),
-    end: new Date('2025-06-30'),
-    label: '30 วัน',
-  },
-  setDateRange: (range) => set({ dateRange: range }),
-
-  campaigns: [],
-  setCampaigns: (campaigns) => set({ campaigns }),
-  selectedCampaignId: null,
-  setSelectedCampaignId: (id) => set({ selectedCampaignId: id }),
-
-  stats: null,
-  setStats: (stats) => set({ stats }),
-
-  insights: [],
-  setInsights: (insights) =>
-    set({ insights, unreadInsights: insights.filter(i => !i.is_read).length }),
-  unreadInsights: 0,
-
+export const useAppStore = create<AppStore>((set) => ({
+  prices: [],
+  setPrices: (prices) => set({ prices }),
+  signals: [],
+  setSignals: (signals) => set({
+    signals,
+    unreadSignals: signals.filter(s => s.status === 'active').length,
+  }),
+  trades: [],
+  setTrades: (trades) => set({ trades }),
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  isAnalyzing: false,
-  setIsAnalyzing: (v) => set({ isAnalyzing: v }),
+  selectedSymbol: null,
+  setSelectedSymbol: (s) => set({ selectedSymbol: s }),
+  unreadSignals: 0,
 }));

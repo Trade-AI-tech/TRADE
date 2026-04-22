@@ -5,7 +5,7 @@ import Header from '@/components/ui/Header';
 import { useAppStore } from '@/hooks/useStore';
 import { cn } from '@/lib/utils';
 
-export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
+export default function SignalsLayout({ children }: { children: React.ReactNode }) {
   const { sidebarOpen } = useAppStore();
   return (
     <div className="min-h-screen">
