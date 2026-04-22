@@ -1,5 +1,6 @@
 -- ============================================
--- Trading System Schema
+-- Trading System Schema (idempotent)
+-- Safe to re-run. Drops any old/partial state first.
 -- ============================================
 
 -- Drop old TikTok tables if exist
@@ -12,13 +13,18 @@ DROP TABLE IF EXISTS campaigns CASCADE;
 DROP TABLE IF EXISTS tiktok_accounts CASCADE;
 DROP FUNCTION IF EXISTS get_campaign_summary CASCADE;
 
--- Profiles (extend with telegram config)
-ALTER TABLE IF EXISTS profiles
-  ADD COLUMN IF NOT EXISTS telegram_chat_id text,
-  ADD COLUMN IF NOT EXISTS telegram_enabled boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS telegram_bot_token text,
-  ADD COLUMN IF NOT EXISTS alert_preferences jsonb DEFAULT '{"buy_signals":true,"sell_signals":true,"stop_loss_hit":true,"take_profit_hit":true,"news_alerts":true}'::jsonb;
+-- Drop trading tables in dependency order (in case partial run)
+DROP TABLE IF EXISTS telegram_alerts CASCADE;
+DROP TABLE IF EXISTS trades CASCADE;
+DROP TABLE IF EXISTS signals CASCADE;
+DROP TABLE IF EXISTS watchlist CASCADE;
+DROP TABLE IF EXISTS news CASCADE;
+DROP TABLE IF EXISTS market_prices CASCADE;
+DROP FUNCTION IF EXISTS get_portfolio_stats CASCADE;
 
+-- ============================================
+-- Profiles (create if missing, then ensure columns)
+-- ============================================
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email text UNIQUE NOT NULL,
@@ -34,8 +40,19 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Ensure new columns exist if profiles already existed
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS telegram_chat_id text,
+  ADD COLUMN IF NOT EXISTS telegram_bot_token text,
+  ADD COLUMN IF NOT EXISTS telegram_enabled boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS alert_preferences jsonb DEFAULT '{"buy_signals":true,"sell_signals":true,"stop_loss_hit":true,"take_profit_hit":true,"news_alerts":true}'::jsonb,
+  ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'Asia/Bangkok',
+  ADD COLUMN IF NOT EXISTS currency text DEFAULT 'USD';
+
+-- ============================================
 -- Watchlist
-CREATE TABLE IF NOT EXISTS watchlist (
+-- ============================================
+CREATE TABLE watchlist (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   symbol text NOT NULL,
@@ -47,8 +64,12 @@ CREATE TABLE IF NOT EXISTS watchlist (
   UNIQUE(user_id, symbol)
 );
 
--- Signals (AI-generated entry/exit signals)
-CREATE TABLE IF NOT EXISTS signals (
+CREATE INDEX idx_watchlist_user ON watchlist(user_id) WHERE is_active = true;
+
+-- ============================================
+-- Signals
+-- ============================================
+CREATE TABLE signals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   symbol text NOT NULL,
@@ -75,8 +96,10 @@ CREATE INDEX idx_signals_user_created ON signals(user_id, created_at DESC);
 CREATE INDEX idx_signals_status ON signals(status) WHERE status = 'active';
 CREATE INDEX idx_signals_symbol ON signals(symbol);
 
--- Trades (user's trade history)
-CREATE TABLE IF NOT EXISTS trades (
+-- ============================================
+-- Trades
+-- ============================================
+CREATE TABLE trades (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   signal_id uuid REFERENCES signals(id) ON DELETE SET NULL,
@@ -92,17 +115,20 @@ CREATE TABLE IF NOT EXISTS trades (
   quantity numeric NOT NULL,
   pnl numeric DEFAULT 0,
   pnl_percent numeric DEFAULT 0,
+  fees numeric DEFAULT 0,
   notes text,
-  entered_at timestamptz DEFAULT now(),
-  exited_at timestamptz,
+  opened_at timestamptz DEFAULT now(),
+  closed_at timestamptz,
   created_at timestamptz DEFAULT now()
 );
 
 CREATE INDEX idx_trades_user_created ON trades(user_id, created_at DESC);
 CREATE INDEX idx_trades_status ON trades(status);
 
--- News items
-CREATE TABLE IF NOT EXISTS news (
+-- ============================================
+-- News
+-- ============================================
+CREATE TABLE news (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   summary text,
@@ -118,8 +144,10 @@ CREATE TABLE IF NOT EXISTS news (
 
 CREATE INDEX idx_news_published ON news(published_at DESC);
 
+-- ============================================
 -- Market prices cache
-CREATE TABLE IF NOT EXISTS market_prices (
+-- ============================================
+CREATE TABLE market_prices (
   symbol text PRIMARY KEY,
   name text NOT NULL,
   market text NOT NULL,
@@ -132,8 +160,10 @@ CREATE TABLE IF NOT EXISTS market_prices (
   updated_at timestamptz DEFAULT now()
 );
 
+-- ============================================
 -- Telegram alerts log
-CREATE TABLE IF NOT EXISTS telegram_alerts (
+-- ============================================
+CREATE TABLE telegram_alerts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   signal_id uuid REFERENCES signals(id) ON DELETE SET NULL,
@@ -146,7 +176,6 @@ CREATE TABLE IF NOT EXISTS telegram_alerts (
 -- ============================================
 -- Row Level Security
 -- ============================================
-
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE watchlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE signals ENABLE ROW LEVEL SECURITY;
@@ -189,7 +218,6 @@ CREATE POLICY "Public read prices" ON market_prices FOR SELECT USING (true);
 -- ============================================
 -- Trigger: auto-create profile on signup
 -- ============================================
-
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -208,7 +236,6 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================
 -- RPC: Portfolio summary
 -- ============================================
-
 CREATE OR REPLACE FUNCTION get_portfolio_stats(p_user_id uuid)
 RETURNS TABLE (
   total_trades bigint,
