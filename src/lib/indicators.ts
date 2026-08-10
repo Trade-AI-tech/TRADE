@@ -3,6 +3,9 @@ import type { CandleData } from '@/types';
 /**
  * Technical indicators — pure functions, no dependencies
  * คำนวณ RSI, MACD, MA, Bollinger Bands, Support/Resistance
+ *
+ * กติกา: ช่วงที่ยังมีข้อมูลไม่พอจะคืน NaN เสมอ (ไม่เดาค่า)
+ * ผู้เรียกต้องเช็ค Number.isFinite ก่อนใช้
  */
 
 export function SMA(values: number[], period: number): number[] {
@@ -16,40 +19,52 @@ export function SMA(values: number[], period: number): number[] {
   return result;
 }
 
+/**
+ * EMA มาตรฐาน — seed ด้วย SMA ของ period แรก และคืน NaN ก่อนหน้านั้น
+ * รองรับ input ที่มี NaN นำหน้า (เช่น MACD line) โดยข้ามไปเริ่มที่ค่าจริงตัวแรก
+ */
 export function EMA(values: number[], period: number): number[] {
-  const result: number[] = [];
+  const result: number[] = new Array(values.length).fill(NaN);
+  const start = values.findIndex((v) => Number.isFinite(v));
+  if (start === -1 || values.length - start < period) return result;
+
   const k = 2 / (period + 1);
-  let ema = values[0];
-  for (let i = 0; i < values.length; i++) {
-    if (i === 0) { result.push(ema); continue; }
+  let sum = 0;
+  for (let i = start; i < start + period; i++) sum += values[i];
+  let ema = sum / period;
+  result[start + period - 1] = ema;
+
+  for (let i = start + period; i < values.length; i++) {
     ema = values[i] * k + ema * (1 - k);
-    result.push(ema);
+    result[i] = ema;
   }
   return result;
 }
 
+/**
+ * RSI แบบ Wilder smoothing (ตรงกับที่ TradingView / MT4 ใช้)
+ */
 export function RSI(values: number[], period: number = 14): number[] {
-  const result: number[] = [];
-  const gains: number[] = [0];
-  const losses: number[] = [0];
+  const result: number[] = new Array(values.length).fill(NaN);
+  if (values.length <= period) return result;
 
-  for (let i = 1; i < values.length; i++) {
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
     const diff = values[i] - values[i - 1];
-    gains.push(diff > 0 ? diff : 0);
-    losses.push(diff < 0 ? -diff : 0);
+    if (diff > 0) avgGain += diff; else avgLoss -= diff;
   }
+  avgGain /= period;
+  avgLoss /= period;
+  result[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
 
-  for (let i = 0; i < values.length; i++) {
-    if (i < period) { result.push(NaN); continue; }
-    let avgGain = 0, avgLoss = 0;
-    for (let j = i - period + 1; j <= i; j++) {
-      avgGain += gains[j];
-      avgLoss += losses[j];
-    }
-    avgGain /= period;
-    avgLoss /= period;
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result.push(100 - 100 / (1 + rs));
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    result[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
   }
   return result;
 }
@@ -57,9 +72,13 @@ export function RSI(values: number[], period: number = 14): number[] {
 export function MACD(values: number[], fast = 12, slow = 26, signal = 9) {
   const emaFast = EMA(values, fast);
   const emaSlow = EMA(values, slow);
-  const macdLine = emaFast.map((v, i) => v - emaSlow[i]);
+  const macdLine = emaFast.map((v, i) =>
+    Number.isFinite(v) && Number.isFinite(emaSlow[i]) ? v - emaSlow[i] : NaN
+  );
   const signalLine = EMA(macdLine, signal);
-  const histogram = macdLine.map((v, i) => v - signalLine[i]);
+  const histogram = macdLine.map((v, i) =>
+    Number.isFinite(v) && Number.isFinite(signalLine[i]) ? v - signalLine[i] : NaN
+  );
   return { macdLine, signalLine, histogram };
 }
 
@@ -114,7 +133,7 @@ export function findSupportResistance(candles: CandleData[], lookback = 5) {
 export function detectPatterns(candles: CandleData[]): string[] {
   if (candles.length < 3) return [];
   const patterns: string[] = [];
-  const [prev2, prev1, curr] = candles.slice(-3);
+  const [, prev1, curr] = candles.slice(-3);
 
   const body = (c: CandleData) => Math.abs(c.close - c.open);
   const range = (c: CandleData) => c.high - c.low;
@@ -154,11 +173,46 @@ export function detectPatterns(candles: CandleData[]): string[] {
 }
 
 /**
- * Determine trend from MA alignment
+ * Average True Range — ใช้กำหนดระยะ SL/TP ตามความผันผวนจริง
  */
-export function determineTrend(close: number, ma20: number, ma50: number, ma200: number): 'uptrend' | 'downtrend' | 'sideways' {
-  if (isNaN(ma20) || isNaN(ma50) || isNaN(ma200)) return 'sideways';
-  if (close > ma20 && ma20 > ma50 && ma50 > ma200) return 'uptrend';
-  if (close < ma20 && ma20 < ma50 && ma50 < ma200) return 'downtrend';
+export function ATR(candles: CandleData[], period = 14): number {
+  if (candles.length < 2) return NaN;
+  const slice = candles.slice(-(period + 1));
+  let sum = 0;
+  let n = 0;
+  for (let i = 1; i < slice.length; i++) {
+    const c = slice[i];
+    const prevClose = slice[i - 1].close;
+    const tr = Math.max(
+      c.high - c.low,
+      Math.abs(c.high - prevClose),
+      Math.abs(c.low - prevClose)
+    );
+    sum += tr;
+    n++;
+  }
+  return n ? sum / n : NaN;
+}
+
+/**
+ * Determine trend from MA alignment
+ * ถ้าไม่มีข้อมูลยาวพอสำหรับ MA200 จะตัดสินจาก MA20/MA50 แทน
+ */
+export function determineTrend(
+  close: number,
+  ma20: number,
+  ma50: number,
+  ma200: number
+): 'uptrend' | 'downtrend' | 'sideways' {
+  if (!Number.isFinite(ma20) || !Number.isFinite(ma50)) return 'sideways';
+
+  if (Number.isFinite(ma200)) {
+    if (close > ma20 && ma20 > ma50 && ma50 > ma200) return 'uptrend';
+    if (close < ma20 && ma20 < ma50 && ma50 < ma200) return 'downtrend';
+    return 'sideways';
+  }
+
+  if (close > ma20 && ma20 > ma50) return 'uptrend';
+  if (close < ma20 && ma20 < ma50) return 'downtrend';
   return 'sideways';
 }

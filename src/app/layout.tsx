@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'TikTok Ads AI Manager',
-  description: 'ระบบจัดการโฆษณา TikTok อัจฉริยะ พร้อม AI วิเคราะห์งบประมาณและประสิทธิภาพ',
+  title: 'Trading AI — Pro Signals',
+  description: 'ระบบสัญญาณเทรดทอง Forex หุ้นไทยและหุ้นต่างประเทศ วิเคราะห์เทคนิคอัตโนมัติ พร้อมแจ้งเตือนผ่าน Telegram',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

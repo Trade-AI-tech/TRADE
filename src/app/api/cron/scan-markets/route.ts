@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchCandles, fetchQuotes } from '@/lib/market-data';
+import { fetchChart } from '@/lib/market-data';
 import { generateSignal } from '@/lib/signal-engine';
 import { sendSignalAlert } from '@/lib/telegram';
-import { isDemoMode, createServerClient } from '@/lib/supabase';
-import type { Signal } from '@/types';
+import { isDemoMode } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-server';
+import type { Signal, MarketPrice, AlertPreferences } from '@/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+const DEDUPE_HOURS = 20;
+
 /**
- * Daily cron: scan all watchlists across all users,
- * generate signals, save to DB, send Telegram alerts.
+ * Daily cron: สแกน watchlist ของผู้ใช้ทุกคน → สร้างสัญญาณ → บันทึก → ส่ง Telegram
  *
- * Protected by CRON_SECRET header.
+ * ทำงานโดยไม่มี session จึงใช้ service-role client
+ * ป้องกันด้วย CRON_SECRET header
  */
 export async function GET(req: NextRequest) {
-  // Verify cron secret
   const authHeader = req.headers.get('authorization');
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,13 +32,13 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const supabase = createServerClient();
+  const supabase = createAdminClient();
   if (!supabase) {
     return NextResponse.json({ success: false, error: 'Supabase unavailable' }, { status: 500 });
   }
 
   try {
-    // 1. Load all active watchlist items (grouped implicitly by user)
+    // 1. watchlist ทั้งหมดที่เปิดใช้งาน
     const { data: watchlist, error: wlErr } = await supabase
       .from('watchlist')
       .select('*')
@@ -47,90 +49,132 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, scanned: 0, message: 'No watchlist items' });
     }
 
-    // 2. Update market prices (dedupe by symbol)
-    const uniqueSymbols = new Map<string, { symbol: string; market: string }>();
-    for (const w of watchlist) uniqueSymbols.set(w.symbol, { symbol: w.symbol, market: w.market });
+    // 2. ดึง chart ครั้งเดียวต่อ symbol แล้วใช้ซ้ำกับทุก user ที่ติดตาม symbol เดียวกัน
+    const uniqueKeys = new Map<string, { symbol: string; market: string }>();
+    for (const w of watchlist) uniqueKeys.set(`${w.symbol}|${w.market}`, { symbol: w.symbol, market: w.market });
 
-    const quotes = await fetchQuotes(Array.from(uniqueSymbols.values()));
-    if (quotes.length > 0) {
-      await supabase.from('market_prices').upsert(quotes, { onConflict: 'symbol' });
-    }
+    const charts = new Map<string, Awaited<ReturnType<typeof fetchChart>>>();
+    const prices: MarketPrice[] = [];
 
-    // 3. Generate signals per watchlist entry
-    const signalsToInsert: Signal[] = [];
-    const alertsToSend: Array<{ userId: string; signal: Signal }> = [];
-
-    for (const item of watchlist) {
+    for (const [key, s] of uniqueKeys) {
       try {
-        const candles = await fetchCandles(item.symbol, item.market, '1d', '3mo');
-        if (candles.length < 50) continue;
-
-        const signal = generateSignal({
-          symbol: item.symbol,
-          name: item.name,
-          market: item.market,
-          candles,
-          timeframe: '1D',
-        });
-
-        if (!signal || signal.action === 'HOLD') continue;
-        // Only alert on strong/very_strong by default
-        if (signal.strength === 'weak') continue;
-
-        signal.user_id = item.user_id;
-        signalsToInsert.push(signal);
-        alertsToSend.push({ userId: item.user_id, signal });
+        const chart = await fetchChart(s.symbol, s.market, '1d', '1y');
+        charts.set(key, chart);
+        if (chart.quote) prices.push(chart.quote);
       } catch (e) {
-        console.error('scan error for', item.symbol, e);
+        console.error('fetchChart failed for', s.symbol, e);
       }
     }
 
-    // 4. Insert signals
-    if (signalsToInsert.length > 0) {
-      await supabase.from('signals').insert(signalsToInsert);
+    if (prices.length > 0) {
+      const { error: priceErr } = await supabase
+        .from('market_prices')
+        .upsert(prices, { onConflict: 'symbol' });
+      if (priceErr) console.error('market_prices upsert failed:', priceErr);
     }
 
-    // 5. Send Telegram alerts (load per-user config)
+    // 3. สัญญาณที่ยัง active อยู่ ใช้กันสร้างซ้ำ
+    const since = new Date(Date.now() - DEDUPE_HOURS * 3600_000).toISOString();
+    const { data: recent } = await supabase
+      .from('signals')
+      .select('user_id, symbol, action')
+      .eq('status', 'active')
+      .gte('created_at', since);
+    const seen = new Set((recent ?? []).map(r => `${r.user_id}:${r.symbol}:${r.action}`));
+
+    // 4. สร้างสัญญาณรายรายการ
+    const signalsToInsert: Signal[] = [];
+
+    for (const item of watchlist) {
+      const chart = charts.get(`${item.symbol}|${item.market}`);
+      if (!chart || chart.candles.length < 50) continue;
+
+      const signal = generateSignal({
+        symbol: item.symbol,
+        name: item.name,
+        market: item.market,
+        candles: chart.candles,
+        timeframe: '1D',
+      });
+
+      if (!signal || signal.action === 'HOLD' || signal.strength === 'weak') continue;
+
+      const key = `${item.user_id}:${signal.symbol}:${signal.action}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      signal.user_id = item.user_id;
+      signalsToInsert.push(signal);
+    }
+
+    if (signalsToInsert.length > 0) {
+      const { error: insErr } = await supabase.from('signals').insert(signalsToInsert);
+      if (insErr) throw insErr;
+    }
+
+    // 5. แจ้งเตือน Telegram ตามการตั้งค่าของแต่ละคน
     let alertsSent = 0;
-    const userIds = [...new Set(alertsToSend.map(a => a.userId))];
+    let alertsFailed = 0;
+    const userIds = [...new Set(signalsToInsert.map(s => s.user_id))];
 
     for (const userId of userIds) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('telegram_bot_token, telegram_chat_id, telegram_enabled')
+        .select('telegram_bot_token, telegram_chat_id, telegram_enabled, alert_preferences')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (!profile?.telegram_enabled || !profile.telegram_bot_token || !profile.telegram_chat_id) continue;
 
-      const userAlerts = alertsToSend.filter(a => a.userId === userId);
-      for (const { signal } of userAlerts) {
+      const prefs = (profile.alert_preferences ?? {}) as AlertPreferences;
+
+      for (const signal of signalsToInsert.filter(s => s.user_id === userId)) {
+        if (signal.action === 'BUY' && prefs.buy_signals === false) continue;
+        if (signal.action === 'SELL' && prefs.sell_signals === false) continue;
+        if (prefs.strong_signals_only && signal.strength !== 'strong' && signal.strength !== 'very_strong') continue;
+
         const res = await sendSignalAlert(
           { botToken: profile.telegram_bot_token, chatId: profile.telegram_chat_id },
           signal
         );
+
+        await supabase.from('telegram_alerts').insert({
+          user_id: userId,
+          signal_id: signal.id,
+          message: `${signal.action} ${signal.symbol} @ ${signal.entry_price}`,
+          success: res.success,
+          error: res.error ?? null,
+        });
+
         if (res.success) {
           alertsSent++;
-          await supabase
-            .from('signals')
-            .update({ telegram_sent: true })
-            .eq('id', signal.id);
+          await supabase.from('signals').update({ telegram_sent: true }).eq('id', signal.id);
+        } else {
+          alertsFailed++;
+          console.error('telegram send failed:', res.error);
         }
       }
     }
 
+    // 6. หมดอายุสัญญาณเก่า
+    const { error: expErr } = await supabase
+      .from('signals')
+      .update({ status: 'expired' })
+      .eq('status', 'active')
+      .lt('expires_at', new Date().toISOString());
+    if (expErr) console.error('expire signals failed:', expErr);
+
     return NextResponse.json({
       success: true,
       scanned: watchlist.length,
+      pricesUpdated: prices.length,
       signalsGenerated: signalsToInsert.length,
       alertsSent,
+      alertsFailed,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error('cron error:', err);
-    return NextResponse.json(
-      { success: false, error: String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
   }
 }

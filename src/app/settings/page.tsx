@@ -2,9 +2,10 @@
 
 import { cn } from '@/lib/utils';
 import {
-  Bell, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Zap,
+  Bell, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import type { AlertPreferences } from '@/types';
 
 const tabs = [
   { id: 'telegram', label: 'Telegram Bot', icon: Send },
@@ -13,7 +14,30 @@ const tabs = [
   { id: 'api', label: 'API Keys', icon: Key },
 ];
 
-function loadSettings<T>(key: string, defaults: T): T {
+const DEFAULT_PREFS: AlertPreferences = {
+  buy_signals: true,
+  sell_signals: true,
+  stop_loss_hit: true,
+  take_profit_hit: true,
+  news_alerts: true,
+  strong_signals_only: false,
+};
+
+/**
+ * รายการแจ้งเตือน
+ * live = cron ใช้ค่านี้จริงตอนส่ง Telegram
+ * ตัวที่ไม่ใช่ live ยังไม่มีงานเบื้องหลังคอยเฝ้า จึงล็อกไว้ไม่ให้เข้าใจผิดว่าเปิดแล้วจะได้รับ
+ */
+const ALERT_ROWS: { key: keyof AlertPreferences; label: string; desc: string; color: string; live: boolean }[] = [
+  { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400', live: true },
+  { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400', live: true },
+  { key: 'strong_signals_only', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะ strong / very_strong เท่านั้น', color: 'text-accent-glow', live: true },
+  { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'ต้องมีระบบเฝ้าราคาระหว่างวันก่อน', color: 'text-red-400', live: false },
+  { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'ต้องมีระบบเฝ้าราคาระหว่างวันก่อน', color: 'text-emerald-400', live: false },
+  { key: 'news_alerts', label: 'ข่าวสำคัญ', desc: 'ต้องต่อแหล่งข่าวก่อน', color: 'text-blue-400', live: false },
+];
+
+function loadLocal<T>(key: string, defaults: T): T {
   if (typeof window === 'undefined') return defaults;
   try {
     const stored = localStorage.getItem(`trading-ai-${key}`);
@@ -23,84 +47,124 @@ function loadSettings<T>(key: string, defaults: T): T {
   }
 }
 
-function saveSettings(key: string, data: Record<string, unknown>) {
-  localStorage.setItem(`trading-ai-${key}`, JSON.stringify(data));
-}
-
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('telegram');
-  const [saved, setSaved] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const [telegram, setTelegram] = useState({
-    botToken: '', chatId: '', enabled: false,
-  });
-
-  const [alerts, setAlerts] = useState({
-    buySignals: true, sellSignals: true, holdSignals: false,
-    stopLossHit: true, takeProfitHit: true, newsAlerts: true,
-    strongSignalsOnly: false,
-  });
-
+  const [telegram, setTelegram] = useState({ botToken: '', chatId: '', enabled: false, hasBotToken: false });
+  const [alerts, setAlerts] = useState<AlertPreferences>(DEFAULT_PREFS);
   const [account, setAccount] = useState({
-    name: '', email: '', timezone: 'Asia/Bangkok', defaultQuantity: 1,
+    full_name: '', email: '', timezone: 'Asia/Bangkok', defaultQuantity: 1,
   });
 
-  const [apiKeys, setApiKeys] = useState({
-    anthropicKey: '', newsApiKey: '', alphaVantageKey: '',
-  });
-
-  useEffect(() => {
-    setTelegram(loadSettings('telegram', telegram));
-    setAlerts(loadSettings('alerts', alerts));
-    setAccount(loadSettings('account', account));
-    setApiKeys(loadSettings('api-keys', apiKeys));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const flash = useCallback((ok: boolean, msg: string) => {
+    setToast({ ok, msg });
+    setTimeout(() => setToast(null), 5000);
   }, []);
 
-  const handleSave = (key: string, data: Record<string, unknown>) => {
-    saveSettings(key, data);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // โหลดค่าจริงจากฐานข้อมูล — ค่าที่ cron ใช้ ต้องอยู่ในฐานข้อมูล ไม่ใช่ localStorage
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/profile');
+        const data = await res.json();
+        if (data.success) {
+          const p = data.profile;
+          setTelegram({ botToken: '', chatId: p.telegram_chat_id ?? '', enabled: Boolean(p.telegram_enabled), hasBotToken: Boolean(p.has_bot_token) });
+          setAlerts({ ...DEFAULT_PREFS, ...(p.alert_preferences ?? {}) });
+          setAccount((a) => ({
+            ...a,
+            full_name: p.full_name ?? '',
+            email: p.email ?? '',
+            timezone: p.timezone ?? 'Asia/Bangkok',
+            ...loadLocal('account', { defaultQuantity: 1 }),
+          }));
+        }
+      } catch {
+        /* ปล่อยใช้ค่า default */
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const patchProfile = async (key: string, patch: Record<string, unknown>) => {
+    setSavingKey(key);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+      flash(true, 'บันทึกเรียบร้อยแล้ว');
+      return true;
+    } catch (err) {
+      flash(false, err instanceof Error ? err.message : String(err));
+      return false;
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const saveTelegram = async () => {
+    const ok = await patchProfile('telegram', {
+      telegram_bot_token: telegram.botToken,
+      telegram_chat_id: telegram.chatId,
+      telegram_enabled: telegram.enabled,
+    });
+    if (ok) {
+      setTelegram((t) => ({ ...t, botToken: '', hasBotToken: t.hasBotToken || Boolean(t.botToken) }));
+    }
+  };
+
+  const toggleAlert = async (key: keyof AlertPreferences) => {
+    const updated = { ...alerts, [key]: !alerts[key] };
+    setAlerts(updated);
+    await patchProfile('alerts', { alert_preferences: updated });
+  };
+
+  const saveAccount = async () => {
+    localStorage.setItem('trading-ai-account', JSON.stringify({ defaultQuantity: account.defaultQuantity }));
+    await patchProfile('account', { full_name: account.full_name, timezone: account.timezone });
   };
 
   const testTelegram = async () => {
-    setTestResult(null);
+    setSavingKey('test');
     try {
       const res = await fetch('/api/telegram/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(telegram),
+        body: JSON.stringify({ botToken: telegram.botToken, chatId: telegram.chatId }),
       });
       const data = await res.json();
-      setTestResult({ ok: data.success, msg: data.success ? 'ส่งข้อความทดสอบเรียบร้อย!' : data.error || 'ไม่สำเร็จ' });
+      flash(Boolean(data.success), data.success ? 'ส่งข้อความทดสอบเรียบร้อย!' : data.error || 'ไม่สำเร็จ');
     } catch (err) {
-      setTestResult({ ok: false, msg: String(err) });
+      flash(false, String(err));
+    } finally {
+      setSavingKey(null);
     }
-    setTimeout(() => setTestResult(null), 5000);
   };
+
+  const canTest = Boolean(telegram.chatId) && (Boolean(telegram.botToken) || telegram.hasBotToken);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-display text-white">ตั้งค่า</h1>
-        <p className="text-sm text-gray-500 mt-0.5">จัดการ Telegram Bot, แจ้งเตือน และ API keys</p>
+        <p className="text-sm text-gray-500 mt-0.5">จัดการ Telegram Bot, แจ้งเตือน และบัญชี</p>
       </div>
 
-      {saved && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-sm">
-          <CheckCircle2 className="w-4 h-4" />
-          บันทึกเรียบร้อยแล้ว
-        </div>
-      )}
-
-      {testResult && (
+      {toast && (
         <div className={cn(
-          'fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm',
-          testResult.ok ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-red-500/20 border-red-500/30 text-red-400'
+          'fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm max-w-sm',
+          toast.ok ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-red-500/20 border-red-500/30 text-red-400'
         )}>
-          {testResult.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-          {testResult.msg}
+          {toast.ok ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+          <span>{toast.msg}</span>
         </div>
       )}
 
@@ -124,82 +188,92 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex-1 space-y-6">
+          {loading && (
+            <div className="card flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> กำลังโหลดการตั้งค่า...
+            </div>
+          )}
+
           {activeTab === 'telegram' && (
-            <div className="space-y-6">
-              <div className="card">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                    <Send className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">Telegram Bot</h3>
-                    <p className="text-xs text-gray-500">ส่งสัญญาณเข้า/ออก เข้าแชทของคุณอัตโนมัติ</p>
-                  </div>
+            <div className="card">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Send className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Telegram Bot</h3>
+                  <p className="text-xs text-gray-500">ส่งสัญญาณเข้า/ออก เข้าแชทของคุณอัตโนมัติ</p>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-4">
+                <p className="text-xs text-blue-300 font-medium mb-2">วิธีสร้าง Telegram Bot:</p>
+                <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
+                  <li>เปิด Telegram แล้วค้นหา <span className="text-accent-glow">@BotFather</span></li>
+                  <li>พิมพ์ <span className="font-mono text-white">/newbot</span> แล้วตั้งชื่อ bot</li>
+                  <li>Copy Bot Token ที่ได้มาใส่ด้านล่าง</li>
+                  <li>เพิ่ม Bot ในแชท แล้วพิมพ์ข้อความใดก็ได้</li>
+                  <li>เปิด <span className="text-accent-glow">api.telegram.org/bot[TOKEN]/getUpdates</span> เพื่อดู chat_id</li>
+                </ol>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">
+                    Bot Token
+                    {telegram.hasBotToken && (
+                      <span className="ml-2 text-emerald-400">• บันทึกไว้แล้ว (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</span>
+                    )}
+                  </label>
+                  <input
+                    type="password"
+                    className="input-field"
+                    placeholder={telegram.hasBotToken ? '••••••••••••••••' : '1234567890:ABCdefGHIjklMNOpqrs...'}
+                    value={telegram.botToken}
+                    onChange={(e) => setTelegram({ ...telegram, botToken: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Chat ID</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="-1001234567890 หรือ 123456789"
+                    value={telegram.chatId}
+                    onChange={(e) => setTelegram({ ...telegram, chatId: e.target.value })}
+                  />
                 </div>
 
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-4">
-                  <p className="text-xs text-blue-300 font-medium mb-2">วิธีสร้าง Telegram Bot:</p>
-                  <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
-                    <li>เปิด Telegram แล้วค้นหา <span className="text-accent-glow">@BotFather</span></li>
-                    <li>พิมพ์ <span className="font-mono text-white">/newbot</span> แล้วตั้งชื่อ bot</li>
-                    <li>Copy Bot Token ที่ได้มาใส่ด้านล่าง</li>
-                    <li>เพิ่ม Bot ในแชท แล้วพิมพ์ข้อความใดก็ได้</li>
-                    <li>เปิด <span className="text-accent-glow">api.telegram.org/bot[TOKEN]/getUpdates</span> เพื่อดู chat_id</li>
-                  </ol>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
+                  <div>
+                    <p className="text-sm text-white">เปิดใช้งาน Telegram Alerts</p>
+                    <p className="text-xs text-gray-500">ส่งสัญญาณเทรดเข้า Telegram อัตโนมัติทุกวัน 08:00 น.</p>
+                  </div>
+                  <button
+                    onClick={() => setTelegram({ ...telegram, enabled: !telegram.enabled })}
+                    className={cn('w-10 h-6 rounded-full transition-all relative', telegram.enabled ? 'bg-emerald-400' : 'bg-white/10')}
+                  >
+                    <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', telegram.enabled ? 'left-5' : 'left-1')} />
+                  </button>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">Bot Token</label>
-                    <input
-                      type="password"
-                      className="input-field"
-                      placeholder="1234567890:ABCdefGHIjklMNOpqrs..."
-                      value={telegram.botToken}
-                      onChange={(e) => setTelegram({ ...telegram, botToken: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block">Chat ID</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="-1001234567890 หรือ 123456789"
-                      value={telegram.chatId}
-                      onChange={(e) => setTelegram({ ...telegram, chatId: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
-                    <div>
-                      <p className="text-sm text-white">เปิดใช้งาน Telegram Alerts</p>
-                      <p className="text-xs text-gray-500">ส่งสัญญาณเทรดเข้า Telegram อัตโนมัติ</p>
-                    </div>
-                    <button
-                      onClick={() => setTelegram({ ...telegram, enabled: !telegram.enabled })}
-                      className={cn('w-10 h-6 rounded-full transition-all relative', telegram.enabled ? 'bg-emerald-400' : 'bg-white/10')}
-                    >
-                      <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', telegram.enabled ? 'left-5' : 'left-1')} />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                      onClick={testTelegram}
-                      disabled={!telegram.botToken || !telegram.chatId}
-                      className="btn-ghost text-sm flex items-center gap-2 disabled:opacity-40"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      ทดสอบส่งข้อความ
-                    </button>
-                    <button
-                      onClick={() => handleSave('telegram', telegram)}
-                      className="btn-primary text-sm flex items-center gap-2"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      บันทึก
-                    </button>
-                  </div>
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={testTelegram}
+                    disabled={!canTest || savingKey === 'test'}
+                    className="btn-ghost text-sm flex items-center gap-2 disabled:opacity-40"
+                  >
+                    {savingKey === 'test' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    ทดสอบส่งข้อความ
+                  </button>
+                  <button
+                    onClick={saveTelegram}
+                    disabled={savingKey === 'telegram'}
+                    className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+                  >
+                    {savingKey === 'telegram' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    บันทึก
+                  </button>
                 </div>
               </div>
             </div>
@@ -217,29 +291,34 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {[
-                  { key: 'buySignals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400' },
-                  { key: 'sellSignals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400' },
-                  { key: 'holdSignals', label: 'สัญญาณ HOLD', desc: 'แจ้งเมื่อมีสัญญาณถือ', color: 'text-amber-400' },
-                  { key: 'stopLossHit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาถึง Stop Loss', color: 'text-red-400' },
-                  { key: 'takeProfitHit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาถึง Take Profit', color: 'text-emerald-400' },
-                  { key: 'newsAlerts', label: 'ข่าวสำคัญ', desc: 'แจ้งเมื่อมีข่าวที่ส่งผลต่อ watchlist', color: 'text-blue-400' },
-                  { key: 'strongSignalsOnly', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะสัญญาณ strong/very_strong เท่านั้น', color: 'text-accent-glow' },
-                ].map((n) => (
-                  <div key={n.key} className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
+                {ALERT_ROWS.map((n) => (
+                  <div
+                    key={n.key}
+                    className={cn(
+                      'flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5',
+                      !n.live && 'opacity-60'
+                    )}
+                  >
                     <div>
-                      <p className={cn('text-sm font-medium', n.color)}>{n.label}</p>
+                      <p className={cn('text-sm font-medium flex items-center gap-2', n.color)}>
+                        {n.label}
+                        {!n.live && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 font-normal">
+                            ยังไม่เปิดใช้งาน
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-500">{n.desc}</p>
                     </div>
                     <button
-                      onClick={() => {
-                        const updated = { ...alerts, [n.key]: !alerts[n.key as keyof typeof alerts] };
-                        setAlerts(updated);
-                        handleSave('alerts', updated);
-                      }}
-                      className={cn('w-10 h-6 rounded-full transition-all relative', alerts[n.key as keyof typeof alerts] ? 'bg-accent-glow' : 'bg-white/10')}
+                      disabled={!n.live}
+                      onClick={() => toggleAlert(n.key)}
+                      className={cn(
+                        'w-10 h-6 rounded-full transition-all relative disabled:cursor-not-allowed',
+                        alerts[n.key] ? 'bg-accent-glow' : 'bg-white/10'
+                      )}
                     >
-                      <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', alerts[n.key as keyof typeof alerts] ? 'left-5' : 'left-1')} />
+                      <div className={cn('w-4 h-4 rounded-full bg-white absolute top-1 transition-all', alerts[n.key] ? 'left-5' : 'left-1')} />
                     </button>
                   </div>
                 ))}
@@ -254,12 +333,12 @@ export default function SettingsPage() {
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">ชื่อ</label>
                   <input type="text" className="input-field" placeholder="ชื่อของคุณ"
-                    value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
+                    value={account.full_name} onChange={(e) => setAccount({ ...account, full_name: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Email</label>
-                  <input type="email" className="input-field" placeholder="email@example.com"
-                    value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} />
+                  <input type="email" className="input-field opacity-60" value={account.email} readOnly />
+                  <p className="text-[10px] text-gray-500 mt-1">อีเมลผูกกับบัญชีเข้าสู่ระบบ เปลี่ยนที่นี่ไม่ได้</p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">Timezone</label>
@@ -272,12 +351,19 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 mb-1.5 block">จำนวนเริ่มต้นเมื่อเทรด</label>
-                  <input type="number" className="input-field" placeholder="1"
-                    value={account.defaultQuantity} onChange={(e) => setAccount({ ...account, defaultQuantity: Number(e.target.value) })} />
+                  <input type="number" min={0} step="any" className="input-field" placeholder="1"
+                    value={account.defaultQuantity}
+                    onChange={(e) => setAccount({ ...account, defaultQuantity: Number(e.target.value) })} />
+                  <p className="text-[10px] text-gray-500 mt-1">ใช้ตอนกด &ldquo;เพิ่มเข้าพอร์ต&rdquo; จากการ์ดสัญญาณ</p>
                 </div>
                 <div className="flex justify-end pt-2">
-                  <button onClick={() => handleSave('account', account)} className="btn-primary text-sm flex items-center gap-2">
-                    <Save className="w-3.5 h-3.5" />บันทึก
+                  <button
+                    onClick={saveAccount}
+                    disabled={savingKey === 'account'}
+                    className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+                  >
+                    {savingKey === 'account' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    บันทึก
                   </button>
                 </div>
               </div>
@@ -291,45 +377,41 @@ export default function SettingsPage() {
                   <Key className="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white">API Keys</h3>
-                  <p className="text-xs text-gray-500">ใส่ API keys เพื่อเปิดใช้งานข้อมูลจริง</p>
+                  <h3 className="text-sm font-semibold text-white">แหล่งข้อมูล</h3>
+                  <p className="text-xs text-gray-500">ระบบใช้อะไรดึงข้อมูลอยู่ตอนนี้</p>
                 </div>
               </div>
 
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-4">
-                <p className="text-xs text-amber-300">
-                  <Shield className="w-3 h-3 inline mr-1" />
-                  ระบบใช้ Yahoo Finance สำหรับข้อมูลราคาฟรีอยู่แล้ว ไม่ต้องใส่ key ก็ใช้ได้
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-4">
+                <p className="text-xs text-emerald-300 flex items-start gap-1.5">
+                  <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>
+                    ราคาและแท่งเทียนทั้งหมดดึงจาก Yahoo Finance ซึ่งใช้ได้ฟรีโดยไม่ต้องมี API key
+                    ระบบจึงทำงานได้ครบโดยไม่ต้องตั้งค่าอะไรเพิ่ม
+                  </span>
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block flex items-center gap-1">
-                    <Bot className="w-3 h-3" /> Anthropic Claude API
-                  </label>
-                  <input type="password" className="input-field" placeholder="sk-ant-..."
-                    value={apiKeys.anthropicKey} onChange={(e) => setApiKeys({ ...apiKeys, anthropicKey: e.target.value })} />
-                  <p className="text-[10px] text-gray-500 mt-1">สำหรับวิเคราะห์ข่าว + สรุปสัญญาณด้วย AI</p>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-surface-2 border border-white/5">
+                  <div>
+                    <p className="text-sm text-white flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" /> Anthropic Claude</p>
+                    <p className="text-gray-500 mt-0.5">สรุปสัญญาณ/วิเคราะห์ข่าวด้วย AI</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-400 flex-shrink-0">ยังไม่ได้ต่อ</span>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">NewsAPI Key</label>
-                  <input type="password" className="input-field" placeholder="..."
-                    value={apiKeys.newsApiKey} onChange={(e) => setApiKeys({ ...apiKeys, newsApiKey: e.target.value })} />
-                  <p className="text-[10px] text-gray-500 mt-1">สำหรับดึงข่าวจริง (newsapi.org)</p>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Alpha Vantage Key (ตัวเลือก)</label>
-                  <input type="password" className="input-field" placeholder="..."
-                    value={apiKeys.alphaVantageKey} onChange={(e) => setApiKeys({ ...apiKeys, alphaVantageKey: e.target.value })} />
-                  <p className="text-[10px] text-gray-500 mt-1">Backup สำหรับข้อมูลราคา</p>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button onClick={() => handleSave('api-keys', apiKeys)} className="btn-primary text-sm flex items-center gap-2">
-                    <Save className="w-3.5 h-3.5" />บันทึก
-                  </button>
+                <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-surface-2 border border-white/5">
+                  <div>
+                    <p className="text-sm text-white">แหล่งข่าว (NewsAPI)</p>
+                    <p className="text-gray-500 mt-0.5">ป้อน sentiment เข้าเครื่องคำนวณสัญญาณ</p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-400 flex-shrink-0">ยังไม่ได้ต่อ</span>
                 </div>
               </div>
+
+              <p className="text-[11px] text-gray-500 mt-4">
+                สองรายการนี้ยังไม่มีโค้ดเรียกใช้ จึงยังไม่เปิดช่องให้กรอก key เพื่อไม่ให้เข้าใจผิดว่าตั้งค่าแล้วจะทำงาน
+              </p>
             </div>
           )}
         </div>

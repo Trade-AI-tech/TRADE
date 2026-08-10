@@ -5,22 +5,42 @@ import MetricCard from '@/components/dashboard/MetricCard';
 import EquityChart from '@/components/charts/EquityChart';
 import SignalCard from '@/components/trading/SignalCard';
 import MarketRow from '@/components/trading/MarketRow';
-import { useSignals, usePrices, useTrades, useDashboardStats } from '@/hooks/useData';
+import { useSignals, usePrices, useTrades, useDashboardStats, useWatchlist } from '@/hooks/useData';
 import { generateEquityCurve } from '@/lib/demo-data';
+import { isDemoMode } from '@/lib/supabase';
 import Link from 'next/link';
 import {
-  Zap, TrendingUp, Target, Wallet, Activity, ArrowRight, DollarSign, Percent,
+  Zap, Target, Activity, ArrowRight, DollarSign, Compass,
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const demo = isDemoMode();
   const { data: signals } = useSignals('active');
   const { data: prices } = usePrices();
   const { data: trades } = useTrades();
+  const { data: watchlist, loading: watchlistLoading } = useWatchlist();
   const { data: stats } = useDashboardStats();
-  const equityData = useMemo(() => generateEquityCurve(), []);
+
+  // โหมดจริง: equity curve คือกำไรสะสมจากออเดอร์ที่ปิดแล้ว ไม่ใช่กราฟตัวอย่าง
+  const equityData = useMemo(() => {
+    if (demo) return generateEquityCurve();
+    const closed = trades
+      .filter(t => t.status === 'closed' && t.closed_at)
+      .sort((a, b) => new Date(a.closed_at!).getTime() - new Date(b.closed_at!).getTime());
+
+    let cumulative = 0;
+    return closed.map(t => {
+      cumulative += Number(t.pnl) || 0;
+      return {
+        date: new Date(t.closed_at!).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
+        value: Number(cumulative.toFixed(2)),
+      };
+    });
+  }, [demo, trades]);
 
   const topSignals = signals.slice(0, 3);
   const topMovers = [...prices].sort((a, b) => Math.abs(b.change_percent) - Math.abs(a.change_percent)).slice(0, 5);
+  const needsSetup = !demo && !watchlistLoading && watchlist.length === 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -32,6 +52,22 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {needsSetup && (
+        <div className="card border-accent-glow/20 bg-accent-glow/5 flex items-start gap-3">
+          <Compass className="w-5 h-5 text-accent-glow flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-white font-medium">เริ่มใช้งานใน 2 ขั้น</p>
+            <p className="text-xs text-gray-400 mt-1">
+              1) เพิ่ม symbol ที่อยากติดตามในหน้า <Link href="/markets" className="text-accent-glow hover:underline">ตลาด</Link>
+              {' '}2) กดปุ่ม &ldquo;สแกนตลาด&rdquo; มุมขวาบน — จากนั้นระบบจะสแกนให้เองทุกวัน 08:00 น. และแจ้งเข้า Telegram ถ้าตั้งค่าไว้
+            </p>
+          </div>
+          <Link href="/markets" className="btn-primary text-xs flex items-center gap-1.5 flex-shrink-0">
+            ไปหน้าตลาด <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
@@ -74,7 +110,11 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <EquityChart data={equityData} />
+          <EquityChart
+            data={equityData}
+            subtitle={demo ? 'ประสิทธิภาพพอร์ต 30 วัน' : 'กำไรสะสมจากออเดอร์ที่ปิดแล้ว'}
+            emptyText="ยังไม่มีออเดอร์ที่ปิดแล้ว — กราฟจะขึ้นเมื่อปิดออเดอร์แรก"
+          />
         </div>
 
         <div className="card">
@@ -85,9 +125,11 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="space-y-2">
-            {topMovers.map((p) => (
-              <MarketRow key={p.symbol} price={p} />
-            ))}
+            {topMovers.length === 0 ? (
+              <p className="text-xs text-gray-500 py-8 text-center">ยังไม่มีราคา — เพิ่ม symbol แล้วกด &ldquo;สแกนตลาด&rdquo;</p>
+            ) : (
+              topMovers.map((p) => <MarketRow key={p.symbol} price={p} />)
+            )}
           </div>
         </div>
       </div>
@@ -105,11 +147,17 @@ export default function DashboardPage() {
             ดูทั้งหมด <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {topSignals.map((s) => (
-            <SignalCard key={s.id} signal={s} />
-          ))}
-        </div>
+        {topSignals.length === 0 ? (
+          <div className="card text-center py-12 text-sm text-gray-500">
+            ยังไม่มีสัญญาณที่ยังใช้งานอยู่
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {topSignals.map((s) => (
+              <SignalCard key={s.id} signal={s} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

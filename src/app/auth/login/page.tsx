@@ -55,7 +55,7 @@ export default function LoginPage() {
             <Bot className="w-8 h-8 text-white" />
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-3 border-surface-1" />
           </div>
-          <h1 className="font-display text-2xl text-white">TikTok Ads AI Manager</h1>
+          <h1 className="font-display text-2xl text-white">Trading AI</h1>
           <p className="text-sm text-gray-500 mt-1">
             {mode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}
           </p>

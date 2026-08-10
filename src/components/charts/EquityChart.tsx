@@ -6,9 +6,11 @@ import {
 
 interface Props {
   data: Array<{ date: string; value: number }>;
+  subtitle?: string;
+  emptyText?: string;
 }
 
-export default function EquityChart({ data }: Props) {
+export default function EquityChart({ data, subtitle, emptyText }: Props) {
   const startValue = data[0]?.value ?? 0;
   const endValue = data[data.length - 1]?.value ?? 0;
   const pnl = endValue - startValue;
@@ -21,7 +23,7 @@ export default function EquityChart({ data }: Props) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-white">Equity Curve</h3>
-          <p className="text-xs text-gray-500 mt-0.5">ประสิทธิภาพพอร์ต 30 วัน</p>
+          <p className="text-xs text-gray-500 mt-0.5">{subtitle ?? 'ประสิทธิภาพพอร์ต 30 วัน'}</p>
         </div>
         <div className="text-right">
           <div className="text-2xl font-mono font-bold text-white">${endValue.toLocaleString()}</div>
@@ -32,6 +34,11 @@ export default function EquityChart({ data }: Props) {
       </div>
 
       <div className="h-[280px]">
+        {data.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-sm text-gray-500 text-center px-6">
+            {emptyText ?? 'ยังไม่มีข้อมูล'}
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
             <defs>
@@ -64,6 +71,7 @@ export default function EquityChart({ data }: Props) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

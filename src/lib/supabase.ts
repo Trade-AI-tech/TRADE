@@ -1,5 +1,4 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // Check if we're in demo mode (no real Supabase configured)
 export function isDemoMode(): boolean {
@@ -22,15 +21,8 @@ export function createClient() {
   );
 }
 
-// Server client (for API routes / Server Components)
-export function createServerClient() {
-  if (isDemoMode()) return null;
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
+// หมายเหตุ: client ฝั่ง server อยู่ที่ src/lib/supabase-server.ts
+// แยกไฟล์เพราะมันดึง next/headers ซึ่ง import จาก client component ไม่ได้
 
 // Singleton browser client
 let browserClient: ReturnType<typeof createClient> | null = null;

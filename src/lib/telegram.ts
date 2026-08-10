@@ -10,8 +10,14 @@ export interface TelegramConfig {
   chatId: string;
 }
 
-function escapeMarkdown(text: string): string {
-  return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
+/**
+ * MarkdownV2 สงวนอักขระเหล่านี้ไว้ ต้อง escape ทุกตัว
+ * รวมถึง "." ในราคา เช่น 2650.50 — ถ้าไม่ escape Telegram จะตอบ 400
+ */
+const RESERVED = /([_*[\]()~`>#+\-=|{}.!\\])/g;
+
+function esc(value: string | number): string {
+  return String(value).replace(RESERVED, '\\$1');
 }
 
 /**
@@ -33,19 +39,19 @@ export function formatSignalMessage(signal: Signal): string {
   }[signal.strength];
 
   const lines = [
-    `${emoji} *${signal.action} SIGNAL* ${strengthEmoji}`,
+    `${emoji} *${esc(signal.action)} SIGNAL* ${strengthEmoji}`,
     ``,
-    `📊 *${escapeMarkdown(signal.symbol)}* \\- ${escapeMarkdown(signal.name)}`,
-    `💹 Market: ${signal.market}`,
-    `⏰ Timeframe: ${signal.timeframe}`,
-    `🎯 Confidence: *${signal.confidence}%*`,
+    `📊 *${esc(signal.symbol)}* \\- ${esc(signal.name)}`,
+    `💹 Market: ${esc(signal.market)}`,
+    `⏰ Timeframe: ${esc(signal.timeframe)}`,
+    `🎯 Confidence: *${esc(signal.confidence)}%*`,
     ``,
-    `💵 *Entry:* ${signal.entry_price}`,
-    `🛑 *Stop Loss:* ${signal.stop_loss}`,
-    `🎯 *Take Profit:* ${signal.take_profit}`,
+    `💵 *Entry:* ${esc(signal.entry_price)}`,
+    `🛑 *Stop Loss:* ${esc(signal.stop_loss)}`,
+    `🎯 *Take Profit:* ${esc(signal.take_profit)}`,
     ``,
     `📝 *Reasons:*`,
-    ...signal.reasons.slice(0, 4).map(r => `• ${escapeMarkdown(r.label)}: ${escapeMarkdown(r.detail)}`),
+    ...signal.reasons.slice(0, 4).map(r => `• ${esc(r.label)}: ${esc(r.detail)}`),
   ];
 
   return lines.join('\n');
@@ -53,6 +59,7 @@ export function formatSignalMessage(signal: Signal): string {
 
 /**
  * Send message to Telegram
+ * ถ้า MarkdownV2 parse ไม่ผ่าน จะส่งซ้ำเป็นข้อความธรรมดาแทนที่จะเงียบหาย
  */
 export async function sendTelegramMessage(
   config: TelegramConfig,
@@ -62,26 +69,29 @@ export async function sendTelegramMessage(
     return { success: false, error: 'Missing bot token or chat ID' };
   }
 
-  try {
+  const post = async (body: Record<string, unknown>) => {
     const res = await fetch(
       `https://api.telegram.org/bot${config.botToken}/sendMessage`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: config.chatId,
-          text: message,
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: true,
-        }),
+        body: JSON.stringify(body),
       }
     );
+    return res.json();
+  };
 
-    const data = await res.json();
-    if (!data.ok) {
-      return { success: false, error: data.description || 'Unknown error' };
-    }
-    return { success: true };
+  try {
+    const base = { chat_id: config.chatId, disable_web_page_preview: true };
+    const data = await post({ ...base, text: message, parse_mode: 'MarkdownV2' });
+    if (data.ok) return { success: true };
+
+    // fallback: ถอด markdown ออกแล้วส่งเป็น plain text
+    const plain = message.replace(/\\([_*[\]()~`>#+\-=|{}.!\\])/g, '$1').replace(/\*/g, '');
+    const retry = await post({ ...base, text: plain });
+    if (retry.ok) return { success: true };
+
+    return { success: false, error: retry.description || data.description || 'Unknown error' };
   } catch (err) {
     return { success: false, error: String(err) };
   }

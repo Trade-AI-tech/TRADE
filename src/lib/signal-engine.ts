@@ -1,5 +1,8 @@
 import type { CandleData, Signal, SignalAction, SignalStrength, SignalReason } from '@/types';
-import { RSI, MACD, EMA, SMA, BollingerBands, findSupportResistance, detectPatterns, determineTrend } from './indicators';
+import {
+  RSI, MACD, EMA, SMA, BollingerBands, ATR,
+  findSupportResistance, detectPatterns, determineTrend,
+} from './indicators';
 
 interface SignalInput {
   symbol: string;
@@ -8,6 +11,23 @@ interface SignalInput {
   candles: CandleData[];
   timeframe?: string;
   newsSentiment?: number;
+}
+
+/** uuid v4 — ต้องเป็น uuid จริงเพราะคอลัมน์ signals.id เป็น type uuid */
+function newUuid(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    const v = ch === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/** ปัดทศนิยมตามชนิดสินทรัพย์ — Forex ต้องละเอียดกว่าทอง/หุ้น */
+function roundPrice(value: number, market: Signal['market']): number {
+  const digits = market === 'FOREX' ? 5 : 4;
+  return Number(value.toFixed(digits));
 }
 
 /**
@@ -21,22 +41,27 @@ export function generateSignal(input: SignalInput): Signal | null {
 
   const closes = candles.map(c => c.close);
   const currentPrice = closes[closes.length - 1];
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) return null;
 
   const rsi = RSI(closes, 14);
   const macd = MACD(closes);
   const ema20 = EMA(closes, 20);
   const ma50 = SMA(closes, 50);
-  const ma200 = SMA(closes, Math.min(200, closes.length - 1));
+  // MA200 คำนวณเฉพาะเมื่อมีข้อมูลครบ 200 แท่งจริง ไม่ย่อ period ให้สั้นลง
+  const ma200 = closes.length >= 200 ? SMA(closes, 200) : [];
+
   const bb = BollingerBands(closes, 20, 2);
 
   const last = closes.length - 1;
   const rsiNow = rsi[last];
+  const rsiPrev = rsi[last - 1];
   const macdNow = macd.macdLine[last];
   const macdSignal = macd.signalLine[last];
   const macdHist = macd.histogram[last];
   const ma20Now = ema20[last];
   const ma50Now = ma50[last];
-  const ma200Now = ma200[last];
+  const ma200Now = ma200.length ? ma200[last] : NaN;
+  const hasMA200 = Number.isFinite(ma200Now);
 
   const sr = findSupportResistance(candles);
   const patterns = detectPatterns(candles);
@@ -48,49 +73,60 @@ export function generateSignal(input: SignalInput): Signal | null {
   const reasons: SignalReason[] = [];
 
   // RSI
-  if (rsiNow < 30) {
-    bullScore += 2;
-    reasons.push({ type: 'technical', label: 'RSI Oversold', detail: `RSI(14) = ${rsiNow.toFixed(1)} อยู่ในโซน oversold`, weight: 0.2 });
-  } else if (rsiNow > 70) {
-    bearScore += 2;
-    reasons.push({ type: 'technical', label: 'RSI Overbought', detail: `RSI(14) = ${rsiNow.toFixed(1)} อยู่ในโซน overbought`, weight: 0.2 });
-  } else if (rsiNow > 50 && rsi[last - 1] < 50) {
-    bullScore += 1;
-    reasons.push({ type: 'technical', label: 'RSI Cross 50', detail: `RSI ตัดขึ้นผ่าน 50`, weight: 0.15 });
-  } else if (rsiNow < 50 && rsi[last - 1] > 50) {
-    bearScore += 1;
-    reasons.push({ type: 'technical', label: 'RSI Cross 50', detail: `RSI ตัดลงต่ำกว่า 50`, weight: 0.15 });
+  if (Number.isFinite(rsiNow)) {
+    if (rsiNow < 30) {
+      bullScore += 2;
+      reasons.push({ type: 'technical', label: 'RSI Oversold', detail: `RSI(14) = ${rsiNow.toFixed(1)} อยู่ในโซน oversold`, weight: 0.2 });
+    } else if (rsiNow > 70) {
+      bearScore += 2;
+      reasons.push({ type: 'technical', label: 'RSI Overbought', detail: `RSI(14) = ${rsiNow.toFixed(1)} อยู่ในโซน overbought`, weight: 0.2 });
+    } else if (Number.isFinite(rsiPrev) && rsiNow > 50 && rsiPrev < 50) {
+      bullScore += 1;
+      reasons.push({ type: 'technical', label: 'RSI Cross 50', detail: 'RSI ตัดขึ้นผ่าน 50', weight: 0.15 });
+    } else if (Number.isFinite(rsiPrev) && rsiNow < 50 && rsiPrev > 50) {
+      bearScore += 1;
+      reasons.push({ type: 'technical', label: 'RSI Cross 50', detail: 'RSI ตัดลงต่ำกว่า 50', weight: 0.15 });
+    }
   }
 
   // MACD
-  if (macdNow > macdSignal && macd.macdLine[last - 1] <= macd.signalLine[last - 1]) {
-    bullScore += 2;
-    reasons.push({ type: 'technical', label: 'MACD Bullish Cross', detail: 'MACD ตัดขึ้น Signal Line', weight: 0.2 });
-  } else if (macdNow < macdSignal && macd.macdLine[last - 1] >= macd.signalLine[last - 1]) {
-    bearScore += 2;
-    reasons.push({ type: 'technical', label: 'MACD Bearish Cross', detail: 'MACD ตัดลง Signal Line', weight: 0.2 });
+  if (Number.isFinite(macdNow) && Number.isFinite(macdSignal)
+      && Number.isFinite(macd.macdLine[last - 1]) && Number.isFinite(macd.signalLine[last - 1])) {
+    if (macdNow > macdSignal && macd.macdLine[last - 1] <= macd.signalLine[last - 1]) {
+      bullScore += 2;
+      reasons.push({ type: 'technical', label: 'MACD Bullish Cross', detail: 'MACD ตัดขึ้น Signal Line', weight: 0.2 });
+    } else if (macdNow < macdSignal && macd.macdLine[last - 1] >= macd.signalLine[last - 1]) {
+      bearScore += 2;
+      reasons.push({ type: 'technical', label: 'MACD Bearish Cross', detail: 'MACD ตัดลง Signal Line', weight: 0.2 });
+    }
   }
 
-  if (macdHist > 0 && macd.histogram[last - 1] < macdHist) {
-    bullScore += 1;
-  } else if (macdHist < 0 && macd.histogram[last - 1] > macdHist) {
-    bearScore += 1;
+  if (Number.isFinite(macdHist) && Number.isFinite(macd.histogram[last - 1])) {
+    if (macdHist > 0 && macd.histogram[last - 1] < macdHist) {
+      bullScore += 1;
+    } else if (macdHist < 0 && macd.histogram[last - 1] > macdHist) {
+      bearScore += 1;
+    }
   }
 
   // Trend
+  const trendDetail = hasMA200
+    ? (t: string) => `MA20 ${t} MA50 ${t} MA200 ยืนยัน${t === '>' ? 'uptrend' : 'downtrend'}`
+    : (t: string) => `MA20 ${t} MA50 (ข้อมูลไม่ถึง 200 แท่ง จึงไม่ใช้ MA200 ยืนยัน)`;
+
   if (trend === 'uptrend') {
-    bullScore += 2;
-    reasons.push({ type: 'technical', label: 'Uptrend', detail: 'MA20 > MA50 > MA200 ยืนยัน uptrend', weight: 0.2 });
+    bullScore += hasMA200 ? 2 : 1;
+    reasons.push({ type: 'technical', label: 'Uptrend', detail: trendDetail('>'), weight: 0.2 });
   } else if (trend === 'downtrend') {
-    bearScore += 2;
-    reasons.push({ type: 'technical', label: 'Downtrend', detail: 'MA20 < MA50 < MA200 ยืนยัน downtrend', weight: 0.2 });
+    bearScore += hasMA200 ? 2 : 1;
+    reasons.push({ type: 'technical', label: 'Downtrend', detail: trendDetail('<'), weight: 0.2 });
   }
 
   // Bollinger Bands
-  if (currentPrice < bb.lower[last]) {
+  if (Number.isFinite(bb.lower[last]) && currentPrice < bb.lower[last]) {
     bullScore += 1;
     reasons.push({ type: 'technical', label: 'BB Lower Touch', detail: 'ราคาต่ำกว่า Bollinger Lower Band', weight: 0.15 });
-  } else if (currentPrice > bb.upper[last]) {
+  } else if (Number.isFinite(bb.upper[last]) && currentPrice > bb.upper[last]) {
     bearScore += 1;
     reasons.push({ type: 'technical', label: 'BB Upper Touch', detail: 'ราคาสูงกว่า Bollinger Upper Band', weight: 0.15 });
   }
@@ -137,26 +173,28 @@ export function generateSignal(input: SignalInput): Signal | null {
 
   if (netScore >= 3) action = 'BUY';
   else if (netScore <= -3) action = 'SELL';
-  else action = 'HOLD';
 
   if (totalScore >= 8) strength = 'very_strong';
   else if (totalScore >= 5) strength = 'strong';
   else if (totalScore >= 3) strength = 'moderate';
-  else strength = 'weak';
 
-  // Calculate SL/TP based on ATR-like range
-  const recentRange = candles.slice(-14).reduce((sum, c) => sum + (c.high - c.low), 0) / 14;
-  const atr = recentRange || currentPrice * 0.02;
+  // SL/TP จาก ATR จริง
+  const atrRaw = ATR(candles, 14);
+  const atr = Number.isFinite(atrRaw) && atrRaw > 0 ? atrRaw : currentPrice * 0.02;
 
   let stopLoss: number;
   let takeProfit: number;
 
   if (action === 'BUY') {
     stopLoss = nearSupport ? nearSupport * 0.995 : currentPrice - atr * 1.5;
-    takeProfit = nearResistance ? nearResistance * 0.995 : currentPrice + atr * 3;
+    takeProfit = nearResistance && nearResistance > currentPrice
+      ? nearResistance * 0.995
+      : currentPrice + atr * 3;
   } else if (action === 'SELL') {
     stopLoss = nearResistance ? nearResistance * 1.005 : currentPrice + atr * 1.5;
-    takeProfit = nearSupport ? nearSupport * 1.005 : currentPrice - atr * 3;
+    takeProfit = nearSupport && nearSupport < currentPrice
+      ? nearSupport * 1.005
+      : currentPrice - atr * 3;
   } else {
     stopLoss = currentPrice - atr;
     takeProfit = currentPrice + atr;
@@ -164,24 +202,31 @@ export function generateSignal(input: SignalInput): Signal | null {
 
   const confidence = Math.min(95, 40 + totalScore * 6);
 
+  const indicators: Record<string, number> = {};
+  const put = (k: string, v: number, d = 4) => {
+    if (Number.isFinite(v)) indicators[k] = Number(v.toFixed(d));
+  };
+  put('rsi', rsiNow, 2);
+  put('macd', macdNow);
+  put('macd_signal', macdSignal);
+  put('ma20', ma20Now);
+  put('ma50', ma50Now);
+  put('ma200', ma200Now);
+  put('atr', atr);
+
   return {
-    id: `sig-${symbol}-${Date.now()}`,
+    id: newUuid(),
     user_id: '',
     symbol, name, market,
     action, strength, status: 'active',
-    entry_price: Number(currentPrice.toFixed(4)),
-    stop_loss: Number(stopLoss.toFixed(4)),
-    take_profit: Number(takeProfit.toFixed(4)),
-    current_price: Number(currentPrice.toFixed(4)),
+    entry_price: roundPrice(currentPrice, market),
+    stop_loss: roundPrice(stopLoss, market),
+    take_profit: roundPrice(takeProfit, market),
+    current_price: roundPrice(currentPrice, market),
     confidence,
     timeframe,
     reasons: reasons.slice(0, 5),
-    indicators: {
-      rsi: Number(rsiNow.toFixed(2)),
-      macd: Number(macdNow.toFixed(4)),
-      ma20: Number(ma20Now.toFixed(4)),
-      ma50: Number(ma50Now.toFixed(4)),
-    },
+    indicators,
     news_sentiment: newsSentiment ?? null,
     telegram_sent: false,
     expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),

@@ -19,6 +19,14 @@ export default function NewsPage() {
         </p>
       </div>
 
+      {news.length === 0 && (
+        <div className="card text-center py-16">
+          <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-400">ยังไม่มีข่าวในระบบ</p>
+          <p className="text-xs text-gray-600 mt-1">ส่วนดึงข่าวอัตโนมัติยังไม่ได้ต่อแหล่งข้อมูล</p>
+        </div>
+      )}
+
       <div className="space-y-3">
         {news.map(n => {
           const SentIcon = n.sentiment === 'bullish' ? TrendingUp : n.sentiment === 'bearish' ? TrendingDown : Minus;
@@ -40,7 +48,9 @@ export default function NewsPage() {
                 <div className={cn('flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border flex-shrink-0', sentColor)}>
                   <SentIcon className="w-3 h-3" />
                   <span className="capitalize">{n.sentiment}</span>
-                  <span className="opacity-60">({(n.sentiment_score * 100).toFixed(0)})</span>
+                  {Number.isFinite(Number(n.sentiment_score)) && (
+                    <span className="opacity-60">({(Number(n.sentiment_score) * 100).toFixed(0)})</span>
+                  )}
                 </div>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed mb-3">{n.summary}</p>

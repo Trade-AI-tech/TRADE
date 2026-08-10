@@ -7,7 +7,13 @@ const marketLabel: Record<string, string> = {
   GOLD: 'ทอง', FOREX: 'Forex', TH_STOCK: 'หุ้นไทย', US_STOCK: 'หุ้น US', CRYPTO: 'Crypto',
 };
 
-export default function TradeRow({ trade }: { trade: Trade }) {
+export default function TradeRow({
+  trade,
+  onClose,
+}: {
+  trade: Trade;
+  onClose?: (trade: Trade) => void;
+}) {
   const isProfit = trade.pnl >= 0;
   const isOpen = trade.status === 'open';
 
@@ -54,7 +60,17 @@ export default function TradeRow({ trade }: { trade: Trade }) {
         </span>
       </td>
       <td className="py-3 px-4 text-xs text-gray-500">
-        {new Date(trade.entered_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+        {new Date(trade.opened_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+      </td>
+      <td className="py-3 px-4 text-right">
+        {isOpen && onClose && (
+          <button
+            onClick={() => onClose(trade)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            ปิดออเดอร์
+          </button>
+        )}
       </td>
     </tr>
   );

@@ -20,6 +20,11 @@ interface AppStore {
   selectedSymbol: string | null;
   setSelectedSymbol: (s: string | null) => void;
   unreadSignals: number;
+
+  // นับขึ้นทีละหนึ่งเมื่อข้อมูลฝั่ง server เปลี่ยน (สแกนเสร็จ, เพิ่ม/ลบ symbol, ปิดออเดอร์)
+  // hooks ใน useData ใช้ค่านี้เป็น dependency เพื่อ refetch
+  refreshKey: number;
+  refresh: () => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -37,4 +42,6 @@ export const useAppStore = create<AppStore>((set) => ({
   selectedSymbol: null,
   setSelectedSymbol: (s) => set({ selectedSymbol: s }),
   unreadSignals: 0,
+  refreshKey: 0,
+  refresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
 }));

@@ -22,9 +22,20 @@ export interface Profile {
   timezone: string;
   currency: string;
   telegram_chat_id: string | null;
+  telegram_bot_token: string | null;
   telegram_enabled: boolean;
+  alert_preferences: AlertPreferences;
   created_at: string;
   updated_at: string;
+}
+
+export interface AlertPreferences {
+  buy_signals: boolean;
+  sell_signals: boolean;
+  stop_loss_hit: boolean;
+  take_profit_hit: boolean;
+  news_alerts: boolean;
+  strong_signals_only?: boolean;
 }
 
 export interface Watchlist {
@@ -106,9 +117,11 @@ export interface Trade {
   quantity: number;
   pnl: number;
   pnl_percent: number;
+  fees: number;
   notes: string | null;
-  entered_at: string;
-  exited_at: string | null;
+  // ชื่อคอลัมน์ต้องตรงกับ DB (opened_at / closed_at) ไม่ใช่ entered_at / exited_at
+  opened_at: string;
+  closed_at: string | null;
   created_at: string;
 }
 

@@ -3,8 +3,10 @@
 import { useState, useMemo } from 'react';
 import TradeRow from '@/components/trading/TradeRow';
 import { useTrades } from '@/hooks/useData';
+import { useAppStore } from '@/hooks/useStore';
 import { cn } from '@/lib/utils';
-import { Briefcase, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { Briefcase, TrendingUp, TrendingDown, Activity, X, Loader2 } from 'lucide-react';
+import type { Trade } from '@/types';
 
 const FILTERS = [
   { value: 'all', label: 'ทั้งหมด' },
@@ -14,7 +16,39 @@ const FILTERS = [
 
 export default function TradesPage() {
   const { data: trades } = useTrades();
+  const refresh = useAppStore((s) => s.refresh);
   const [filter, setFilter] = useState('all');
+  const [closing, setClosing] = useState<Trade | null>(null);
+  const [exitPrice, setExitPrice] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const openCloseModal = (trade: Trade) => {
+    setClosing(trade);
+    setExitPrice(String(trade.entry_price));
+    setError(null);
+  };
+
+  const submitClose = async () => {
+    if (!closing) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/trades', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: closing.id, exit_price: Number(exitPrice) }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'ปิดออเดอร์ไม่สำเร็จ');
+      setClosing(null);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (filter === 'all') return trades;
@@ -103,12 +137,57 @@ export default function TradesPage() {
                 <th className="py-3 px-4 text-left font-medium">P/L</th>
                 <th className="py-3 px-4 text-left font-medium">สถานะ</th>
                 <th className="py-3 px-4 text-left font-medium">วันที่เข้า</th>
+                <th className="py-3 px-4 text-right font-medium">จัดการ</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(t => <TradeRow key={t.id} trade={t} />)}
+              {filtered.map(t => <TradeRow key={t.id} trade={t} onClose={openCloseModal} />)}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {closing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="card w-full max-w-sm space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">ปิดออเดอร์ {closing.symbol}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {closing.direction === 'long' ? 'Long' : 'Short'} · เข้าที่ {closing.entry_price} · จำนวน {closing.quantity}
+                </p>
+              </div>
+              <button onClick={() => setClosing(null)} className="text-gray-500 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 mb-1.5 block">ราคาปิด</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={exitPrice}
+                onChange={(e) => setExitPrice(e.target.value)}
+                className="input-field font-mono"
+                placeholder="0.00"
+              />
+            </div>
+
+            {error && <p className="text-xs text-red-400 bg-red-500/10 rounded-xl p-3">{error}</p>}
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setClosing(null)} className="btn-ghost text-sm">ยกเลิก</button>
+              <button
+                onClick={submitClose}
+                disabled={saving || !(Number(exitPrice) > 0)}
+                className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+              >
+                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                ยืนยันปิด
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

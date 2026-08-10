@@ -3,136 +3,169 @@ import { DEMO_PRICES, generateCandleData } from './demo-data';
 import { isDemoMode } from './supabase';
 
 /**
- * Market data fetcher using Yahoo Finance public API
- * (no API key required)
+ * Market data fetcher using Yahoo Finance public chart API (v8).
+ * ไม่ต้องใช้ API key
+ *
+ * หมายเหตุ: endpoint /v7/finance/quote ตอบ 401 แล้ว (Yahoo บังคับ cookie+crumb)
+ * เราจึงดึงทั้งราคาปัจจุบันและแท่งเทียนจาก /v8/finance/chart ครั้งเดียวจบ
  */
 
-const YAHOO_QUOTE_URL = 'https://query1.finance.yahoo.com/v7/finance/quote';
-const YAHOO_CHART_URL = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const CHART_HOSTS = [
+  'https://query1.finance.yahoo.com/v8/finance/chart',
+  'https://query2.finance.yahoo.com/v8/finance/chart',
+];
 
-interface YahooQuote {
-  symbol: string;
-  shortName?: string;
-  longName?: string;
-  regularMarketPrice: number;
-  regularMarketChange: number;
-  regularMarketChangePercent: number;
-  regularMarketVolume: number;
-  regularMarketDayHigh: number;
-  regularMarketDayLow: number;
-}
+export type ChartInterval = '1d' | '1h' | '1wk';
+export type ChartRange = '1mo' | '3mo' | '6mo' | '1y' | '2y';
 
 /**
- * Map our internal symbol to Yahoo Finance symbol
+ * Map our internal symbol to a Yahoo Finance symbol
  */
-function toYahooSymbol(symbol: string, market: string): string {
-  if (market === 'GOLD' && symbol === 'XAUUSD') return 'GC=F';
-  if (market === 'FOREX') {
-    if (symbol === 'EURUSD') return 'EURUSD=X';
-    if (symbol === 'USDJPY') return 'USDJPY=X';
-    if (symbol === 'GBPUSD') return 'GBPUSD=X';
-    if (symbol === 'USDTHB') return 'USDTHB=X';
+export function toYahooSymbol(symbol: string, market: string): string {
+  const s = symbol.trim().toUpperCase();
+
+  if (market === 'GOLD') {
+    if (s === 'XAUUSD' || s === 'GOLD') return 'GC=F';
+    if (s === 'XAGUSD' || s === 'SILVER') return 'SI=F';
+    return s;
   }
-  return symbol;
+  if (market === 'FOREX') {
+    return s.endsWith('=X') ? s : `${s}=X`;
+  }
+  if (market === 'TH_STOCK') {
+    return s.endsWith('.BK') ? s : `${s}.BK`;
+  }
+  if (market === 'CRYPTO') {
+    return s.includes('-') ? s : `${s}-USD`;
+  }
+  return s;
+}
+
+interface ChartPayload {
+  quote: MarketPrice | null;
+  candles: CandleData[];
+}
+
+const EMPTY: ChartPayload = { quote: null, candles: [] };
+
+/**
+ * ดึง chart จาก Yahoo — ได้ทั้ง quote และ candles ในคำขอเดียว
+ * ลอง query1 ก่อน ถ้าไม่ติดค่อยไป query2
+ */
+export async function fetchChart(
+  symbol: string,
+  market: string,
+  interval: ChartInterval = '1d',
+  range: ChartRange = '1y'
+): Promise<ChartPayload> {
+  const yahooSymbol = toYahooSymbol(symbol, market);
+
+  for (const host of CHART_HOSTS) {
+    try {
+      const res = await fetch(
+        `${host}/${encodeURIComponent(yahooSymbol)}?interval=${interval}&range=${range}`,
+        {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 300 },
+        }
+      );
+      if (!res.ok) continue;
+
+      const json = await res.json();
+      const result = json?.chart?.result?.[0];
+      if (!result) continue;
+
+      const meta = result.meta ?? {};
+      const timestamps: number[] = result.timestamp || [];
+      const ohlc = result.indicators?.quote?.[0];
+      if (!ohlc) continue;
+
+      const candles: CandleData[] = timestamps
+        .map((ts, i) => ({
+          timestamp: new Date(ts * 1000).toISOString(),
+          open: ohlc.open?.[i] ?? 0,
+          high: ohlc.high?.[i] ?? 0,
+          low: ohlc.low?.[i] ?? 0,
+          close: ohlc.close?.[i] ?? 0,
+          volume: ohlc.volume?.[i] ?? 0,
+        }))
+        .filter((c) => c.close > 0);
+
+      const price = Number(meta.regularMarketPrice ?? candles[candles.length - 1]?.close);
+      if (!price || !Number.isFinite(price)) return { quote: null, candles };
+
+      // ใช้แท่งก่อนหน้าเป็นฐานคำนวณการเปลี่ยนแปลง (เชื่อถือได้กว่า meta.chartPreviousClose
+      // ซึ่งเป็นราคาปิดก่อนเริ่มช่วงที่ขอมา ไม่ใช่ของเมื่อวาน)
+      const prevClose =
+        candles.length >= 2 ? candles[candles.length - 2].close : Number(meta.chartPreviousClose ?? price);
+      const change = price - prevClose;
+
+      const quote: MarketPrice = {
+        symbol,
+        name: meta.longName || meta.shortName || symbol,
+        market: market as MarketPrice['market'],
+        price,
+        change,
+        change_percent: prevClose ? (change / prevClose) * 100 : 0,
+        volume: Number(meta.regularMarketVolume ?? candles[candles.length - 1]?.volume ?? 0),
+        high_24h: Number(meta.regularMarketDayHigh ?? candles[candles.length - 1]?.high ?? price),
+        low_24h: Number(meta.regularMarketDayLow ?? candles[candles.length - 1]?.low ?? price),
+        updated_at: new Date().toISOString(),
+      };
+
+      return { quote, candles };
+    } catch (err) {
+      console.error('fetchChart error:', yahooSymbol, err);
+    }
+  }
+
+  return EMPTY;
 }
 
 /**
- * Fetch live quote from Yahoo Finance
+ * ราคาปัจจุบันตัวเดียว
  */
 export async function fetchQuote(symbol: string, market: string): Promise<MarketPrice | null> {
   if (isDemoMode()) {
-    return DEMO_PRICES.find(p => p.symbol === symbol) ?? null;
+    return DEMO_PRICES.find((p) => p.symbol === symbol) ?? null;
   }
-
-  try {
-    const yahooSymbol = toYahooSymbol(symbol, market);
-    const res = await fetch(`${YAHOO_QUOTE_URL}?symbols=${yahooSymbol}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) return null;
-    const json = await res.json();
-    const quote: YahooQuote = json?.quoteResponse?.result?.[0];
-    if (!quote) return null;
-
-    return {
-      symbol,
-      name: quote.longName || quote.shortName || symbol,
-      market: market as MarketPrice['market'],
-      price: quote.regularMarketPrice,
-      change: quote.regularMarketChange,
-      change_percent: quote.regularMarketChangePercent,
-      volume: quote.regularMarketVolume || 0,
-      high_24h: quote.regularMarketDayHigh,
-      low_24h: quote.regularMarketDayLow,
-      updated_at: new Date().toISOString(),
-    };
-  } catch (err) {
-    console.error('fetchQuote error:', err);
-    return null;
-  }
+  const { quote } = await fetchChart(symbol, market, '1d', '3mo');
+  return quote;
 }
 
 /**
- * Fetch candle/OHLC data from Yahoo Finance
+ * แท่งเทียน — default 1 ปี เพื่อให้ MA200 มีความหมายจริง
  */
 export async function fetchCandles(
   symbol: string,
   market: string,
-  interval: '1d' | '1h' | '4h' | '1wk' = '1d',
-  range: '1mo' | '3mo' | '6mo' | '1y' = '3mo'
+  interval: ChartInterval = '1d',
+  range: ChartRange = '1y'
 ): Promise<CandleData[]> {
   if (isDemoMode()) {
-    const price = DEMO_PRICES.find(p => p.symbol === symbol);
-    return generateCandleData(symbol, price?.price || 100, 60);
+    const price = DEMO_PRICES.find((p) => p.symbol === symbol);
+    return generateCandleData(symbol, price?.price || 100, 250);
   }
-
-  try {
-    const yahooSymbol = toYahooSymbol(symbol, market);
-    const res = await fetch(
-      `${YAHOO_CHART_URL}/${yahooSymbol}?interval=${interval}&range=${range}`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        next: { revalidate: 300 },
-      }
-    );
-
-    if (!res.ok) return [];
-    const json = await res.json();
-    const result = json?.chart?.result?.[0];
-    if (!result) return [];
-
-    const timestamps: number[] = result.timestamp || [];
-    const quote = result.indicators?.quote?.[0];
-    if (!quote) return [];
-
-    return timestamps.map((ts, i) => ({
-      timestamp: new Date(ts * 1000).toISOString(),
-      open: quote.open?.[i] ?? 0,
-      high: quote.high?.[i] ?? 0,
-      low: quote.low?.[i] ?? 0,
-      close: quote.close?.[i] ?? 0,
-      volume: quote.volume?.[i] ?? 0,
-    })).filter(c => c.close > 0);
-  } catch (err) {
-    console.error('fetchCandles error:', err);
-    return [];
-  }
+  const { candles } = await fetchChart(symbol, market, interval, range);
+  return candles;
 }
 
 /**
- * Fetch multiple quotes in one request
+ * ดึงราคาหลายตัวพร้อมกัน (จำกัดความถี่เพื่อไม่ให้โดน Yahoo throttle)
  */
 export async function fetchQuotes(
   symbols: Array<{ symbol: string; market: string }>
 ): Promise<MarketPrice[]> {
   if (isDemoMode()) {
-    return DEMO_PRICES.filter(p => symbols.some(s => s.symbol === p.symbol));
+    return DEMO_PRICES.filter((p) => symbols.some((s) => s.symbol === p.symbol));
   }
 
-  const results = await Promise.all(
-    symbols.map(s => fetchQuote(s.symbol, s.market))
-  );
-  return results.filter((r): r is MarketPrice => r !== null);
+  const out: MarketPrice[] = [];
+  const BATCH = 5;
+  for (let i = 0; i < symbols.length; i += BATCH) {
+    const batch = symbols.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map((s) => fetchQuote(s.symbol, s.market)));
+    for (const r of results) if (r) out.push(r);
+  }
+  return out;
 }
