@@ -1,4 +1,4 @@
-name: Deploy TikTok Ads AI
+name: CI & Deploy
 
 on:
   push:
@@ -35,11 +35,53 @@ jobs:
           NEXT_PUBLIC_DEMO_MODE: 'false'
 
   # ============================================
-  # Step 2: Deploy Supabase (DB + Edge Functions)
+  # Step 2: ตรวจว่ามี secrets ครบไหม
+  #
+  # ทั้งสอง job ข้างล่างไม่เคยรันสำเร็จเลยตั้งแต่ commit แรก เพราะ lint พังก่อน
+  # พอ lint ผ่านแล้วมันจะเริ่มรันจริง และล้มทันทีเพราะ secrets ว่าง
+  # จึงกันไว้ให้ข้ามไปเงียบ ๆ แทนที่จะทำให้ CI แดงค้าง
+  # ถ้าวันไหนใส่ secrets ครบ job เดิมจะกลับมาทำงานเองโดยไม่ต้องแก้อะไร
+  #
+  # ตอนนี้ Vercel deploy ให้อยู่แล้วผ่าน Git integration ไม่ได้พึ่ง job ข้างล่าง
   # ============================================
-  deploy-supabase:
+  check-secrets:
     needs: lint-and-build
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      has_supabase: ${{ steps.check.outputs.has_supabase }}
+      has_vercel: ${{ steps.check.outputs.has_vercel }}
+    steps:
+      - id: check
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "has_supabase=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_supabase=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ข้าม deploy-supabase — ยังไม่ได้ตั้ง SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF"
+          fi
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "has_vercel=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_vercel=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ข้าม deploy-vercel — ยังไม่ได้ตั้ง VERCEL_TOKEN (Vercel Git integration deploy ให้อยู่แล้ว)"
+          fi
+
+  # ============================================
+  # Step 3: Deploy Supabase (DB + Edge Functions)
+  #
+  # ⚠ ก่อนเปิดใช้: 002_trading_schema.sql ขึ้นต้นด้วย DROP TABLE ... CASCADE
+  #   บน trades / signals / watchlist ถ้าประวัติ migration ไม่ตรงกับของจริง
+  #   `supabase db push` จะรันซ้ำแล้วลบข้อมูลผู้ใช้ทิ้งทั้งหมด
+  # ⚠ sync-tiktok และ ai-alerts เป็นโค้ดเหลือจากยุค TikTok Ads ระบบเทรดไม่ได้ใช้
+  # ============================================
+  deploy-supabase:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_supabase == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,20 +98,12 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - run: supabase functions deploy sync-tiktok --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      - run: supabase functions deploy ai-alerts --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
   # ============================================
-  # Step 3: Deploy to Vercel
+  # Step 4: Deploy to Vercel
   # ============================================
   deploy-vercel:
-    needs: lint-and-build
-    if: github.ref == 'refs/heads/main'
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has_vercel == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
