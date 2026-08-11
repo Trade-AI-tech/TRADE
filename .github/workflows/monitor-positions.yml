@@ -1,0 +1,103 @@
+name: Monitor Positions
+
+# ============================================
+# ตัวจับเวลาให้ /api/cron/monitor-positions
+#
+# ทำไมต้องเป็น GitHub Actions ไม่ใช่ Vercel Cron:
+#   Vercel Hobby plan ให้ cron ได้แค่ "วันละครั้ง" ต่อ path และโควตานั้นถูก
+#   /api/cron/scan-markets (08:00 น. เวลาไทย) ใช้ไปแล้วใน vercel.json
+#   งานเฝ้าราคาต้องยิงถี่กว่านั้นมาก ไม่งั้นออเดอร์ที่ชน SL/TP จะรู้ตัวช้าเป็นวัน
+#   ตัว logic ทั้งหมดยังอยู่ที่ Vercel เหมือนเดิม ที่นี่แค่ยิง HTTP เข้าไป
+#
+# ⚠ โควตา GitHub Actions — repo นี้เป็น PRIVATE จึงถูกคิดนาที (ไม่ฟรีเหมือน public repo)
+#   แผนฟรีให้ 2,000 นาที/เดือน และ GitHub "ปัดขึ้นเป็นนาทีเต็ม" ทุก job
+#   ต่อให้ job นี้ยิง curl เสร็จใน 10 วินาที ก็ถูกหัก 1 นาทีเต็มอยู่ดี
+#
+#     ทุก 15 นาที = 4 × 24 × 30  = 2,880 รอบ/เดือน ≥ 2,880 นาที  → เกิน 2,000 แน่นอน
+#     ทุก 30 นาที = 2 × 24 × 30  = 1,440 รอบ/เดือน ≈ 1,440 นาที  → เหลือ ~560 นาที
+#                                                                   ให้ deploy.yml ใช้
+#   (deploy.yml รัน npm ci + lint + build ทุก push ตกราว 3–4 นาที/push
+#    เมื่อรวม job check-secrets อีก 1 นาที → ~560 นาทีที่เหลือพอราว 100–140 push/เดือน)
+#
+#   ทำไมเรื่องนี้สำคัญกว่าที่คิด: พอโควตาหมด GitHub จะ "หยุดรัน" workflow เงียบ ๆ
+#   ไม่มี notification ไม่มี run สีแดงให้เห็น ผู้ใช้จะเชื่อว่ายังมีตัวเฝ้าราคาให้อยู่
+#   ทั้งที่ไม่มีแล้ว — ออเดอร์ชน SL/TP จะไม่ถูกบันทึกและไม่มี Telegram ส่งออกไป
+#
+#   อยากได้ทุก 15 นาทีจริง ๆ ต้องทำอย่างใดอย่างหนึ่งก่อน:
+#     1. เปลี่ยน repo เป็น public — Actions บน public repo ไม่คิดนาที
+#     2. อัป GitHub plan (Team/Pro) เพื่อเพิ่มโควตานาที
+#     3. ย้ายไป pg_cron + pg_net บน Supabase Pro (ตัวอย่าง SQL อยู่ใน README.md)
+#        ตรงเวลากว่าและไม่กินโควตา Actions เลย
+#
+# ข้อแลกเปลี่ยนอื่นที่ต้องรู้:
+#   - GitHub ไม่การันตีว่าจะตรงเวลา ช่วงที่คนใช้เยอะอาจดีเลย์ 5–15 นาที
+#     ระบบนี้ทนได้เพราะการตรวจ SL/TP อ่านจาก high/low ของช่วงราคา ไม่ใช่ราคา ณ วินาทีนั้น
+#   - schedule ทำงานเฉพาะไฟล์ที่อยู่บน branch หลักเท่านั้น แก้บน branch อื่นแล้วจะยังไม่มีผล
+#   - ถ้า repo ไม่มี activity 60 วัน GitHub จะปิด schedule ให้อัตโนมัติ ต้องเข้าไปกดเปิดเอง
+# ============================================
+
+on:
+  schedule:
+    # ทุก 30 นาที (นาทีที่ :00 และ :30) — เลือกจากโควตาเป็นหลัก ไม่ใช่จากความถี่ที่อยากได้
+    # 1,440 นาที/เดือน ยังอยู่ในโควตาฟรี 2,000 นาที พร้อมกับ deploy.yml
+    # ดูการคำนวณเต็มในคอมเมนต์หัวไฟล์ก่อนจะเร่งให้ถี่กว่านี้
+    - cron: '*/30 * * * *'
+  # เปิดให้กดรันเองจากแท็บ Actions ไว้ทดสอบ/ไล่ปัญหาโดยไม่ต้องรอรอบถัดไป
+  workflow_dispatch:
+
+# กันรอบใหม่ยิงซ้อนตอนรอบเก่ายังไม่จบ (endpoint เขียนลง trades ตรง ๆ ยิงซ้อนแล้วเปลืองเปล่า)
+concurrency:
+  group: monitor-positions
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # ไม่ต้อง checkout — งานนี้ยิง HTTP อย่างเดียว ไม่ได้แตะโค้ดใน repo
+      - name: เรียก /api/cron/monitor-positions
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENDPOINT: 'https://trading-ai-ivory.vercel.app/api/cron/monitor-positions'
+        run: |
+          # ยังไม่ได้ตั้ง secret → ข้ามไปโดยไม่ทำให้ CI แดงค้างทุกครึ่งชั่วโมง
+          # (แนวคิดเดียวกับ job check-secrets ใน deploy.yml)
+          #
+          # แต่ใช้ ::warning:: ไม่ใช่ ::notice:: เพราะสถานะนี้ไม่ใช่ "ยังไม่ได้ตั้งค่าเสริม"
+          # route /api/cron/monitor-positions เป็น fail-closed คือปฏิเสธทุกคำขอที่ไม่มี secret
+          # ไม่มี CRON_SECRET = ระบบเฝ้าราคาไม่ทำงานเลย ไม่ใช่ทำงานได้แบบไม่มีการป้องกัน
+          # ต้องเห็นเป็นสีเหลืองในหน้า Actions ไม่ใช่กลืนหายไปกับ log ปกติ
+          #
+          # วันไหนใส่ secret ครบ workflow นี้จะกลับมาทำงานเองโดยไม่ต้องแก้อะไร
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::ระบบเฝ้าราคาไม่ทำงาน — ยังไม่ได้ตั้ง secret CRON_SECRET (Settings → Secrets and variables → Actions) ออเดอร์ที่ชน SL/TP จะไม่ถูกบันทึกและไม่มี Telegram ส่งออกไป"
+            exit 0
+          fi
+
+          # เตรียมไฟล์ไว้ก่อน เผื่อ curl ต่อไม่ติดเลยจนไม่ได้เขียนอะไรลงไป
+          : > response.txt
+
+          # || true เพื่อให้โค้ดเดินต่อไปพิมพ์ body ได้แม้ curl จะล้มเอง (เช่น DNS พัง/timeout)
+          # ตัว exit code จริงตัดสินจาก http_code ข้างล่างอีกที
+          status=$(curl -sS -X GET "$ENDPOINT" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --max-time 120 \
+            -o response.txt \
+            -w '%{http_code}') || true
+
+          echo "HTTP ${status:-000}"
+          echo "--- response body ---"
+          cat response.txt || true
+          echo
+
+          # ต้องล้มเมื่อไม่ใช่ 2xx ไม่งั้น endpoint พังเงียบ ๆ แล้วไม่มีใครรู้ว่าไม่มีใครเฝ้าราคาอยู่
+          # 401 = CRON_SECRET ใน GitHub ไม่ตรงกับที่ตั้งไว้บน Vercel (หรือฝั่ง Vercel ยังไม่ได้ตั้ง)
+          case "${status:-000}" in
+            2??)
+              echo "::notice::monitor-positions สำเร็จ (HTTP $status)"
+              ;;
+            *)
+              echo "::error::monitor-positions ล้มเหลว (HTTP ${status:-000}) — ดู response body ด้านบน"
+              exit 1
+              ;;
+          esac

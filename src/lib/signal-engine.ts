@@ -24,10 +24,25 @@ function newUuid(): string {
   });
 }
 
-/** ปัดทศนิยมตามชนิดสินทรัพย์ — Forex ต้องละเอียดกว่าทอง/หุ้น */
+/**
+ * ปัดทศนิยมให้เหมาะกับ "ขนาดของราคา" ไม่ใช่ชนิดตลาดอย่างเดียว
+ *
+ * เดิมใช้ toFixed(4) กับทุกตลาดที่ไม่ใช่ FOREX แล้วพังกับเหรียญราคาถูก:
+ *   PEPE-USD ราคาจริง 0.0000061957 → Number((0.0000061957).toFixed(4)) = 0
+ *   SHIB-USD ราคาจริง 0.00000468   → 0
+ * ผลคือ entry_price / stop_loss / take_profit เป็น 0 ทั้งชุด สัญญาณถูกบันทึกลง DB ได้
+ * (คอลัมน์เป็น numeric NOT NULL ซึ่ง 0 ผ่าน) แล้ว UI คำนวณ RR ออกมาเป็น NaN
+ *
+ * ราคาต่ำกว่า 1 จึงเปลี่ยนไปใช้ "เลขนัยสำคัญ" แทนจำนวนตำแหน่งคงที่
+ * 6 ตัวพอสำหรับ meme coin และไม่ทำให้คู่เงิน forex (0.x–1.x) เสียความละเอียดที่เคยมี
+ */
 function roundPrice(value: number, market: Signal['market']): number {
-  const digits = market === 'FOREX' ? 5 : 4;
-  return Number(value.toFixed(digits));
+  if (!Number.isFinite(value)) return value;
+  if (value !== 0 && Math.abs(value) < 1) {
+    const digits = market === 'FOREX' ? 5 : 6;
+    return Number(value.toPrecision(digits));
+  }
+  return Number(value.toFixed(market === 'FOREX' ? 5 : 4));
 }
 
 /**
@@ -143,15 +158,26 @@ export function generateSignal(input: SignalInput): Signal | null {
   }
 
   // Support/Resistance
-  const nearSupport = sr.supports.find(s => Math.abs(currentPrice - s) / currentPrice < 0.015);
-  const nearResistance = sr.resistances.find(r => Math.abs(currentPrice - r) / currentPrice < 0.015);
+  //
+  // ต้องกรอง "ฝั่ง" ไม่ใช่แค่ระยะทาง: แนวรับต้องอยู่ใต้ราคาปัจจุบัน แนวต้านต้องอยู่เหนือ
+  // เดิมใช้ Math.abs ซึ่งวัดแต่ระยะห่างโดยไม่สนว่าอยู่ฝั่งไหนของราคา
+  // พอราคาหลุดลงใต้แนวรับเดิม แนวรับนั้นจะกลายเป็นระดับที่อยู่ "เหนือ" ราคาปัจจุบัน
+  // แต่ยังผ่านเกณฑ์ 1.5% แล้วถูกส่งต่อไปตั้งเป็น stopLoss ของสัญญาณ BUY
+  // ผลคือ SL สูงกว่าราคาเข้า ซึ่งขัดกับความหมายของ stop loss โดยสิ้นเชิง
+  // และ position-monitor จะเมินมันทิ้ง (ignored) ทำให้ออเดอร์ไม่มี SL คุ้มครองจริง
+  //
+  // ในทางเทคนิค ระดับที่ราคาทะลุลงมาแล้วไม่ใช่แนวรับอีกต่อไป — มันกลายเป็นแนวต้าน
+  // supports เรียงจากมากไปน้อย / resistances เรียงจากน้อยไปมาก
+  // เมื่อกรองฝั่งแล้ว find จึงได้ระดับที่ "ใกล้ราคาที่สุด" ของฝั่งนั้นพอดี
+  const nearSupport = sr.supports.find(s => s < currentPrice && (currentPrice - s) / currentPrice < 0.015);
+  const nearResistance = sr.resistances.find(r => r > currentPrice && (r - currentPrice) / currentPrice < 0.015);
   if (nearSupport) {
     bullScore += 1;
-    reasons.push({ type: 'technical', label: 'At Support', detail: `ใกล้แนวรับ ${nearSupport.toFixed(2)}`, weight: 0.15 });
+    reasons.push({ type: 'technical', label: 'At Support', detail: `ราคาอยู่เหนือแนวรับ ${nearSupport.toFixed(2)} ไม่เกิน 1.5%`, weight: 0.15 });
   }
   if (nearResistance) {
     bearScore += 1;
-    reasons.push({ type: 'technical', label: 'At Resistance', detail: `ใกล้แนวต้าน ${nearResistance.toFixed(2)}`, weight: 0.15 });
+    reasons.push({ type: 'technical', label: 'At Resistance', detail: `ราคาอยู่ใต้แนวต้าน ${nearResistance.toFixed(2)} ไม่เกิน 1.5%`, weight: 0.15 });
   }
 
   // News sentiment
@@ -186,18 +212,64 @@ export function generateSignal(input: SignalInput): Signal | null {
   let takeProfit: number;
 
   if (action === 'BUY') {
+    // แนวรับผ่านการกรองฝั่งมาแล้วว่าอยู่ใต้ราคา / แนวต้านอยู่เหนือราคา
+    // จึงไม่ต้องเช็คทิศซ้ำตรงนี้ (ชั้นที่ 2 ด้านล่างจะตรวจค่าที่คำนวณเสร็จแล้วอีกที)
     stopLoss = nearSupport ? nearSupport * 0.995 : currentPrice - atr * 1.5;
-    takeProfit = nearResistance && nearResistance > currentPrice
-      ? nearResistance * 0.995
-      : currentPrice + atr * 3;
+    takeProfit = nearResistance ? nearResistance * 0.995 : currentPrice + atr * 3;
   } else if (action === 'SELL') {
     stopLoss = nearResistance ? nearResistance * 1.005 : currentPrice + atr * 1.5;
-    takeProfit = nearSupport && nearSupport < currentPrice
-      ? nearSupport * 1.005
-      : currentPrice - atr * 3;
+    takeProfit = nearSupport ? nearSupport * 1.005 : currentPrice - atr * 3;
   } else {
     stopLoss = currentPrice - atr;
     takeProfit = currentPrice + atr;
+  }
+
+  // ชั้นที่ 2 — บังคับ invariant ปิดท้าย
+  //
+  // ทำไมต้องมีทั้งที่ชั้นที่ 1 กรองฝั่งไปแล้ว: เพราะบล็อกข้างบนไม่ได้ใช้ระดับแนวรับ/แนวต้าน
+  // ตรง ๆ แต่คูณ 0.995 / 1.005 ทับลงไปเพื่อเผื่อ slippage ตัวคูณนั้นเลื่อนค่าข้ามฝั่ง entry ได้
+  // ตัวอย่างจริง: BUY ที่มีแนวต้านอยู่เหนือราคาแค่ 0.2% (100 → 100.2)
+  //   takeProfit = 100.2 * 0.995 = 99.699 ซึ่ง "ต่ำกว่า" ราคาเข้า
+  //   กลายเป็นเป้ากำไรที่อยู่ฝั่งขาดทุน และ position-monitor จะเมินทิ้ง (ignored)
+  // ฝั่ง SELL ก็สมมาตรกัน: แนวรับที่อยู่ใต้ราคาไม่ถึง 0.5% พอคูณ 1.005 แล้วเด้งข้ามขึ้นเหนือ entry
+  //
+  // ชั้นที่ 1 กันที่ "ต้นทาง" (เลือกระดับผิดฝั่ง) ชั้นนี้กันที่ "ปลายทาง" (ค่าที่คำนวณเสร็จแล้ว)
+  // ต้องมีทั้งคู่ เพราะสิ่งที่ไหลออกไปเป็นสัญญาณจริงคือค่าหลังคูณ ไม่ใช่ระดับที่เลือกมา
+  // ด้านไหนไม่ผ่านให้ถอยไปใช้สูตร ATR ของด้านนั้น ซึ่งอิงจาก currentPrice จึงอยู่ถูกฝั่งเสมอ
+  // (HOLD ไม่ต้องบังคับ เพราะไม่ได้เอาไปเปิดออเดอร์)
+  //
+  // เขียนเป็น !(a < b) ไม่ใช่ (a >= b) เพื่อให้ NaN ตกเข้าเงื่อนไข fallback ด้วย
+  if (action === 'BUY') {
+    if (!(stopLoss < currentPrice)) stopLoss = currentPrice - atr * 1.5;
+    if (!(takeProfit > currentPrice)) takeProfit = currentPrice + atr * 3;
+  } else if (action === 'SELL') {
+    if (!(stopLoss > currentPrice)) stopLoss = currentPrice + atr * 1.5;
+    if (!(takeProfit < currentPrice)) takeProfit = currentPrice - atr * 3;
+  }
+
+  // ชั้นที่ 3 — ตรวจ invariant อีกครั้ง "หลังปัดทศนิยม"
+  //
+  // ชั้นที่ 2 บังคับบนค่าดิบ แต่สิ่งที่เขียนลง DB จริงคือค่าที่ผ่าน roundPrice มาแล้ว
+  // ถ้าระยะห่างจาก entry เล็กกว่าครึ่งหน่วยปัด ค่าที่ออกไปจะ "เท่ากับ" entry พอดี
+  // เช่น BUY ที่ currentPrice 99.99996 กับ takeProfit 99.9999875 → ปัดแล้วได้ 100.0000 เท่ากันทั้งคู่
+  // สัญญาณนั้นจะมี take_profit = entry_price ซึ่ง position-monitor จะเมินทิ้ง (ignored)
+  // แปลว่าออเดอร์ที่เปิดจากสัญญาณนี้จะไม่มีวันถูกปิดอัตโนมัติ โดยไม่มีอะไรบอกผู้ใช้
+  const entryOut = roundPrice(currentPrice, market);
+  let stopOut = roundPrice(stopLoss, market);
+  let takeOut = roundPrice(takeProfit, market);
+
+  if (action === 'BUY') {
+    if (!(stopOut < entryOut)) stopOut = roundPrice(currentPrice - atr * 1.5, market);
+    if (!(takeOut > entryOut)) takeOut = roundPrice(currentPrice + atr * 3, market);
+  } else if (action === 'SELL') {
+    if (!(stopOut > entryOut)) stopOut = roundPrice(currentPrice + atr * 1.5, market);
+    if (!(takeOut < entryOut)) takeOut = roundPrice(currentPrice - atr * 3, market);
+  }
+
+  // ATR เล็กเกินกว่าจะรอดการปัด (หรือราคาเล็กจนทุกอย่างยุบเป็นค่าเดียวกัน)
+  // ยอมไม่ออกสัญญาณ ดีกว่าออกสัญญาณที่ SL/TP ใช้งานไม่ได้จริง
+  if (action !== 'HOLD' && (stopOut === entryOut || takeOut === entryOut || stopOut <= 0 || takeOut <= 0)) {
+    return null;
   }
 
   const confidence = Math.min(95, 40 + totalScore * 6);
@@ -219,10 +291,10 @@ export function generateSignal(input: SignalInput): Signal | null {
     user_id: '',
     symbol, name, market,
     action, strength, status: 'active',
-    entry_price: roundPrice(currentPrice, market),
-    stop_loss: roundPrice(stopLoss, market),
-    take_profit: roundPrice(takeProfit, market),
-    current_price: roundPrice(currentPrice, market),
+    entry_price: entryOut,
+    stop_loss: stopOut,
+    take_profit: takeOut,
+    current_price: entryOut,
     confidence,
     timeframe,
     reasons: reasons.slice(0, 5),

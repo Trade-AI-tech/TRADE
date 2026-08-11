@@ -42,7 +42,9 @@ jobs:
   # จึงกันไว้ให้ข้ามไปเงียบ ๆ แทนที่จะทำให้ CI แดงค้าง
   # ถ้าวันไหนใส่ secrets ครบ job เดิมจะกลับมาทำงานเองโดยไม่ต้องแก้อะไร
   #
-  # ตอนนี้ Vercel deploy ให้อยู่แล้วผ่าน Git integration ไม่ได้พึ่ง job ข้างล่าง
+  # ⚠ repo นี้ยังไม่ได้เชื่อม Vercel Git integration (ต้อง authorize Vercel กับ GitHub ก่อน)
+  #   ตอนนี้ deploy ด้วยมือจากเครื่อง: npx vercel deploy --prod
+  #   ถ้าเชื่อม Git integration แล้ว Vercel จะ deploy เองทุก push และ job ข้างล่างก็ไม่จำเป็น
   # ============================================
   check-secrets:
     needs: lint-and-build
@@ -68,16 +70,17 @@ jobs:
             echo "has_vercel=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_vercel=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::ข้าม deploy-vercel — ยังไม่ได้ตั้ง VERCEL_TOKEN (Vercel Git integration deploy ให้อยู่แล้ว)"
+            echo "::notice::ข้าม deploy-vercel — ยังไม่ได้ตั้ง VERCEL_TOKEN และยังไม่ได้เชื่อม Git integration ต้อง deploy ด้วยมือ: npx vercel deploy --prod"
           fi
 
   # ============================================
-  # Step 3: Deploy Supabase (DB + Edge Functions)
+  # Step 3: Deploy Supabase (DB migrations)
   #
-  # ⚠ ก่อนเปิดใช้: 002_trading_schema.sql ขึ้นต้นด้วย DROP TABLE ... CASCADE
-  #   บน trades / signals / watchlist ถ้าประวัติ migration ไม่ตรงกับของจริง
-  #   `supabase db push` จะรันซ้ำแล้วลบข้อมูลผู้ใช้ทิ้งทั้งหมด
-  # ⚠ sync-tiktok และ ai-alerts เป็นโค้ดเหลือจากยุค TikTok Ads ระบบเทรดไม่ได้ใช้
+  # 002_trading_schema.sql รันซ้ำได้ปลอดภัยแล้ว — ทุก CREATE เป็น IF NOT EXISTS
+  # และไม่มี DROP TABLE ของตารางฝั่งเทรดเหลืออยู่
+  # ถ้าจะเพิ่ม migration ใหม่ ให้รักษากติกานี้ไว้ (ดู CLAUDE_CODE_INSTRUCTIONS.md)
+  #
+  # ระบบเทรดไม่ได้ใช้ Edge Function เลย งานเบื้องหลังอยู่ที่ Vercel Cron
   # ============================================
   deploy-supabase:
     needs: check-secrets

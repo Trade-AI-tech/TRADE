@@ -1,101 +1,135 @@
-# Claude Code Development Instructions
+# คำแนะนำสำหรับพัฒนาต่อ
 
-## สำหรับ Claude Code: คำแนะนำในการพัฒนาต่อ
+เอกสารนี้เขียนไว้ให้คนที่มาทำต่อ (คนหรือ AI ก็ได้) เข้าใจว่าอะไรเสร็จแล้ว
+อะไรยังไม่ได้ทำ และควรทำอะไรก่อนหลัง — ภาพรวมระบบอยู่ใน [README.md](README.md)
 
-### Phase 1: Foundation (เสร็จแล้ว ✅)
-- [x] Project structure
-- [x] Supabase schema & migrations
-- [x] Type definitions
-- [x] Supabase client setup
-- [x] TikTok API wrapper
-- [x] AI Analysis Engine
-- [x] Base UI components
-- [x] Dashboard layout
-- [x] Campaign management pages
-- [x] Analytics pages
-- [x] Budget optimizer
-- [x] API routes
+---
 
-### Phase 2: Integration (ให้ Claude Code ทำ)
-- [ ] เชื่อม TikTok Marketing API จริง (ต้องมี App ID & Secret)
-- [ ] ตั้งค่า Supabase Auth (Google/Email login)
-- [ ] เชื่อม Anthropic API key กับ AI engine
-- [ ] ทำ Webhook รับข้อมูลจาก TikTok
-- [ ] ตั้งค่า Supabase Realtime subscriptions
-- [ ] ทำ Cron job sync ข้อมูลจาก TikTok ทุก 15 นาที
+## เสร็จแล้ว ✅
 
-### Phase 3: Enhancement
-- [ ] เพิ่ม A/B Testing module
-- [ ] เพิ่ม Audience Insight AI
-- [ ] เพิ่ม Creative AI Generator (ต่อ DALL-E/Midjourney)
-- [ ] เพิ่ม Report Export (PDF/Excel)
-- [ ] เพิ่ม Team collaboration features
-- [ ] เพิ่ม Multi-account management
+- โครงสร้าง Next.js 14 App Router + TypeScript + Tailwind
+- Supabase schema + RLS ทุกตาราง + trigger สร้าง profile อัตโนมัติตอนสมัคร
+- Auth ครบวงจร (สมัคร / เข้าสู่ระบบ / ยืนยันอีเมล / middleware ต่ออายุ token)
+- ตัวชี้วัดเทคนิค: RSI (Wilder), MACD, EMA/SMA, Bollinger Bands, ATR, แนวรับ-แนวต้าน, รูปแบบแท่งเทียน
+- เครื่องคำนวณสัญญาณ rule-based + SL/TP อิง ATR จริง
+- ดึงราคาจาก Yahoo Finance ครบ 5 ตลาด (ไม่ต้องใช้ API key)
+- watchlist เพิ่ม-ลบได้ ตรวจ symbol กับ Yahoo ก่อนบันทึก
+- ปุ่มสแกนเอง + Vercel Cron รายวัน
+- แจ้งเตือน Telegram + หน้าตั้งค่าที่เก็บค่าลงฐานข้อมูล (ไม่ใช่ localStorage)
+- บันทึกออเดอร์เข้าพอร์ต + ปิดออเดอร์พร้อมคำนวณกำไร/ขาดทุน
+- CI รัน lint + build ทุก push
+- **ระบบเฝ้าราคาระหว่างวัน** — `/api/cron/monitor-positions` ยิงจาก GitHub Actions **ทุก 30 นาที**
+  (Vercel Hobby ให้ cron วันละครั้ง และโควตานั้นถูก scan-markets ใช้ไปแล้ว)
+  - อัปเดต `trades.pnl` / `pnl_percent` แบบ unrealized ของออเดอร์ที่ `status = 'open'`
+  - ตรวจ SL/TP จากช่วงราคา `[low, high]` ไม่ใช่ราคาจุดเดียว → ชนแล้วปิดออเดอร์ + ส่ง Telegram
+    ชนทั้งสองด้านในช่วงเดียวกันนับ SL ก่อนเสมอ
+  - **รอบซื้อขายตัดสินจาก timestamp ของแท่งเทียนรายวันแท่งล่าสุด**
+    (`candles[candles.length - 1].timestamp` ที่ `fetchChart` คืนมา — เป็น ISO string)
+    ที่ส่งเข้า `resolvePriceWindow(...)` เป็นพารามิเตอร์ที่ 3 — **ไม่ใช่วัน UTC ของ `quote.updated_at`**
+    (`updated_at` คือเวลาที่ยิง fetch พอ cron รันหลังเที่ยงคืน UTC ที่ตลาดยังไม่เปิดรอบใหม่
+    ออเดอร์ที่เพิ่งเปิดจะถูกตรวจกับช่วงราคาก่อนที่มันจะมีอยู่จริง แล้วปิดผิด)
+    ออเดอร์ที่เปิดในรอบเดียวกับแท่งล่าสุด (หรือไม่รู้เวลาแท่ง) ใช้ `[price, price]`
+  - **SL/TP ที่ตั้งผิดฝั่งของ entry จะถูก "เมิน" ไม่เอาไปปิดออเดอร์** (long ที่ SL ≥ entry,
+    short ที่ SL ≤ entry ฯลฯ) — เดิมเข้าเงื่อนไขตั้งแต่วินาทีแรกแล้วปิดออเดอร์ด้วยป้าย
+    "ชน Stop Loss" ทั้งที่ pnl เป็นบวก · ด้านที่ถูกเมินคืนออกมาในฟิลด์ `ignored`
+    ของ `evaluatePosition` **ต้องรายงานต่อ ห้ามกลืนเงียบ**
+    (กฎเต็มอยู่ใน [README.md](README.md#ระบบเฝ้าราคาระหว่างวัน) — แก้โค้ดแล้วต้องแก้เอกสารตาม)
+  - อัปเดต `signals.current_price` ของสัญญาณที่ยัง active
+  - ปลดล็อกปุ่ม `stop_loss_hit` / `take_profit_hit` ในหน้าตั้งค่าแล้ว
+  - ⚠ **route นี้เป็น fail-closed** — ไม่มี `CRON_SECRET` แล้วปฏิเสธทุกคำขอ
+    ต่างจาก `scan-markets` ที่ข้ามการตรวจเมื่อไม่ได้ตั้งค่า
+    ลืมตั้ง secret = ระบบเฝ้าราคาไม่ทำงานเลย workflow จึงขึ้น `::warning::` ไม่ใช่ `::notice::`
+  - ⚠ **ความถี่ถูกล็อกด้วยโควตา ไม่ใช่ด้วยเทคนิค** — repo เป็น private จึงถูกคิดนาที Actions
+    และ GitHub ปัดขึ้นเป็นนาทีเต็มต่อ job
+    `*/15` = 2,880 รอบ/เดือน ≥ 2,880 นาที **เกินโควตาฟรี 2,000 นาที** · `*/30` = ~1,440 นาที
+    โควตาหมดแล้ว GitHub หยุดรันเงียบ ๆ ไม่มี notification ไม่มี run สีแดง
+    **ห้ามเร่งกลับไป `*/15` จนกว่าจะทำ repo public / อัป plan / ย้ายไป pg_cron**
+    (ตัวอย่าง SQL พร้อมใช้อยู่ใน README.md)
+  - ⚠ เป็นการบันทึกในสมุดเทรดเท่านั้น **ไม่ได้ส่งคำสั่งไปโบรกเกอร์จริง**
 
-### Phase 4: Production
-- [ ] Error monitoring (Sentry)
-- [ ] Performance monitoring
-- [ ] Rate limiting
-- [ ] Security audit
-- [ ] Load testing
+---
 
-## คำสั่งสำหรับ Claude Code
+## ยังไม่ได้ทำ — เรียงตามความสำคัญ
 
-### เริ่มต้น
+### 1. แหล่งข่าว + sentiment 🔴 สำคัญที่สุดตอนนี้
+
+`generateSignal` รองรับพารามิเตอร์ `newsSentiment` ไว้เรียบร้อยแล้ว
+(ดู [src/lib/signal-engine.ts:158](src/lib/signal-engine.ts)) รอแค่มีคนป้อนค่าเข้ามา
+
+สิ่งที่ต้องทำ:
+- ต่อแหล่งข่าว แล้วเขียนลงตาราง `news`
+- จับคู่ข่าวกับ symbol → คำนวณ sentiment score (-1 ถึง 1)
+- ส่งเข้า `generateSignal({ ..., newsSentiment })` ทั้งใน scan route และ cron
+- หน้า `/news` มี UI พร้อมแล้ว ไม่ต้องแก้อะไร
+- ปุ่ม `news_alerts` ในหน้าตั้งค่ายังล็อกอยู่ ปลดได้เมื่อมีข่าวเข้าจริง
+  (ดู `ALERT_ROWS` ใน [src/app/settings/page.tsx](src/app/settings/page.tsx) — ตั้ง `live: true`)
+
+### 2. ต่อ Claude เข้ามาช่วยวิเคราะห์ 🟡
+
+ตอนนี้ระบบชื่อ "Trading AI" แต่ยังไม่มีโค้ดบรรทัดไหนเรียก LLM เลย
+`@anthropic-ai/sdk` ติดตั้งไว้ใน package.json แต่ไม่ถูก import ที่ไหน
+
+ไอเดียที่คุ้มค่าที่สุดคือให้ Claude **สรุปเหตุผลเป็นภาษาคน** จากคะแนนที่คำนวณได้แล้ว
+ไม่ใช่ให้ตัดสินใจซื้อ-ขายแทน (แบบหลังตรวจสอบย้อนหลังไม่ได้ และผิดพลาดแล้วไม่รู้ตัว)
+
+- ใส่ `ANTHROPIC_API_KEY` (ปลดคอมเมนต์ใน `.env.example`)
+- เรียกจากฝั่ง server เท่านั้น อย่าให้ key หลุดไป client
+- อ่านคู่มือ API ล่าสุดก่อนเขียน อย่าเขียนจากความจำเรื่อง model id / ราคา
+
+### 3. งานเล็กที่ค้างอยู่ 🟢
+
+- `total_pnl_percent` บน Dashboard ค้างที่ 0 — ต้องมีช่องให้กรอกเงินทุนตั้งต้นก่อนถึงจะหารได้
+- `usePrices()` ดึง `market_prices` มาทั้งตาราง (public read) ผู้ใช้จึงเห็นราคาของ symbol ที่คนอื่นติดตามด้วย ควรกรองด้วย watchlist ของตัวเอง
+- ยังไม่มี backtest — ตัวเลข win rate มาจากออเดอร์ที่ผู้ใช้บันทึกเองล้วน ๆ
+- ยังไม่มี rate limiting บน API routes
+- ยังไม่มี error monitoring (Sentry หรือเทียบเท่า)
+- ยังไม่มีเทสต์สักตัว — `src/lib/indicators.ts` กับ `src/lib/position-monitor.ts` เป็น pure function ล้วน
+  เขียนเทสต์ง่ายและคุ้มที่สุด โดยเฉพาะกฎ SL/TP ที่พลาดแล้วปิดออเดอร์ผิดเงียบ ๆ
+
+---
+
+## กติกาที่ต้องรักษาไว้
+
+โค้ดชุดนี้มีหลักการที่ตั้งใจวางไว้ ถ้าจะแก้ให้รู้ตัวว่ากำลังแก้อะไร
+
+**1. ตัวชี้วัดคืน `NaN` เมื่อข้อมูลไม่พอ — ห้ามเดาค่าแทน**
+ผู้เรียกต้องเช็ค `Number.isFinite` ก่อนใช้เสมอ การใส่ 0 หรือย่อ period
+ให้สั้นลงเพื่อให้มีเลขโชว์ จะทำให้สัญญาณผิดโดยไม่มีใครรู้ตัว
+
+**2. ห้ามใส่ `DROP TABLE` ของตารางฝั่งเทรดลงใน migration ที่มีอยู่แล้ว**
+`supabase db push` รันไฟล์เดิมซ้ำได้ ข้อมูลผู้ใช้จะหายหมด
+เปลี่ยนโครงสร้างตาราง → เขียน migration ใหม่เป็น `ALTER TABLE` เสมอ
+
+**3. ยืนยันตัวตนจาก session cookie จริงเท่านั้น**
+ใช้ `getSessionUser()` ห้ามเชื่อ `user_id` ที่ client ส่งมาใน body หรือ header
+
+**4. service-role client ใช้เท่าที่จำเป็น**
+มันข้าม RLS ทั้งหมด ตอนนี้ใช้แค่สองที่: cron (ไม่มี session) กับเขียน cache
+`market_prices` (ข้อมูลมาจาก Yahoo ล้วน) **ห้ามใช้ร่วมกับ id ที่รับมาจาก request**
+
+**5. ค่าที่ cron ต้องใช้ ต้องอยู่ในฐานข้อมูล**
+เก็บใน localStorage แล้วงานเบื้องหลังจะไม่มีวันเห็น — บทเรียนจากตอนที่
+การตั้งค่า Telegram เคยเก็บไว้ฝั่ง browser แล้วแจ้งเตือนไม่เคยทำงาน
+
+**6. UI ต้องไม่โกหกว่าฟีเจอร์พร้อมใช้**
+ปุ่มที่ยังไม่มีงานเบื้องหลังรองรับ ให้ล็อกไว้พร้อมป้าย "ยังไม่เปิดใช้งาน"
+ดีกว่าปล่อยให้กดได้แล้วเงียบหาย
+
+**7. งานเบื้องหลังต้องไม่โกหกว่ายังทำงานอยู่**
+ข้อเดียวกับข้อ 6 แต่ฝั่ง cron — ที่นี่โกหกได้ง่ายกว่าเพราะไม่มีหน้าจอให้เห็นว่าตายไปแล้ว
+เอกสารหรือ UI ที่บอกว่า "เฝ้าราคาให้ทุก N นาที" ต้องเป็นความถี่ที่รันได้จริงภายในโควตา
+ไม่ใช่ความถี่ที่ตั้งไว้ในไฟล์ และเงื่อนไขที่ทำให้มันหยุด (โควตาหมด · ไม่มี `CRON_SECRET` ·
+GitHub ปิด schedule เพราะ repo เงียบ 60 วัน) ต้องเขียนไว้ให้ครบ
+การหยุดแบบเงียบอันตรายกว่าการพังแบบเห็นได้ เพราะผู้ใช้จะวางใจต่อไปทั้งที่ไม่มีใครเฝ้าให้แล้ว
+
+---
+
+## ก่อนส่งงานทุกครั้ง
+
 ```bash
-# ติดตั้ง dependencies
-npm install
-
-# ตั้งค่า environment
-cp .env.example .env.local
-
-# รัน Supabase migration
-supabase db push
-
-# เริ่ม dev server
-npm run dev
+npm run lint
+npx tsc --noEmit
+npm run build
 ```
 
-### เชื่อม TikTok API
-```bash
-claude "เชื่อม TikTok Marketing API โดยใช้ credentials ใน .env.local 
-- ดึงข้อมูล campaigns, ad groups, ads
-- sync ข้อมูลลง Supabase ทุก 15 นาที
-- ตั้งค่า webhook สำหรับ real-time updates"
-```
-
-### เพิ่ม AI Features
-```bash
-claude "เพิ่ม AI analysis features:
-1. Budget optimization - วิเคราะห์งบและแนะนำ reallocation
-2. Performance prediction - ทำนาย ROAS, CPA ล่วงหน้า 7 วัน
-3. Anomaly detection - แจ้งเตือนเมื่อ metrics ผิดปกติ
-4. Creative scoring - ให้คะแนน ad creative"
-```
-
-### Deploy
-```bash
-claude "deploy โปรเจกต์ขึ้น Vercel:
-1. ตรวจสอบ build errors
-2. ตั้งค่า environment variables
-3. ตั้งค่า Supabase connection
-4. verify deployment"
-```
-
-## Database Schema Notes
-- ใช้ Row Level Security (RLS) ทุกตาราง
-- user_id เป็น FK ไป auth.users
-- ข้อมูล metrics เก็บแบบ time-series ใน daily_metrics
-- AI insights เก็บแยกตาราง พร้อม confidence score
-
-## API Design Notes
-- ทุก API route ต้อง verify auth token
-- Rate limit: 100 req/min per user
-- TikTok API มี rate limit 10 req/sec → ใช้ queue
-- AI analysis ใช้ streaming response
-
-## Key Files to Modify
-- `src/lib/tiktok-api.ts` - เพิ่ม API calls จริง
-- `src/lib/ai-engine.ts` - ปรับ prompt engineering
-- `src/app/api/` - เพิ่ม error handling
-- `supabase/functions/` - เพิ่ม Edge Functions
+ทั้งสามคำสั่งต้องผ่านสะอาด ไม่มี warning ค้าง

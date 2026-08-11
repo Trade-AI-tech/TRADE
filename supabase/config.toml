@@ -1,6 +1,6 @@
 [project]
 id = "your-project-ref"
-name = "tiktok-ads-ai"
+name = "trading-ai"
 
 [api]
 port = 54321
@@ -12,8 +12,13 @@ port = 54322
 
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://your-app.vercel.app"]
+additional_redirect_urls = ["https://trading-ai-ivory.vercel.app"]
 jwt_expiry = 3600
+
+# ⚠ ไฟล์นี้มีผลเฉพาะ Supabase ที่รันในเครื่อง (supabase start) เท่านั้น
+#   โปรเจกต์บนคลาวด์ใช้ค่าจากหน้า Dashboard → Authentication → URL Configuration
+#   ต้องไปเพิ่ม https://trading-ai-ivory.vercel.app/** ใน Redirect URLs ที่นั่นด้วย
+#   ไม่งั้นลิงก์ยืนยันอีเมลตอนสมัครสมาชิกจะใช้ไม่ได้บนเว็บ production
 
 [auth.external.google]
 enabled = true
@@ -21,8 +26,11 @@ client_id = ""
 secret = ""
 
 # Edge Functions
-[functions.sync-tiktok]
-verify_jwt = false
-
-[functions.ai-alerts]
-verify_jwt = false
+#
+# ระบบเทรดไม่ได้ใช้ Edge Function เลย งานเบื้องหลังทั้งหมดอยู่ที่
+# Vercel Cron → /api/cron/scan-markets (ดู vercel.json)
+#
+# เดิมตรงนี้ประกาศ sync-tiktok และ ai-alerts ไว้ ซึ่งเป็นของยุค TikTok Ads
+# ทั้งคู่อ่าน/เขียนตาราง tiktok_accounts, campaigns, daily_metrics, ai_insights
+# ที่ 002_trading_schema.sql ลบทิ้งไปแล้ว — เรียกเมื่อไหร่ก็ error เมื่อนั้น
+# จึงถอดออกเพื่อไม่ให้ deploy ขึ้นไปโดยไม่ตั้งใจ

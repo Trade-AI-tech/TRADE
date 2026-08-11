@@ -66,11 +66,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (prices.length > 0) {
+    // symbol เดียวกันอาจโผล่มาจากคนละ market ได้ (เช่น watchlist คนละคนใส่ market ไม่ตรงกัน)
+    // upsert ที่มี symbol ซ้ำใน batch เดียว Postgres จะโยน
+    // "ON CONFLICT DO UPDATE command cannot affect row a second time" แล้วทิ้งทั้ง batch
+    // ยุบให้เหลือแถวเดียวต่อ symbol ก่อน (Map เก็บตัวหลังสุดที่ fetch สำเร็จ)
+    const uniquePrices = [...new Map(prices.map(p => [p.symbol, p])).values()];
+
+    // นับเฉพาะตอนเขียนสำเร็จจริง — เดิมรายงาน prices.length เสมอแม้ upsert จะล้ม
+    // ทำให้ log ของ cron ขึ้นเขียวทั้งที่ราคาไม่เคยลง DB แล้วหน้าตลาดค้างราคาเก่าเงียบ ๆ
+    let pricesUpdated = 0;
+    if (uniquePrices.length > 0) {
       const { error: priceErr } = await supabase
         .from('market_prices')
-        .upsert(prices, { onConflict: 'symbol' });
+        .upsert(uniquePrices, { onConflict: 'symbol' });
       if (priceErr) console.error('market_prices upsert failed:', priceErr);
+      else pricesUpdated = uniquePrices.length;
     }
 
     // 3. สัญญาณที่ยัง active อยู่ ใช้กันสร้างซ้ำ
@@ -167,7 +177,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       scanned: watchlist.length,
-      pricesUpdated: prices.length,
+      pricesUpdated,
       signalsGenerated: signalsToInsert.length,
       alertsSent,
       alertsFailed,

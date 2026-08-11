@@ -32,8 +32,8 @@ const ALERT_ROWS: { key: keyof AlertPreferences; label: string; desc: string; co
   { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400', live: true },
   { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400', live: true },
   { key: 'strong_signals_only', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะ strong / very_strong เท่านั้น', color: 'text-accent-glow', live: true },
-  { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'ต้องมีระบบเฝ้าราคาระหว่างวันก่อน', color: 'text-red-400', live: false },
-  { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'ต้องมีระบบเฝ้าราคาระหว่างวันก่อน', color: 'text-emerald-400', live: false },
+  { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาแตะจุดตัดขาดทุนของออเดอร์ที่ถืออยู่', color: 'text-red-400', live: true },
+  { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาแตะเป้าทำกำไรของออเดอร์ที่ถืออยู่', color: 'text-emerald-400', live: true },
   { key: 'news_alerts', label: 'ข่าวสำคัญ', desc: 'ต้องต่อแหล่งข่าวก่อน', color: 'text-blue-400', live: false },
 ];
 
@@ -323,6 +323,11 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+
+              <p className="text-[11px] text-gray-500 mt-4">
+                เมื่อราคาแตะ SL/TP ระบบจะบันทึกปิดออเดอร์ให้ในสมุดเทรดแล้วส่งแจ้งเตือนเท่านั้น
+                ไม่ได้ส่งคำสั่งซื้อขายไปยังโบรกเกอร์ — คุณยังต้องปิดออเดอร์จริงที่โบรกเกอร์ด้วยตัวเอง
+              </p>
             </div>
           )}
 

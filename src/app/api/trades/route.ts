@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isDemoMode } from '@/lib/supabase';
 import { createRouteClient, getSessionUser } from '@/lib/supabase-server';
+import type { MarketType } from '@/types';
 
 export const runtime = 'nodejs';
 
 const DIRECTIONS = ['long', 'short'] as const;
+const MARKETS: MarketType[] = ['GOLD', 'FOREX', 'TH_STOCK', 'US_STOCK', 'CRYPTO'];
 
 /**
  * เปิดออเดอร์ใหม่ (ปกติมาจากการกด "เพิ่มเข้าพอร์ต" บนการ์ดสัญญาณ)
@@ -47,12 +49,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'ทิศทางไม่ถูกต้อง' }, { status: 400 });
     }
 
+    // ตลาดต้องเป็นค่าใน MarketType เท่านั้น — ถ้าปล่อยค่าเพี้ยนลง DB
+    // market_prices จะ upsert ชนกันภายหลัง (symbol เดียวกันแต่ market คนละค่า)
+    const market = String(body.market ?? '') as MarketType;
+    if (!MARKETS.includes(market)) {
+      return NextResponse.json({ success: false, error: 'ประเภทตลาดไม่ถูกต้อง' }, { status: 400 });
+    }
+
     const trade = {
       user_id: user.id,
       signal_id: body.signal_id || null,
       symbol: body.symbol,
       name: body.name ?? body.symbol,
-      market: body.market,
+      market,
       direction: body.direction,
       status: 'open',
       entry_price: entryPrice,
@@ -122,22 +131,36 @@ export async function PATCH(req: NextRequest) {
     const pnl = diff * Number(existing.quantity) - Number(existing.fees ?? 0);
     const pnlPercent = (diff / Number(existing.entry_price)) * 100;
 
-    const { data, error } = await supabase
+    // .eq('status','open') กันแข่งกับ cron monitor-positions ที่อาจปิดออเดอร์คั่นกลาง
+    // ระหว่าง SELECT ข้างบนกับ UPDATE นี้ — ถ้าไม่กัน จะได้แถวลูกผสม
+    // (exit_price ที่ผู้ใช้กรอก แต่ close_reason ยังเป็น 'stop_loss' ที่ cron เขียนไว้)
+    // ใช้ .select() คืน array แทน .single() เพราะกรณีไม่โดนแถวคือผลลัพธ์ปกติที่ต้องจัดการเอง ไม่ใช่ error
+    const { data: updatedRows, error } = await supabase
       .from('trades')
       .update({
         status: 'closed',
         exit_price: exitPrice,
         pnl: Number(pnl.toFixed(4)),
         pnl_percent: Number(pnlPercent.toFixed(4)),
+        close_reason: 'manual',
         closed_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select()
-      .single();
+      .eq('status', 'open')
+      .select();
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, trade: data, message: 'ปิดออเดอร์เรียบร้อย' });
+    // ไม่โดนแถว = cron ปิดออเดอร์นี้ไปแล้วระหว่างทาง ห้ามเขียนทับผลของ cron
+    // เพราะ Telegram ส่งตัวเลขชุดนั้นออกไปแล้ว
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'ออเดอร์นี้ถูกปิดอัตโนมัติไปแล้ว กรุณารีเฟรชหน้าเพื่อดูผลล่าสุด' },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json({ success: true, trade: updatedRows[0], message: 'ปิดออเดอร์เรียบร้อย' });
   } catch (err) {
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
   }

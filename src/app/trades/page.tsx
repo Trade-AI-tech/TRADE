@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import TradeRow from '@/components/trading/TradeRow';
+import TradeRow, { isPriceMonitored } from '@/components/trading/TradeRow';
 import { useTrades } from '@/hooks/useData';
 import { useAppStore } from '@/hooks/useStore';
-import { cn } from '@/lib/utils';
+import { cn, formatAmount } from '@/lib/utils';
 import { Briefcase, TrendingUp, TrendingDown, Activity, X, Loader2 } from 'lucide-react';
 import type { Trade } from '@/types';
 
@@ -57,12 +57,40 @@ export default function TradesPage() {
 
   const stats = useMemo(() => {
     const closed = trades.filter(t => t.status === 'closed');
+    const open = trades.filter(t => t.status === 'open');
     const wins = closed.filter(t => t.pnl > 0).length;
     const losses = closed.filter(t => t.pnl < 0).length;
-    const totalPnl = closed.reduce((sum, t) => sum + t.pnl, 0);
+    // ออเดอร์ที่ตัวเฝ้าราคายังไม่เคยตรวจจะมี pnl = 0 ตามค่า DEFAULT ของคอลัมน์
+    // ซึ่งแปลว่า "ยังไม่เคยวัด" ไม่ใช่ "เสมอตัว" — เอามารวมยอดจะเจือจางกำไร/ขาดทุนจริง
+    // ของออเดอร์ที่วัดแล้ว จึงต้องนับเฉพาะออเดอร์ที่ตรวจแล้วเท่านั้น
+    const monitoredOpen = open.filter(isPriceMonitored);
+    // แยกสองก้อนออกจากกัน เพราะกำไรของออเดอร์ที่ยังถืออยู่ขยับตามราคาทุกครั้งที่ตัวเฝ้าราคาทำงาน
+    // ถ้าเอาไปบวกกับกำไรที่ปิดแล้ว ผู้ใช้จะแยกไม่ออกว่าเงินก้อนไหนจบแล้วจริง
+    const realizedPnl = closed.reduce((sum, t) => sum + t.pnl, 0);
+    const unrealizedPnl = monitoredOpen.reduce((sum, t) => sum + t.pnl, 0);
     const winRate = closed.length ? (wins / closed.length) * 100 : 0;
-    return { wins, losses, totalPnl, winRate, total: trades.length };
+    return {
+      wins,
+      losses,
+      realizedPnl,
+      unrealizedPnl,
+      openCount: open.length,
+      monitoredOpenCount: monitoredOpen.length,
+      winRate,
+      total: trades.length,
+    };
   }, [trades]);
+
+  // คำอธิบายใต้การ์ด "กำไรที่ยังไม่ปิด" ต้องบอกว่ายอดนี้มาจากออเดอร์กี่ไม้
+  // ไม่งั้นผู้ใช้จะเข้าใจว่ารวมทุกออเดอร์ที่ถืออยู่ ทั้งที่ไม้ที่ยังไม่ถูกตรวจราคาไม่ได้อยู่ในยอด
+  const unrealizedNote =
+    stats.openCount === 0
+      ? 'ไม่มีออเดอร์ที่ถืออยู่'
+      : stats.monitoredOpenCount === 0
+      ? `ตัวเฝ้าราคายังไม่เคยตรวจ ${stats.openCount} ออเดอร์ที่ถืออยู่`
+      : stats.monitoredOpenCount === stats.openCount
+      ? `จาก ${stats.openCount} ออเดอร์ที่ถืออยู่`
+      : `จาก ${stats.monitoredOpenCount}/${stats.openCount} ออเดอร์ที่ถืออยู่ ที่เหลือยังไม่ได้ตรวจราคา`;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -74,14 +102,31 @@ export default function TradesPage() {
         <p className="text-sm text-gray-500 mt-0.5">
           ประวัติการเทรดและผลการดำเนินงาน
         </p>
+        <p className="text-xs text-gray-600 mt-1">
+          ออเดอร์ที่ปิดด้วย SL/TP อัตโนมัติ เป็นการบันทึกลงสมุดเทรดเท่านั้น ระบบไม่ได้ส่งคำสั่งซื้อขายไปยังโบรกเกอร์
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="card">
-          <div className="text-xs text-gray-500 uppercase mb-1">กำไร/ขาดทุนรวม</div>
-          <div className={cn('text-2xl font-mono font-bold', stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-            {stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)}
+          <div className="text-xs text-gray-500 uppercase mb-1">กำไรที่ปิดแล้ว</div>
+          <div className={cn('text-2xl font-mono font-bold', stats.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            {formatAmount(stats.realizedPnl, true)}
           </div>
+          <div className="text-[10px] text-gray-500 mt-1">ปิดจบแล้ว ไม่ขยับอีก · รวมหลายสกุล</div>
+        </div>
+        <div className="card">
+          <div className="text-xs text-gray-500 uppercase mb-1">กำไรที่ยังไม่ปิด</div>
+          {stats.monitoredOpenCount === 0 ? (
+            // ไม่มีออเดอร์ที่วัดได้เลย — ไม่ว่าจะเพราะไม่มีออเดอร์ถืออยู่
+            // หรือมีแต่ตัวเฝ้าราคายังไม่เคยตรวจ อย่าแสดง 0.00 ให้เข้าใจผิดว่าเสมอตัว
+            <div className="text-2xl font-mono font-bold text-gray-500">—</div>
+          ) : (
+            <div className={cn('text-2xl font-mono font-bold', stats.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              {formatAmount(stats.unrealizedPnl, true)}
+            </div>
+          )}
+          <div className="text-[10px] text-gray-500 mt-1">{unrealizedNote}</div>
         </div>
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1">Win Rate</div>

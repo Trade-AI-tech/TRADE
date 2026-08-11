@@ -20,7 +20,10 @@ const EMPTY_STATS: DashboardStats = {
   total_trades: 0,
   open_trades: 0,
   total_pnl: 0,
-  total_pnl_percent: 0,
+  total_pnl_percent: null,
+  // ศูนย์ตรงนี้คือ "ค่าตั้งต้นก่อนโหลด" ไม่ใช่ผลการวัด — ถูกทับด้วยค่าจาก RPC ทันทีที่โหลดเสร็จ
+  unrealized_pnl: 0,
+  realized_pnl: 0,
   win_rate: 0,
   best_performer: '',
   worst_performer: '',
@@ -208,6 +211,7 @@ export function useDashboardStats() {
   // โหมดจริงต้องเริ่มจากศูนย์ ไม่ใช่ตัวเลข demo ค้างอยู่จนกว่าจะโหลดเสร็จ
   const [data, setData] = useState<DashboardStats>(demo ? DEMO_DASHBOARD_STATS : EMPTY_STATS);
   const [loading, setLoading] = useState(!demo);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (demo) return;
@@ -219,9 +223,20 @@ export function useDashboardStats() {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth?.user) { if (!cancelled) setLoading(false); return; }
 
-      const { data: stats } = await supabase.rpc('get_portfolio_stats', { p_user_id: auth.user.id });
+      const { data: stats, error: rpcError } = await supabase.rpc('get_portfolio_stats', { p_user_id: auth.user.id });
       const row = Array.isArray(stats) ? stats[0] : stats;
       if (cancelled) return;
+
+      // RPC ล้มแล้วเงียบ = หน้า dashboard โชว์ 0 ทุกช่องเหมือนผู้ใช้ใหม่ที่ยังไม่เคยเทรด
+      // ทั้งที่หน้า /trades (คนละ query) ยังโชว์ตัวเลขจริง — สองหน้าขัดกันโดยไม่มีอะไรบอก
+      // ทางล้มที่เป็นไปได้จริง: migration 003 รันไม่ครบ (REVOKE ผ่านแต่ GRANT ไม่ได้รัน)
+      // หรือ guard auth.uid() ปฏิเสธเพราะ session หมดอายุ → ต้องบอกผู้ใช้ ไม่ใช่แสดงศูนย์
+      if (rpcError) {
+        setError(rpcError.message);
+        setLoading(false);
+        return;
+      }
+      setError(null);
 
       if (row) {
         const closed = Number(row.closed_trades) || 0;
@@ -232,7 +247,13 @@ export function useDashboardStats() {
           total_trades: Number(row.total_trades) || 0,
           open_trades: Number(row.open_trades) || 0,
           total_pnl: Number(row.total_pnl) || 0,
-          total_pnl_percent: 0,
+          // null ไม่ใช่ 0 — ระบบยังไม่มีที่ให้กรอกทุนตั้งต้น จึงหารเป็นเปอร์เซ็นต์ไม่ได้
+          // ส่ง 0 ไปการ์ดจะโชว์ '+0.0%' ซึ่งอ่านได้ว่าผลตอบแทนเป็นศูนย์ ทั้งที่ไม่เคยคำนวณ
+          total_pnl_percent: null,
+          // migration 003 ให้ get_portfolio_stats คืนสองค่านี้มาแล้ว ต้องอ่านของจริง
+          // ถ้า hardcode 0 หน้า dashboard จะโชว์ว่าไม่มีกำไรค้างทั้งที่ในฐานข้อมูลมี
+          unrealized_pnl: Number(row.unrealized_pnl) || 0,
+          realized_pnl: Number(row.realized_pnl) || 0,
           win_rate: closed ? Number(row.win_rate) || 0 : 0,
           best_performer: '',
           worst_performer: '',
@@ -244,5 +265,5 @@ export function useDashboardStats() {
     return () => { cancelled = true; };
   }, [demo, refreshKey]);
 
-  return { data, loading };
+  return { data, loading, error };
 }

@@ -123,6 +123,13 @@ export interface Trade {
   opened_at: string;
   closed_at: string | null;
   created_at: string;
+  // สาเหตุที่ปิด — ค่าตรงกับ CloseReason ใน lib/position-monitor
+  // เขียน union ตรงนี้แทนการ import เพื่อไม่ให้ types ต้องพึ่ง lib
+  // null = ยังเปิดอยู่ หรือเป็นออเดอร์เก่าที่ปิดไปก่อนจะมีคอลัมน์นี้
+  close_reason: 'manual' | 'stop_loss' | 'take_profit' | null;
+  // ราคาล่าสุดที่ cron เห็นตอนตรวจ ใช้โชว์กำไรที่ยังไม่ปิด — null = ยังไม่เคยตรวจ
+  current_price: number | null;
+  last_checked_at: string | null;
 }
 
 export interface NewsItem {
@@ -187,7 +194,16 @@ export interface DashboardStats {
   total_trades: number;
   open_trades: number;
   total_pnl: number;
-  total_pnl_percent: number;
+  /**
+   * ผลตอบแทนคิดเป็น % ของทุนตั้งต้น
+   * null = ยังคำนวณไม่ได้ เพราะระบบยังไม่มีที่ให้ผู้ใช้กรอกทุนตั้งต้น
+   * (โหมด demo มีตัวเลขสมมติให้ดูหน้าตา)
+   */
+  total_pnl_percent: number | null;
+  // แยกกำไรที่ปิดจบแล้วออกจากกำไรของออเดอร์ที่ยังเปิดอยู่
+  // เพราะตัวหลังเปลี่ยนทุกครั้งที่ราคาขยับ ยังไม่ใช่เงินที่ได้จริง
+  unrealized_pnl: number;
+  realized_pnl: number;
   win_rate: number;
   best_performer: string;
   worst_performer: string;

@@ -1,9 +1,15 @@
 -- ============================================
--- Trading System Schema (idempotent)
--- Safe to re-run. Drops any old/partial state first.
+-- Trading System Schema (idempotent, non-destructive)
+--
+-- ปลอดภัยที่จะรันซ้ำ — ทุก CREATE เป็น IF NOT EXISTS
+-- ⚠ ห้ามใส่ DROP TABLE ของตารางฝั่งเทรด (watchlist / signals / trades /
+--   telegram_alerts / market_prices / news) ลงในไฟล์นี้เด็ดขาด
+--   `supabase db push` หรือ `db reset` จะรันไฟล์นี้ซ้ำ แล้วลบข้อมูลผู้ใช้ทิ้งทั้งหมด
+--   ถ้าต้องเปลี่ยนโครงสร้างตาราง ให้เขียน migration ใหม่เป็น ALTER TABLE แทน
 -- ============================================
 
--- Drop old TikTok tables if exist
+-- ตารางยุค TikTok Ads — ไม่มีข้อมูลฝั่งเทรด ลบทิ้งได้ปลอดภัย
+DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS ai_insights CASCADE;
 DROP TABLE IF EXISTS budget_allocations CASCADE;
 DROP TABLE IF EXISTS daily_metrics CASCADE;
@@ -13,13 +19,7 @@ DROP TABLE IF EXISTS campaigns CASCADE;
 DROP TABLE IF EXISTS tiktok_accounts CASCADE;
 DROP FUNCTION IF EXISTS get_campaign_summary CASCADE;
 
--- Drop trading tables in dependency order (in case partial run)
-DROP TABLE IF EXISTS telegram_alerts CASCADE;
-DROP TABLE IF EXISTS trades CASCADE;
-DROP TABLE IF EXISTS signals CASCADE;
-DROP TABLE IF EXISTS watchlist CASCADE;
-DROP TABLE IF EXISTS news CASCADE;
-DROP TABLE IF EXISTS market_prices CASCADE;
+-- ฟังก์ชันไม่เก็บข้อมูล ลบก่อนสร้างใหม่ได้ (จำเป็นเมื่อ return type เปลี่ยน)
 DROP FUNCTION IF EXISTS get_portfolio_stats CASCADE;
 
 -- ============================================
@@ -52,7 +52,7 @@ ALTER TABLE profiles
 -- ============================================
 -- Watchlist
 -- ============================================
-CREATE TABLE watchlist (
+CREATE TABLE IF NOT EXISTS watchlist (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   symbol text NOT NULL,
@@ -64,12 +64,12 @@ CREATE TABLE watchlist (
   UNIQUE(user_id, symbol)
 );
 
-CREATE INDEX idx_watchlist_user ON watchlist(user_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id) WHERE is_active = true;
 
 -- ============================================
 -- Signals
 -- ============================================
-CREATE TABLE signals (
+CREATE TABLE IF NOT EXISTS signals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   symbol text NOT NULL,
@@ -92,14 +92,14 @@ CREATE TABLE signals (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_signals_user_created ON signals(user_id, created_at DESC);
-CREATE INDEX idx_signals_status ON signals(status) WHERE status = 'active';
-CREATE INDEX idx_signals_symbol ON signals(symbol);
+CREATE INDEX IF NOT EXISTS idx_signals_user_created ON signals(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol);
 
 -- ============================================
 -- Trades
 -- ============================================
-CREATE TABLE trades (
+CREATE TABLE IF NOT EXISTS trades (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   signal_id uuid REFERENCES signals(id) ON DELETE SET NULL,
@@ -122,13 +122,13 @@ CREATE TABLE trades (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_trades_user_created ON trades(user_id, created_at DESC);
-CREATE INDEX idx_trades_status ON trades(status);
+CREATE INDEX IF NOT EXISTS idx_trades_user_created ON trades(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
 
 -- ============================================
 -- News
 -- ============================================
-CREATE TABLE news (
+CREATE TABLE IF NOT EXISTS news (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   summary text,
@@ -142,12 +142,12 @@ CREATE TABLE news (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_news_published ON news(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
 
 -- ============================================
 -- Market prices cache
 -- ============================================
-CREATE TABLE market_prices (
+CREATE TABLE IF NOT EXISTS market_prices (
   symbol text PRIMARY KEY,
   name text NOT NULL,
   market text NOT NULL,
@@ -163,7 +163,7 @@ CREATE TABLE market_prices (
 -- ============================================
 -- Telegram alerts log
 -- ============================================
-CREATE TABLE telegram_alerts (
+CREATE TABLE IF NOT EXISTS telegram_alerts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   signal_id uuid REFERENCES signals(id) ON DELETE SET NULL,

@@ -196,6 +196,11 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'Entry ที่ support ตาม AI signal',
     opened_at: '2025-06-29T14:30:00Z', closed_at: null,
     created_at: '2025-06-29T14:30:00Z',
+    // ยังไม่ปิด จึงยังไม่มีสาเหตุการปิด
+    close_reason: null,
+    // 212.50 + 29.50/10 = 215.45 — ราคานี้ทำให้ pnl ข้างบนเป็นจริง และตรงกับ AAPL ใน DEMO_PRICES
+    current_price: 215.45,
+    last_checked_at: '2025-06-30T15:00:00Z',
   },
   {
     id: 't2', user_id: 'demo', signal_id: null,
@@ -206,6 +211,10 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'TP hit เร็วกว่าคาด',
     opened_at: '2025-06-20T09:00:00Z', closed_at: '2025-06-25T16:30:00Z',
     created_at: '2025-06-20T09:00:00Z',
+    // notes บอกว่าโดน TP และ exit 2325 ทะลุ take_profit 2320 จริง
+    close_reason: 'take_profit',
+    // ปิดแล้วไม่ต้องตามราคาต่อ cron จึงไม่แตะออเดอร์นี้อีก
+    current_price: null, last_checked_at: null,
   },
   {
     id: 't3', user_id: 'demo', signal_id: null,
@@ -216,6 +225,9 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'ชอร์ตหลัง earnings miss',
     opened_at: '2025-06-15T15:00:00Z', closed_at: '2025-06-22T10:00:00Z',
     created_at: '2025-06-15T15:00:00Z',
+    // exit 210 ไม่แตะทั้ง TP (205) และ SL (228) — ปิดเองระหว่างทาง
+    close_reason: 'manual',
+    current_price: null, last_checked_at: null,
   },
   {
     id: 't4', user_id: 'demo', signal_id: null,
@@ -226,6 +238,9 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'SL ตัดเสียตามแผน',
     opened_at: '2025-06-10T08:00:00Z', closed_at: '2025-06-12T14:00:00Z',
     created_at: '2025-06-10T08:00:00Z',
+    // exit 1.0750 เท่ากับ stop_loss พอดี ตรงกับ notes ที่บอกว่าโดนตัด
+    close_reason: 'stop_loss',
+    current_price: null, last_checked_at: null,
   },
   {
     id: 't5', user_id: 'demo', signal_id: null,
@@ -236,6 +251,9 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'เข้าที่แนวรับ ออกใกล้ TP',
     opened_at: '2025-06-05T10:30:00Z', closed_at: '2025-06-28T15:00:00Z',
     created_at: '2025-06-05T10:30:00Z',
+    // "ออกใกล้ TP" = 34.75 ยังไม่ถึง take_profit 35.00 จึงเป็นการปิดเอง
+    close_reason: 'manual',
+    current_price: null, last_checked_at: null,
   },
   {
     id: 't6', user_id: 'demo', signal_id: null,
@@ -246,6 +264,9 @@ export const DEMO_TRADES: Trade[] = [
     notes: 'Ride the AI trend',
     opened_at: '2025-06-08T14:00:00Z', closed_at: '2025-06-26T11:00:00Z',
     created_at: '2025-06-08T14:00:00Z',
+    // exit 126.50 ยังไม่ถึง take_profit 128.00 และ notes ไม่ได้อ้างถึง TP/SL
+    close_reason: 'manual',
+    current_price: null, last_checked_at: null,
   },
 ];
 
@@ -346,8 +367,14 @@ export const DEMO_DASHBOARD_STATS: DashboardStats = {
   success_rate: 68.5,
   total_trades: 6,
   open_trades: 1,
-  total_pnl: 1514.50,
+  // total_pnl นิยามเดียวกับ SQL คือ "ที่ปิดจบแล้วเท่านั้น" = realized_pnl
+  // เดิมใส่ 1514.50 ซึ่งรวมกำไรของ t1 ที่ยังเปิดอยู่เข้ามาด้วย จึงไม่ตรงกับนิยาม
+  total_pnl: 1485.00,
   total_pnl_percent: 12.4,
+  // t1 ยังเปิด: 29.50
+  unrealized_pnl: 29.50,
+  // t2..t6 ปิดแล้ว: 45 + 50 - 30 + 1250 + 170 = 1485
+  realized_pnl: 1485.00,
   win_rate: 80.0,
   best_performer: 'NVDA',
   worst_performer: 'EURUSD',

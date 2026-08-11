@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { data: prices } = usePrices();
   const { data: trades } = useTrades();
   const { data: watchlist, loading: watchlistLoading } = useWatchlist();
-  const { data: stats } = useDashboardStats();
+  const { data: stats, error: statsError } = useDashboardStats();
 
   // โหมดจริง: equity curve คือกำไรสะสมจากออเดอร์ที่ปิดแล้ว ไม่ใช่กราฟตัวอย่าง
   const equityData = useMemo(() => {
@@ -69,20 +69,33 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* โหลดสถิติไม่ได้ต้องบอกให้รู้ ไม่ใช่ปล่อยการ์ดโชว์ 0 ทุกใบ
+          ซึ่งหน้าตาเหมือนผู้ใช้ใหม่ที่ยังไม่เคยเทรด ทั้งที่หน้าพอร์ตยังมีตัวเลขจริงอยู่ */}
+      {statsError && (
+        <div className="card border-red-500/20 bg-red-500/5 text-sm text-red-400">
+          โหลดสถิติพอร์ตไม่สำเร็จ — ตัวเลขในการ์ดด้านล่างจึงยังไม่ใช่ของจริง
+          <span className="block text-xs text-red-400/70 mt-1 font-mono">{statsError}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
           label="กำไร/ขาดทุนรวม"
           value={stats.total_pnl}
           change={stats.total_pnl_percent}
-          format="currency"
+          // ยอดนี้บวกข้ามสกุลเงิน (หุ้นไทยเป็นบาท / หุ้น US · ทอง · forex เป็นดอลลาร์)
+          // โดยไม่มีการแปลงอัตราแลกเปลี่ยน จึงติดสัญลักษณ์สกุลเงินไม่ได้
+          format="amount"
           icon={DollarSign}
           iconColor={stats.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}
           delay={0}
         />
+        {/* change = null ทุกใบ เพราะยังไม่มีการวัด "การเปลี่ยนแปลงเทียบช่วงก่อนหน้า" จริงสักตัว
+            เดิมส่ง 0 แล้วการ์ดโชว์ '+0.0%' ซึ่งอ่านได้ว่าวัดแล้วไม่เปลี่ยน — คนละเรื่องกับยังไม่วัด */}
         <MetricCard
           label="Win Rate"
           value={stats.win_rate}
-          change={0}
+          change={null}
           format="percent"
           icon={Target}
           iconColor="text-accent-glow"
@@ -91,7 +104,7 @@ export default function DashboardPage() {
         <MetricCard
           label="สัญญาณวันนี้"
           value={stats.total_signals_today}
-          change={0}
+          change={null}
           format="number"
           icon={Zap}
           iconColor="text-accent-gold"
@@ -100,7 +113,7 @@ export default function DashboardPage() {
         <MetricCard
           label="กำลังเทรด"
           value={stats.open_trades}
-          change={0}
+          change={null}
           format="number"
           icon={Activity}
           iconColor="text-accent-purple"

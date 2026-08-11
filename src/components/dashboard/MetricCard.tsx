@@ -1,14 +1,20 @@
 'use client';
 
-import { cn, formatCurrency, formatNumber, formatPercent, formatChange, getChangeColor } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, formatPercent, formatChange, formatAmount, getChangeColor } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface MetricCardProps {
   label: string;
   value: number;
-  change: number;
-  format: 'currency' | 'number' | 'percent' | 'decimal';
+  /**
+   * เปอร์เซ็นต์การเปลี่ยนแปลง — ส่ง null เมื่อ "ยังไม่เคยวัด"
+   * ห้ามส่ง 0 แทน เพราะ 0 แปลว่า "วัดแล้วไม่เปลี่ยน" ซึ่งคนละความหมาย
+   * ป้ายจะถูกซ่อนไปเลยเมื่อเป็น null ดีกว่าโชว์ +0.0% ที่ไม่มีที่มา
+   */
+  change: number | null;
+  /** 'amount' = จำนวนเงินที่รวมข้ามสกุล จึงไม่ติดสัญลักษณ์สกุลเงิน (ดู formatAmount) */
+  format: 'currency' | 'amount' | 'number' | 'percent' | 'decimal';
   icon: LucideIcon;
   iconColor?: string;
   inverseChange?: boolean;
@@ -28,13 +34,14 @@ export default function MetricCard({
   const formatted = (() => {
     switch (format) {
       case 'currency': return formatCurrency(value, 'THB', true);
+      case 'amount': return formatAmount(value, true);
       case 'number': return formatNumber(value, true);
       case 'percent': return formatPercent(value);
       case 'decimal': return value.toFixed(2);
     }
   })();
 
-  const TrendIcon = change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
+  const TrendIcon = change === null ? Minus : change > 0 ? TrendingUp : change < 0 ? TrendingDown : Minus;
 
   return (
     <div
@@ -45,10 +52,12 @@ export default function MetricCard({
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center bg-white/5', iconColor)}>
           <Icon className="w-5 h-5" />
         </div>
-        <div className={cn('flex items-center gap-1 text-xs font-medium', getChangeColor(change, inverseChange))}>
-          <TrendIcon className="w-3.5 h-3.5" />
-          <span>{formatChange(change)}</span>
-        </div>
+        {change !== null && (
+          <div className={cn('flex items-center gap-1 text-xs font-medium', getChangeColor(change, inverseChange))}>
+            <TrendIcon className="w-3.5 h-3.5" />
+            <span>{formatChange(change)}</span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">

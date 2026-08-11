@@ -5,16 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const CURRENCY_SIGN: Record<string, string> = { THB: '฿', USD: '$' };
+
 export function formatCurrency(
   value: number,
   currency: string = 'THB',
   compact: boolean = false
 ): string {
+  // เดิมสองสาขา compact ฮาร์ดโค้ด '฿' ทิ้งพารามิเตอร์ currency ไปเลย
+  // ส่งมาเป็น USD แต่ได้ ฿ กลับไป ซึ่งผิดเงียบ ๆ เฉพาะตอนตัวเลขเกินหลักพัน
+  const sign = CURRENCY_SIGN[currency] ?? `${currency} `;
   if (compact && Math.abs(value) >= 1_000_000) {
-    return `฿${(value / 1_000_000).toFixed(1)}M`;
+    return `${sign}${(value / 1_000_000).toFixed(1)}M`;
   }
   if (compact && Math.abs(value) >= 1_000) {
-    return `฿${(value / 1_000).toFixed(1)}K`;
+    return `${sign}${(value / 1_000).toFixed(1)}K`;
   }
   return new Intl.NumberFormat('th-TH', {
     style: 'currency',
@@ -22,6 +27,22 @@ export function formatCurrency(
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+/**
+ * จำนวนเงินแบบ "ไม่ติดสัญลักษณ์สกุลเงิน" — ใช้กับยอดที่รวมข้ามตลาด
+ *
+ * pnl ของออเดอร์ถูกคิดในสกุลของตลาดนั้น ๆ (PTT.BK เป็นบาท, AAPL/XAUUSD เป็นดอลลาร์)
+ * แล้วถูกบวกรวมกันตรง ๆ โดยไม่มีการแปลงอัตราแลกเปลี่ยน
+ * การเอา ฿ หรือ $ ไปแปะหน้ายอดรวมนั้นจึงผิดเสมอไม่ว่าจะเลือกอันไหน
+ * ตราบใดที่ยังไม่มีระบบแปลงสกุลเงิน ให้แสดงเป็นตัวเลขเปล่าพร้อมหมายเหตุกำกับ
+ */
+export function formatAmount(value: number, withSign: boolean = false): string {
+  const prefix = withSign && value >= 0 ? '+' : '';
+  return `${prefix}${new Intl.NumberFormat('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)}`;
 }
 
 export function formatNumber(value: number, compact: boolean = false): string {

@@ -109,6 +109,94 @@ export async function sendSignalAlert(
 }
 
 /**
+ * ข้อมูลขั้นต่ำที่ต้องใช้ตอนแจ้งเตือนออเดอร์ปิด
+ * ตั้งเป็นชนิดแคบ ๆ แทนที่จะรับ Trade ทั้งก้อน เพราะฝั่ง cron มีแค่ค่าที่คำนวณเสร็จแล้ว
+ * ยังไม่ต้องอ่านแถวเต็มกลับมาจาก DB
+ */
+export interface ClosedTradeSummary {
+  symbol: string;
+  name: string;
+  market: string;
+  direction: 'long' | 'short';
+  entry_price: number;
+  quantity: number;
+  pnl: number;
+  pnl_percent: number;
+}
+
+/**
+ * ราคาคริปโตเศษเหรียญทำให้ toFixed(2) กลายเป็น "0.00" จนดูเหมือนไม่มีกำไร/ขาดทุนเลย
+ * ค่าที่เล็กกว่า 1 จึงเก็บทศนิยมไว้มากกว่าแล้วค่อยตัดศูนย์ท้ายทิ้ง
+ */
+function fmtNum(value: number): string {
+  if (Math.abs(value) >= 1) return value.toFixed(2);
+  return value.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+/**
+ * Format a closed-trade notification
+ * ใช้ตอน cron ตรวจเจอว่าราคาแตะ SL/TP แล้วปิดออเดอร์ในสมุดให้อัตโนมัติ
+ */
+export function formatTradeClosedMessage(
+  trade: ClosedTradeSummary,
+  reason: 'stop_loss' | 'take_profit',
+  exitPrice: number
+): string {
+  const isTakeProfit = reason === 'take_profit';
+  const headEmoji = isTakeProfit ? '🎯' : '🛑';
+  const headText = isTakeProfit
+    ? 'ปิดออเดอร์อัตโนมัติ — ถึงเป้าทำกำไร (Take Profit)'
+    : 'ปิดออเดอร์อัตโนมัติ — ชนจุดตัดขาดทุน (Stop Loss)';
+
+  // ทิศทางกำไร/ขาดทุนตัดสินจาก pnl จริง ไม่ใช่จาก reason
+  // เพราะ TP ที่ตั้งผิดฝั่งหรือค่าธรรมเนียมสูงก็ทำให้ "ถึงเป้า" แล้วยังติดลบได้
+  const pnlKnown = Number.isFinite(trade.pnl) && Number.isFinite(trade.pnl_percent);
+  const isProfit = pnlKnown && trade.pnl >= 0;
+  const pnlEmoji = !pnlKnown ? '⚪' : isProfit ? '🟢' : '🔴';
+  const pnlLabel = !pnlKnown ? 'กำไร/ขาดทุน' : isProfit ? 'กำไร' : 'ขาดทุน';
+
+  // ข้อมูลไม่พอห้ามเดาเป็น 0 — บอกตรง ๆ ว่าคำนวณไม่ได้
+  const sign = isProfit ? '+' : '';
+  const pnlText = pnlKnown
+    ? `${sign}${fmtNum(trade.pnl)} (${sign}${fmtNum(trade.pnl_percent)}%)`
+    : 'คำนวณไม่ได้ (ข้อมูลไม่พอ)';
+
+  const directionText = trade.direction === 'long' ? 'Long (ซื้อ)' : 'Short (ขาย)';
+
+  const lines = [
+    `${headEmoji} *${esc(headText)}*`,
+    ``,
+    `📊 *${esc(trade.symbol)}* \\- ${esc(trade.name)}`,
+    `💹 Market: ${esc(trade.market)}`,
+    `↕️ ทิศทาง: ${esc(directionText)}`,
+    ``,
+    `💵 ราคาเข้า: ${esc(trade.entry_price)}`,
+    `🚪 ราคาออก: ${esc(exitPrice)}`,
+    `🔢 จำนวน: ${esc(trade.quantity)}`,
+    ``,
+    `${pnlEmoji} *${esc(pnlLabel)}:* ${esc(pnlText)}`,
+    ``,
+    // ต้องเตือนทุกครั้ง กันเข้าใจผิดว่าระบบไปปิดออเดอร์ให้ที่โบรกเกอร์แล้ว
+    `⚠️ ${esc('นี่คือการบันทึกในสมุดเทรดเท่านั้น ระบบไม่ได้ส่งคำสั่งซื้อขายไปยังโบรกเกอร์จริง')}`,
+  ];
+
+  return lines.join('\n');
+}
+
+/**
+ * Send closed-trade alert
+ */
+export async function sendTradeClosedAlert(
+  config: TelegramConfig,
+  trade: ClosedTradeSummary,
+  reason: 'stop_loss' | 'take_profit',
+  exitPrice: number
+): Promise<{ success: boolean; error?: string }> {
+  const message = formatTradeClosedMessage(trade, reason, exitPrice);
+  return sendTelegramMessage(config, message);
+}
+
+/**
  * Test Telegram connection
  */
 export async function testTelegramConnection(
