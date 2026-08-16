@@ -9,8 +9,19 @@ import type { Signal, MarketPrice } from '@/types';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/** ไม่สร้างสัญญาณซ้ำของ symbol+action เดิมภายในกี่ชั่วโมง */
-const DEDUPE_HOURS = 20;
+/**
+ * ไม่สร้างสัญญาณซ้ำของ symbol+action+timeframe เดิมภายในกี่ชั่วโมง
+ * แยกหน้าต่างตาม timeframe: แท่งรายวันออกสัญญาณใหม่วันละครั้งก็พอ (20 ชม.)
+ * แต่แท่งรายชั่วโมงตลาดเดินเร็วกว่ามาก ถ้าล็อกไว้ 20 ชม. เท่ากันจะกลายเป็นปิดปาก 1H ทั้งวัน
+ */
+const DEDUPE_HOURS_1D = 20;
+const DEDUPE_HOURS_1H = 4;
+
+/**
+ * งบเวลาโดยประมาณก่อนชน maxDuration 60 วิ — การเพิ่ม 1H ทำให้ fetch ต่อ symbol เพิ่มเป็น 2
+ * จึงไล่ 1D ให้ครบก่อน แล้วค่อยเก็บ 1H ถ้าเกินงบให้หยุดเพิ่ม 1H และรายงานจำนวนที่ข้าม ไม่เงียบ
+ */
+const TIME_BUDGET_MS = 45_000;
 
 /**
  * สแกน watchlist ของผู้ใช้ที่ล็อกอินอยู่ → อัปเดตราคา + สร้างสัญญาณ
@@ -20,6 +31,7 @@ const DEDUPE_HOURS = 20;
  * และเขียนผ่าน client ที่ติด RLS → เขียนข้ามบัญชีคนอื่นไม่ได้
  */
 export async function POST() {
+  const startedAt = Date.now();
   try {
     if (isDemoMode()) {
       return NextResponse.json({
@@ -58,14 +70,23 @@ export async function POST() {
       });
     }
 
-    // สัญญาณที่ยังไม่หมดอายุ ใช้กันสร้างซ้ำ
-    const since = new Date(Date.now() - DEDUPE_HOURS * 3600_000).toISOString();
+    // สัญญาณที่ยังไม่หมดอายุ ใช้กันสร้างซ้ำ — query ด้วยหน้าต่างที่กว้างสุด (ของ 1D)
+    // แล้วกรองหน้าต่างแคบของ 1H ในโค้ด เพราะ timeframe เป็น text ใน DB
+    // การผูกเงื่อนไข or ตาม timeframe ใน query อ่านยากและพังเงียบได้ง่ายกว่า
+    const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
     const { data: recent } = await supabase
       .from('signals')
-      .select('symbol, action')
+      .select('symbol, action, timeframe, created_at')
       .eq('status', 'active')
       .gte('created_at', since);
-    const seen = new Set((recent ?? []).map(r => `${r.symbol}:${r.action}`));
+
+    const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;
+    const seen = new Set<string>();
+    for (const r of recent ?? []) {
+      // แถว 1H ที่เก่ากว่าหน้าต่าง 4 ชม. ไม่นับเป็นตัวกันซ้ำ — ปล่อยให้ออกสัญญาณใหม่ได้
+      if (r.timeframe === '1H' && new Date(r.created_at).getTime() < cutoff1H) continue;
+      seen.add(`${r.symbol}:${r.action}:${r.timeframe}`);
+    }
 
     const prices: MarketPrice[] = [];
     const signals: Signal[] = [];
@@ -90,17 +111,64 @@ export async function POST() {
         });
 
         if (!signal || signal.action === 'HOLD') continue;
-        if (seen.has(`${signal.symbol}:${signal.action}`)) {
+        if (seen.has(`${signal.symbol}:${signal.action}:${signal.timeframe}`)) {
           skipped.push(`${item.symbol} (มีสัญญาณ ${signal.action} อยู่แล้ว)`);
           continue;
         }
 
         signal.user_id = user.id;
         signals.push(signal);
-        seen.add(`${signal.symbol}:${signal.action}`);
+        seen.add(`${signal.symbol}:${signal.action}:${signal.timeframe}`);
       } catch (e) {
         console.error('scan error for', item.symbol, e);
         skipped.push(`${item.symbol} (ดึงข้อมูลไม่สำเร็จ)`);
+      }
+    }
+
+    // เฟส 2: สแกน 1H — เริ่มหลัง 1D ครบทุกตัวแล้วเท่านั้น
+    // เหตุผลของลำดับ: ถ้าสลับ 1D/1H ต่อ symbol แล้วเวลาหมดกลางทาง จะเสียครึ่ง ๆ กลาง ๆ
+    // ทั้งสองความละเอียด — แบบนี้อย่างแย่ที่สุด 1D ยังครบเหมือนพฤติกรรมเดิม
+    let hourlySkippedForTime = 0;
+    for (let i = 0; i < watchlist.length; i++) {
+      // เกินงบเวลา → หยุดเพิ่ม 1H แล้วรายงานจำนวนที่ข้ามใน response ห้ามเงียบ
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        hourlySkippedForTime = watchlist.length - i;
+        break;
+      }
+
+      const item = watchlist[i];
+      try {
+        // ไม่เก็บ quote ซ้ำ — ราคาปัจจุบันถูก push จากรอบ 1D ไปแล้ว
+        // (push ซ้ำจะทำให้ batch upsert มี symbol ซ้ำแล้ว Postgres ทิ้งทั้งชุด)
+        const { candles: hourly } = await fetchChart(item.symbol, item.market, '1h', '3mo');
+
+        // แท่งรายชั่วโมงไม่ถึง 50 → วิเคราะห์ไม่ได้ (Yahoo ให้ intraday ย้อนหลังจำกัด
+        // และบาง symbol ไม่มีข้อมูลรายชั่วโมงเลย) บันทึกใน skipped ไม่ถือเป็น error
+        if (hourly.length < 50) {
+          skipped.push(`${item.symbol} 1H (แท่งรายชั่วโมงไม่พอ)`);
+          continue;
+        }
+
+        const signal = generateSignal({
+          symbol: item.symbol,
+          name: item.name,
+          market: item.market,
+          candles: hourly,
+          timeframe: '1H',
+        });
+
+        if (!signal || signal.action === 'HOLD') continue;
+        if (seen.has(`${signal.symbol}:${signal.action}:${signal.timeframe}`)) {
+          skipped.push(`${item.symbol} 1H (มีสัญญาณ ${signal.action} อยู่แล้ว)`);
+          continue;
+        }
+
+        signal.user_id = user.id;
+        signals.push(signal);
+        seen.add(`${signal.symbol}:${signal.action}:${signal.timeframe}`);
+      } catch (e) {
+        console.error('scan 1H error for', item.symbol, e);
+        skipped.push(`${item.symbol} 1H (ดึงข้อมูลไม่สำเร็จ)`);
       }
     }
 
@@ -121,13 +189,19 @@ export async function POST() {
       if (insErr) throw insErr;
     }
 
+    // ถ้าข้าม 1H เพราะเวลาใกล้หมด ต้องบอกผู้ใช้ตรง ๆ ในข้อความ ไม่ใช่แค่ field เงียบ ๆ
+    const timeoutNote = hourlySkippedForTime > 0
+      ? ` (เวลาใกล้หมด ข้ามสแกน 1H ไป ${hourlySkippedForTime} ตัว)`
+      : '';
+
     return NextResponse.json({
       success: true,
       scanned: watchlist.length,
       prices,
       signals,
       skipped,
-      message: `สแกน ${watchlist.length} รายการ พบสัญญาณใหม่ ${signals.length} รายการ`,
+      hourlySkippedForTime,
+      message: `สแกน ${watchlist.length} รายการ พบสัญญาณใหม่ ${signals.length} รายการ${timeoutNote}`,
     });
   } catch (err) {
     console.error('scan route error:', err);

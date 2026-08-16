@@ -1,19 +1,6 @@
-'use client';
+import AppShell from '@/components/ui/AppShell';
 
-import Sidebar from '@/components/ui/Sidebar';
-import Header from '@/components/ui/Header';
-import { useAppStore } from '@/hooks/useStore';
-import { cn } from '@/lib/utils';
-
+// โครงหน้าทั้งหมดอยู่ที่ AppShell ที่เดียว — เดิมโค้ดชุดเดียวกันถูกก๊อปซ้ำทั้ง 7 layout
 export default function MarketsLayout({ children }: { children: React.ReactNode }) {
-  const { sidebarOpen } = useAppStore();
-  return (
-    <div className="min-h-screen">
-      <Sidebar />
-      <main className={cn('transition-all duration-300', sidebarOpen ? 'ml-64' : 'ml-[72px]')}>
-        <Header />
-        <div className="p-6">{children}</div>
-      </main>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }

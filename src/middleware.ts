@@ -58,5 +58,6 @@ export const config = {
     '/trades/:path*',
     '/news/:path*',
     '/settings/:path*',
+    '/backtest/:path*',
   ],
 };

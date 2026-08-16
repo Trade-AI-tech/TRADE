@@ -44,9 +44,15 @@ export function toYahooSymbol(symbol: string, market: string): string {
 interface ChartPayload {
   quote: MarketPrice | null;
   candles: CandleData[];
+  /**
+   * meta.currentTradingPeriod.regular.start เป็น ISO — เวลาเปิดรอบซื้อขายตาม Yahoo
+   * ส่งดิบออกไปให้ผู้เรียกตัดสินเอง เพราะเชื่อเดี่ยว ๆ ไม่ได้ทุกตลาด
+   * (หุ้นไทยตอนตลาดปิด ค่านี้ชี้ไปรอบพรุ่งนี้) — ดู resolveSessionStart ใน position-monitor.ts
+   */
+  regularStart: string | null;
 }
 
-const EMPTY: ChartPayload = { quote: null, candles: [] };
+const EMPTY: ChartPayload = { quote: null, candles: [], regularStart: null };
 
 /**
  * ดึง chart จาก Yahoo — ได้ทั้ง quote และ candles ในคำขอเดียว
@@ -76,6 +82,12 @@ export async function fetchChart(
       if (!result) continue;
 
       const meta = result.meta ?? {};
+
+      // epoch วินาที → ISO ให้ผู้เรียกใช้ต่อได้ทันที ไม่มีค่าก็ปล่อย null ไม่เดา
+      const regularStartEpoch = Number(meta.currentTradingPeriod?.regular?.start);
+      const regularStart = Number.isFinite(regularStartEpoch)
+        ? new Date(regularStartEpoch * 1000).toISOString()
+        : null;
       const timestamps: number[] = result.timestamp || [];
       const ohlc = result.indicators?.quote?.[0];
       if (!ohlc) continue;
@@ -92,7 +104,7 @@ export async function fetchChart(
         .filter((c) => c.close > 0);
 
       const price = Number(meta.regularMarketPrice ?? candles[candles.length - 1]?.close);
-      if (!price || !Number.isFinite(price)) return { quote: null, candles };
+      if (!price || !Number.isFinite(price)) return { quote: null, candles, regularStart };
 
       // ใช้แท่งก่อนหน้าเป็นฐานคำนวณการเปลี่ยนแปลง (เชื่อถือได้กว่า meta.chartPreviousClose
       // ซึ่งเป็นราคาปิดก่อนเริ่มช่วงที่ขอมา ไม่ใช่ของเมื่อวาน)
@@ -113,7 +125,7 @@ export async function fetchChart(
         updated_at: new Date().toISOString(),
       };
 
-      return { quote, candles };
+      return { quote, candles, regularStart };
     } catch (err) {
       console.error('fetchChart error:', yahooSymbol, err);
     }

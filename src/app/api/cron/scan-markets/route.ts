@@ -4,12 +4,24 @@ import { generateSignal } from '@/lib/signal-engine';
 import { sendSignalAlert } from '@/lib/telegram';
 import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
-import type { Signal, MarketPrice, AlertPreferences } from '@/types';
+import type { Signal, MarketPrice, AlertPreferences, CandleData } from '@/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const DEDUPE_HOURS = 20;
+/**
+ * ไม่สร้างสัญญาณซ้ำของ user+symbol+action+timeframe เดิมภายในกี่ชั่วโมง
+ * แยกหน้าต่างตาม timeframe: แท่งรายวันออกสัญญาณใหม่วันละครั้งก็พอ (20 ชม.)
+ * แต่แท่งรายชั่วโมงตลาดเดินเร็วกว่ามาก ถ้าล็อกไว้ 20 ชม. เท่ากันจะกลายเป็นปิดปาก 1H ทั้งวัน
+ */
+const DEDUPE_HOURS_1D = 20;
+const DEDUPE_HOURS_1H = 4;
+
+/**
+ * งบเวลาโดยประมาณก่อนชน maxDuration 60 วิ — การเพิ่ม 1H ทำให้ fetch ต่อ symbol เพิ่มเป็น 2
+ * จึงไล่ 1D ให้ครบก่อน แล้วค่อยเก็บ 1H ถ้าเกินงบให้หยุดเพิ่ม 1H และรายงานจำนวนที่ข้าม ไม่เงียบ
+ */
+const TIME_BUDGET_MS = 45_000;
 
 /**
  * Daily cron: สแกน watchlist ของผู้ใช้ทุกคน → สร้างสัญญาณ → บันทึก → ส่ง Telegram
@@ -37,6 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Supabase unavailable' }, { status: 500 });
   }
 
+  const startedAt = Date.now();
   try {
     // 1. watchlist ทั้งหมดที่เปิดใช้งาน
     const { data: watchlist, error: wlErr } = await supabase
@@ -83,14 +96,23 @@ export async function GET(req: NextRequest) {
       else pricesUpdated = uniquePrices.length;
     }
 
-    // 3. สัญญาณที่ยัง active อยู่ ใช้กันสร้างซ้ำ
-    const since = new Date(Date.now() - DEDUPE_HOURS * 3600_000).toISOString();
+    // 3. สัญญาณที่ยัง active อยู่ ใช้กันสร้างซ้ำ — query ด้วยหน้าต่างที่กว้างสุด (ของ 1D)
+    // แล้วกรองหน้าต่างแคบของ 1H ในโค้ด เพราะ timeframe เป็น text ใน DB
+    // การผูกเงื่อนไข or ตาม timeframe ใน query อ่านยากและพังเงียบได้ง่ายกว่า
+    const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
     const { data: recent } = await supabase
       .from('signals')
-      .select('user_id, symbol, action')
+      .select('user_id, symbol, action, timeframe, created_at')
       .eq('status', 'active')
       .gte('created_at', since);
-    const seen = new Set((recent ?? []).map(r => `${r.user_id}:${r.symbol}:${r.action}`));
+
+    const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;
+    const seen = new Set<string>();
+    for (const r of recent ?? []) {
+      // แถว 1H ที่เก่ากว่าหน้าต่าง 4 ชม. ไม่นับเป็นตัวกันซ้ำ — ปล่อยให้ออกสัญญาณใหม่ได้
+      if (r.timeframe === '1H' && new Date(r.created_at).getTime() < cutoff1H) continue;
+      seen.add(`${r.user_id}:${r.symbol}:${r.action}:${r.timeframe}`);
+    }
 
     // 4. สร้างสัญญาณรายรายการ
     const signalsToInsert: Signal[] = [];
@@ -109,7 +131,54 @@ export async function GET(req: NextRequest) {
 
       if (!signal || signal.action === 'HOLD' || signal.strength === 'weak') continue;
 
-      const key = `${item.user_id}:${signal.symbol}:${signal.action}`;
+      const key = `${item.user_id}:${signal.symbol}:${signal.action}:${signal.timeframe}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      signal.user_id = item.user_id;
+      signalsToInsert.push(signal);
+    }
+
+    // 4.5 รอบ 1H — เริ่มหลัง 1D ครบทั้งชุดแล้วเท่านั้น
+    // เหตุผลของลำดับ: ถ้าสลับ 1D/1H ต่อ symbol แล้วเวลาหมดกลางทาง จะเสียครึ่ง ๆ กลาง ๆ
+    // ทั้งสองความละเอียด — แบบนี้อย่างแย่ที่สุด 1D ยังครบเหมือนพฤติกรรมเดิมทุกอย่าง
+    let hourlySkippedForTime = 0;
+    const hourlyCharts = new Map<string, CandleData[]>();
+    const uniqueList = [...uniqueKeys];
+    for (let i = 0; i < uniqueList.length; i++) {
+      // เกินงบเวลา → หยุดเพิ่ม 1H แล้วรายงานจำนวนที่ข้ามใน response ห้ามเงียบ
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        hourlySkippedForTime = uniqueList.length - i;
+        break;
+      }
+      const [key, s] = uniqueList[i];
+      try {
+        // ไม่เก็บ quote จากรอบนี้ — ราคาปัจจุบันถูก upsert จากรอบ 1D ไปแล้ว
+        const chart = await fetchChart(s.symbol, s.market, '1h', '3mo');
+        // แท่งรายชั่วโมงไม่ถึง 50 → วิเคราะห์ไม่ได้ (Yahoo ให้ intraday ย้อนหลังจำกัด
+        // และบาง symbol ไม่มีข้อมูลรายชั่วโมงเลย) ข้ามเงียบ ๆ เกณฑ์เดียวกับ 1D ข้างบน
+        if (chart.candles.length >= 50) hourlyCharts.set(key, chart.candles);
+      } catch (e) {
+        console.error('fetchChart 1h failed for', s.symbol, e);
+      }
+    }
+
+    for (const item of watchlist) {
+      const hourly = hourlyCharts.get(`${item.symbol}|${item.market}`);
+      if (!hourly) continue;
+
+      const signal = generateSignal({
+        symbol: item.symbol,
+        name: item.name,
+        market: item.market,
+        candles: hourly,
+        timeframe: '1H',
+      });
+
+      // เกณฑ์เดียวกับ 1D ทุกอย่าง: HOLD ไม่บันทึก และ strength weak ไม่บันทึก
+      if (!signal || signal.action === 'HOLD' || signal.strength === 'weak') continue;
+
+      const key = `${item.user_id}:${signal.symbol}:${signal.action}:${signal.timeframe}`;
       if (seen.has(key)) continue;
       seen.add(key);
 
@@ -179,6 +248,8 @@ export async function GET(req: NextRequest) {
       scanned: watchlist.length,
       pricesUpdated,
       signalsGenerated: signalsToInsert.length,
+      // จำนวน symbol ที่ไม่ได้สแกน 1H เพราะเวลาใกล้ชน maxDuration — ต้องเห็นใน log ของ cron
+      hourlySkippedForTime,
       alertsSent,
       alertsFailed,
       timestamp: new Date().toISOString(),

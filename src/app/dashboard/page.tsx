@@ -10,7 +10,7 @@ import { generateEquityCurve } from '@/lib/demo-data';
 import { isDemoMode } from '@/lib/supabase';
 import Link from 'next/link';
 import {
-  Zap, Target, Activity, ArrowRight, DollarSign, Compass,
+  Zap, Target, Activity, ArrowRight, DollarSign, Compass, FlaskConical,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -120,6 +120,21 @@ export default function DashboardPage() {
           delay={150}
         />
       </div>
+
+      {/* ชวนไปดูผลวัดจริง — จงใจไม่โชว์ตัวเลขสถิติใด ๆ ตรงนี้
+          เพราะผล backtest ต้องมาจากการรันทดสอบจริงในหน้านั้น ไม่ใช่เลขที่แปะไว้ล่วงหน้า */}
+      <Link href="/backtest" className="card-hover flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-accent-purple/10 text-accent-purple flex items-center justify-center flex-shrink-0">
+          <FlaskConical className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white">สัญญาณแม่นแค่ไหน? — วัดด้วย Backtest</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            ทดสอบสัญญาณกับข้อมูลย้อนหลังจริงก่อนเชื่อ ไม่ต้องเดาจากความรู้สึก
+          </p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+      </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

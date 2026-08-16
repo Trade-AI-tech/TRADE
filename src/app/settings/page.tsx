@@ -168,14 +168,17 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="flex gap-6">
-        <div className="w-52 space-y-1 flex-shrink-0">
+      {/* มือถือ: เรียงบน-ล่าง เพราะจอแคบไม่พอวางรางแท็บกว้าง 208px คู่กับเนื้อหา — จอ lg ขึ้นไปกลับเป็นรางซ้ายแบบเดิม */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* รางแท็บ: มือถือเป็นแถวแนวนอนเลื่อนได้ ไม่ให้ดันความกว้างหน้าเกินจอ */}
+        <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible lg:w-52 flex-shrink-0 pb-1 lg:pb-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                // whitespace-nowrap + flex-shrink-0 กันชื่อแท็บหักบรรทัด/ปุ่มหดจนกดยากตอนอยู่ในแถวเลื่อนแนวนอน
+                'flex items-center gap-2.5 flex-shrink-0 whitespace-nowrap lg:w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                 activeTab === tab.id
                   ? 'bg-accent-glow/10 text-accent-glow border border-accent-glow/20'
                   : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'

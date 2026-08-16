@@ -107,10 +107,11 @@ export default function TradesPage() {
         </p>
       </div>
 
+      {/* มือถือ: ตัวเลขลดเป็น text-xl กันยอดเงินยาว (formatAmount หลายหลัก) ล้นการ์ดครึ่งจอ — md ขึ้นไปขนาดเดิม */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1">กำไรที่ปิดแล้ว</div>
-          <div className={cn('text-2xl font-mono font-bold', stats.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+          <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
             {formatAmount(stats.realizedPnl, true)}
           </div>
           <div className="text-[10px] text-gray-500 mt-1">ปิดจบแล้ว ไม่ขยับอีก · รวมหลายสกุล</div>
@@ -120,9 +121,9 @@ export default function TradesPage() {
           {stats.monitoredOpenCount === 0 ? (
             // ไม่มีออเดอร์ที่วัดได้เลย — ไม่ว่าจะเพราะไม่มีออเดอร์ถืออยู่
             // หรือมีแต่ตัวเฝ้าราคายังไม่เคยตรวจ อย่าแสดง 0.00 ให้เข้าใจผิดว่าเสมอตัว
-            <div className="text-2xl font-mono font-bold text-gray-500">—</div>
+            <div className="text-xl md:text-2xl font-mono font-bold text-gray-500">—</div>
           ) : (
-            <div className={cn('text-2xl font-mono font-bold', stats.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
               {formatAmount(stats.unrealizedPnl, true)}
             </div>
           )}
@@ -130,19 +131,20 @@ export default function TradesPage() {
         </div>
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1">Win Rate</div>
-          <div className="text-2xl font-mono font-bold text-white">{stats.winRate.toFixed(1)}%</div>
+          <div className="text-xl md:text-2xl font-mono font-bold text-white">{stats.winRate.toFixed(1)}%</div>
         </div>
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
             <TrendingUp className="w-3 h-3 text-emerald-400" /> ชนะ
           </div>
-          <div className="text-2xl font-mono font-bold text-emerald-400">{stats.wins}</div>
+          <div className="text-xl md:text-2xl font-mono font-bold text-emerald-400">{stats.wins}</div>
         </div>
-        <div className="card">
+        {/* ใบที่ 5 บน grid 2 คอลัมน์จะเหลือช่องว่างข้าง ๆ — ให้เต็มแถวบนมือถือ (md ขึ้นไปกลับเป็น 1 ช่องเดิม) */}
+        <div className="card col-span-2 md:col-span-1">
           <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
             <TrendingDown className="w-3 h-3 text-red-400" /> แพ้
           </div>
-          <div className="text-2xl font-mono font-bold text-red-400">{stats.losses}</div>
+          <div className="text-xl md:text-2xl font-mono font-bold text-red-400">{stats.losses}</div>
         </div>
       </div>
 

@@ -274,6 +274,12 @@ export function generateSignal(input: SignalInput): Signal | null {
 
   const confidence = Math.min(95, 40 + totalScore * 6);
 
+  // อายุสัญญาณตาม timeframe — สัญญาณจากแท่งรายชั่วโมง "เก่า" เร็วกว่าสัญญาณรายวันมาก:
+  // setup บนแท่ง 1H มักเดินจบภายในไม่กี่สิบแท่ง (ราววันสองวัน) ถ้าปล่อยให้ active ค้าง 7 วัน
+  // เท่ากับโชว์ผู้ใช้ว่าโอกาสยังอยู่ทั้งที่ตลาดเดินผ่านจุดนั้นไปนานแล้ว → 1H หมดอายุใน 48 ชม.
+  // timeframe อื่นคงอายุ 7 วันตามพฤติกรรมเดิม
+  const ttlMs = timeframe === '1H' ? 48 * 3600_000 : 7 * 86400000;
+
   const indicators: Record<string, number> = {};
   const put = (k: string, v: number, d = 4) => {
     if (Number.isFinite(v)) indicators[k] = Number(v.toFixed(d));
@@ -301,7 +307,7 @@ export function generateSignal(input: SignalInput): Signal | null {
     indicators,
     news_sentiment: newsSentiment ?? null,
     telegram_sent: false,
-    expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+    expires_at: new Date(Date.now() + ttlMs).toISOString(),
     created_at: new Date().toISOString(),
   };
 }

@@ -17,6 +17,13 @@ interface AppStore {
   // UI
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+
+  // เมนูมือถือ (drawer) — แยกจาก sidebarOpen ของเดสก์ท็อปโดยเจตนา:
+  // sidebarOpen คือ "ย่อ/ขยาย rail" ส่วนนี้คือ "เปิด/ปิด drawer ทับจอ" คนละความหมายกัน
+  mobileNavOpen: boolean;
+  toggleMobileNav: () => void;
+  closeMobileNav: () => void;
+
   selectedSymbol: string | null;
   setSelectedSymbol: (s: string | null) => void;
   unreadSignals: number;
@@ -39,6 +46,9 @@ export const useAppStore = create<AppStore>((set) => ({
   setTrades: (trades) => set({ trades }),
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  mobileNavOpen: false,
+  toggleMobileNav: () => set((s) => ({ mobileNavOpen: !s.mobileNavOpen })),
+  closeMobileNav: () => set({ mobileNavOpen: false }),
   selectedSymbol: null,
   setSelectedSymbol: (s) => set({ selectedSymbol: s }),
   unreadSignals: 0,

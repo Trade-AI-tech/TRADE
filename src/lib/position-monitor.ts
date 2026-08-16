@@ -75,6 +75,46 @@ function toEpoch(iso: unknown): number | null {
 }
 
 /**
+ * หาเวลาเริ่มของ "รอบซื้อขายที่ high_24h/low_24h เป็นเจ้าของ"
+ *
+ * ผู้เรียกมีเบาะแส 2 ทางจาก Yahoo แต่ทั้งคู่เชื่อเดี่ยว ๆ ไม่ได้สักทาง
+ * (ตรวจกับข้อมูลจริงทั้ง 5 ตลาดแล้ว):
+ *
+ *   timestamp ของแท่งรายวันแท่งสุดท้าย
+ *     หุ้น US / หุ้นไทย / crypto → เป็นเวลาเปิดรอบจริง ใช้ได้
+ *     ทอง (GC=F) และ forex (=X) ตอนตลาดเปิด → Yahoo ใส่ค่าเท่ากับ regularMarketTime
+ *       คือ "เวลาปัจจุบัน" ไม่ใช่เวลาเปิดรอบ ใช้แล้วออเดอร์ทุกไม้จะนับว่า "เปิดก่อนรอบ"
+ *       แล้วโดนตรวจด้วยช่วงราคาทั้งวันรวมช่วงก่อนที่มันจะมีอยู่จริง
+ *
+ *   meta.currentTradingPeriod.regular.start
+ *     ทอง / forex → ถูกต้อง
+ *     หุ้นไทยตอนตลาดปิด → ชี้ไปรอบ "พรุ่งนี้" ซึ่งอยู่ในอนาคต
+ *       (เจอจริง: แท่งสุดท้าย 08-11T03:00Z แต่ regular.start = 08-12T03:00Z)
+ *       ใช้แล้วพังแบบเดียวกัน
+ *
+ * กฎที่ถูกกับทุกตลาด: ตัดค่าที่อยู่ในอนาคตทิ้ง แล้วเอาค่าที่ "เร็วกว่า"
+ * เร็วกว่าปลอดภัยกว่าเสมอ เพราะ resolvePriceWindow ถือว่า opened_at >= sessionStart
+ * แปลว่า "เปิดระหว่างรอบ" → ถอยไปใช้ [price, price] ซึ่งไม่มีทางปิดออเดอร์ผิด
+ * ยิ่ง sessionStart เร็ว ยิ่งเข้าเงื่อนไขนั้นบ่อย = อนุรักษ์นิยมขึ้น
+ *
+ * ไม่เหลือเบาะแสที่ใช้ได้เลย → คืน null ให้ผู้เรียกถอยไปใช้ [price, price]
+ */
+export function resolveSessionStart(
+  lastCandleTimestamp: string | null | undefined,
+  regularStart: string | null | undefined,
+  now: number = Date.now()
+): string | null {
+  const usable: number[] = [];
+  for (const raw of [lastCandleTimestamp, regularStart]) {
+    const t = toEpoch(raw);
+    // ค่าที่ยังมาไม่ถึงเป็นรอบถัดไป ไม่ใช่รอบที่ high/low เป็นเจ้าของ
+    if (t !== null && t <= now) usable.push(t);
+  }
+  if (usable.length === 0) return null;
+  return new Date(Math.min(...usable)).toISOString();
+}
+
+/**
  * เลือกหน้าต่างราคา [low, high] ที่จะใช้ตรวจ SL/TP
  *
  * `sessionStart` คือเวลาเปิดของรอบซื้อขายที่ high_24h/low_24h เป็นเจ้าของ

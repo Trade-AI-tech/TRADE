@@ -20,6 +20,8 @@ body {
   background-color: #0a0b0f;
   color: #e4e4e7;
   -webkit-font-smoothing: antialiased;
+  /* กันกรอบเทาแวบเวลากดปุ่ม/ลิงก์บน iOS */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Glow effects */
@@ -132,5 +134,15 @@ body {
 
   .card-hover {
     @apply card hover:border-white/10 hover:bg-surface-2/80 transition-all duration-200 cursor-pointer;
+  }
+}
+
+/* iOS ซูมเด้งอัตโนมัติเมื่อโฟกัส input ที่ font เล็กกว่า 16px — บังคับ 16px เฉพาะจอมือถือ
+   (!important เพราะต้องชนะ text-sm/utility class ที่แปะมากับ input แต่ละตัว) */
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }

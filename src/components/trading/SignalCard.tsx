@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2, Sparkles } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2, Sparkles,
+} from 'lucide-react';
 import type { Signal } from '@/types';
 
 interface Props {
@@ -27,23 +30,103 @@ const marketLabel = {
   GOLD: 'ทอง', FOREX: 'Forex', TH_STOCK: 'หุ้นไทย', US_STOCK: 'หุ้น US', CRYPTO: 'Crypto',
 };
 
+/** สัญญาณ 1H เสื่อมเร็ว — เกินกี่ชั่วโมงถึงถือว่า "เริ่มเก่าแล้ว" */
+const INTRADAY_STALE_HOURS = 12;
+
+/** อายุสัญญาณแบบอ่านง่าย เช่น "3 ชม.ที่แล้ว" — parse วันที่ไม่ได้ให้คืน null ห้ามเดา */
+function timeAgoTh(iso: string, now: number): string | null {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const min = Math.floor((now - t) / 60_000);
+  if (min < 1) return 'เมื่อครู่นี้';
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} ชม.ที่แล้ว`;
+  return `${Math.floor(h / 24)} วันที่แล้ว`;
+}
+
+/** นับถอยหลังหมดอายุจาก expires_at — ไม่มีข้อมูลหรือ parse ไม่ได้ให้คืน null */
+function expiresInTh(iso: string | null, now: number): { text: string; expired: boolean } | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const min = Math.ceil((t - now) / 60_000);
+  if (min <= 0) return { text: 'หมดอายุแล้ว', expired: true };
+  if (min < 60) return { text: `หมดอายุในอีก ${min} นาที`, expired: false };
+  const h = Math.floor(min / 60);
+  if (h < 24) return { text: `หมดอายุในอีก ${h} ชม.`, expired: false };
+  return { text: `หมดอายุในอีก ${Math.floor(h / 24)} วัน`, expired: false };
+}
+
 export default function SignalCard({ signal, onAddTrade }: Props) {
   const cfg = actionConfig[signal.action];
   const Icon = cfg.icon;
   const stars = strengthStars[signal.strength];
-  const rr = signal.action === 'BUY'
-    ? (signal.take_profit - signal.entry_price) / (signal.entry_price - signal.stop_loss)
-    : signal.action === 'SELL'
-    ? (signal.entry_price - signal.take_profit) / (signal.stop_loss - signal.entry_price)
-    : 0;
-  const pnlNow = signal.action === 'BUY'
-    ? ((signal.current_price - signal.entry_price) / signal.entry_price) * 100
-    : signal.action === 'SELL'
-    ? ((signal.entry_price - signal.current_price) / signal.entry_price) * 100
-    : 0;
+  const [openReason, setOpenReason] = useState<number | null>(null);
+
+  // เวลา "ตอนนี้" ตั้งหลัง mount เท่านั้น — กัน hydration mismatch เพราะนาฬิกา
+  // ตอน SSR กับตอน hydrate บนเครื่องผู้ใช้ไม่มีทางตรงกัน
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const entry = signal.entry_price;
+  const sl = signal.stop_loss;
+  const tp = signal.take_profit;
+  const cur = signal.current_price;
+  const tradeable = signal.action === 'BUY' || signal.action === 'SELL';
+
+  // R:R จากราคาจริงของสัญญาณ — ระยะ SL เป็น 0 ต้องได้ '—' ไม่ใช่ Infinity
+  const risk = Math.abs(entry - sl);
+  const reward = Math.abs(tp - entry);
+  const rrText = risk > 0 && Number.isFinite(reward / risk) ? `1:${(reward / risk).toFixed(1)}` : '—';
+
+  // current_price ถูกตัวเฝ้าราคาอัปเดตทีหลัง — ต่างจาก entry เมื่อไหร่ค่อยมีเรื่องให้บอก
+  const priceMoved = Number.isFinite(cur) && cur > 0 && cur !== entry;
+
+  // บันไดราคา: แปลงราคาเป็นตำแหน่ง % แนวตั้งตามสัดส่วนจริง (ราคาสูงอยู่บนเสมอ
+  // BUY จึงได้ TP บน SL ล่าง และ SELL กลับด้านโดยไม่ต้องเขียนเงื่อนไขแยก)
+  const ladder = (() => {
+    if (!tradeable) return null;
+    if (![entry, sl, tp].every((v) => Number.isFinite(v) && v > 0)) return null;
+    const points = priceMoved ? [entry, sl, tp, cur] : [entry, sl, tp];
+    const lo = Math.min(...points);
+    const hi = Math.max(...points);
+    if (hi - lo <= 0) return null; // ราคาซ้อนกันหมด ไม่มีสัดส่วนให้วาด
+    const pad = (hi - lo) * 0.08; // กันขอบไม่ให้ label บน/ล่างโดนตัด
+    const top = hi + pad;
+    const range = hi - lo + pad * 2;
+    return { pct: (p: number) => ((top - p) / range) * 100 };
+  })();
+
+  // ระยะห่างของราคาล่าสุดจาก entry เป็น % (เครื่องหมายตามทิศราคา ไม่ใช่ทิศกำไร)
+  const distPct = priceMoved && entry !== 0 ? ((cur - entry) / Math.abs(entry)) * 100 : null;
+  const inProfit = distPct !== null && (signal.action === 'BUY' ? distPct > 0 : distPct < 0);
+  const distColor = !tradeable ? 'text-gray-400' : inProfit ? 'text-emerald-400' : 'text-red-400';
+
+  const createdAgo = now !== null ? timeAgoTh(signal.created_at, now) : null;
+  const expiry = now !== null ? expiresInTh(signal.expires_at, now) : null;
+
+  // สัญญาณระยะสั้นเสื่อมเร็ว — 1H ที่อายุเกินกำหนดให้จางลง + ติดป้ายชัด ๆ
+  const ageMs = now !== null ? now - new Date(signal.created_at).getTime() : NaN;
+  const isStale =
+    (signal.timeframe ?? '').toUpperCase() === '1H' &&
+    Number.isFinite(ageMs) &&
+    ageMs > INTRADAY_STALE_HOURS * 3_600_000;
+
+  const conf = Math.max(0, Math.min(100, signal.confidence));
 
   return (
-    <div className={cn('card border', cfg.border, 'relative overflow-hidden')}>
+    <div
+      className={cn(
+        'card border h-full flex flex-col relative overflow-hidden',
+        cfg.border,
+        isStale && 'opacity-60 saturate-50'
+      )}
+    >
       {signal.telegram_sent && (
         <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
           <CheckCircle2 className="w-3 h-3" />
@@ -52,22 +135,33 @@ export default function SignalCard({ signal, onAddTrade }: Props) {
       )}
 
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', cfg.bg, cfg.color)}>
+        {/* min-w-0 ทั้งสองชั้น — ให้ชื่อสินทรัพย์ยาว ๆ truncate ได้จริงบนการ์ดแคบ ~340px
+            (ไม่มี min-w-0 flex จะไม่ยอมหดต่ำกว่าความกว้างข้อความ แล้วดันการ์ดพัง) */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0', cfg.bg, cfg.color)}>
             <Icon className="w-6 h-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-white text-base">{signal.symbol}</h3>
+              {/* ป้าย timeframe ต้องเด่น — คนเทรดสั้นต้องแยก 1H/1D ได้ก่อนอ่านราคา */}
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent-glow/10 text-accent-glow border border-accent-glow/30">
+                {signal.timeframe}
+              </span>
               <span className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">
                 {marketLabel[signal.market]}
               </span>
+              {isStale && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  เริ่มเก่าแล้ว
+                </span>
+              )}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">{signal.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{signal.name}</p>
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="text-right flex-shrink-0">
           <div className={cn('text-xl font-bold font-mono', cfg.color)}>{cfg.label}</div>
           <div className="flex items-center gap-0.5 justify-end mt-1">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -77,54 +171,173 @@ export default function SignalCard({ signal, onAddTrade }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="bg-white/5 rounded-lg p-2.5">
-          <div className="text-[10px] text-gray-500 uppercase font-medium">Entry</div>
-          <div className="text-sm font-mono font-semibold text-white mt-0.5">{signal.entry_price}</div>
-        </div>
-        <div className="bg-red-500/5 rounded-lg p-2.5">
-          <div className="text-[10px] text-red-400/70 uppercase font-medium flex items-center gap-1">
-            <Shield className="w-2.5 h-2.5" /> SL
+      {ladder ? (
+        <div className="relative h-36 mb-4">
+          {/* รางบันไดราคา */}
+          <div className="absolute left-2 top-0 bottom-0 w-1.5 rounded-full bg-white/5" />
+          {/* โซนกำไร entry→TP */}
+          <div
+            className="absolute left-2 w-1.5 rounded-full bg-emerald-500/40"
+            style={{
+              top: `${Math.min(ladder.pct(tp), ladder.pct(entry))}%`,
+              height: `${Math.abs(ladder.pct(tp) - ladder.pct(entry))}%`,
+            }}
+          />
+          {/* โซนเสี่ยง entry→SL */}
+          <div
+            className="absolute left-2 w-1.5 rounded-full bg-red-500/40"
+            style={{
+              top: `${Math.min(ladder.pct(sl), ladder.pct(entry))}%`,
+              height: `${Math.abs(ladder.pct(sl) - ladder.pct(entry))}%`,
+            }}
+          />
+
+          {/* TP */}
+          <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(tp)}%` }}>
+            <div className="w-5 h-px bg-emerald-400/60 flex-shrink-0" />
+            <Target className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span className="text-[10px] uppercase font-medium text-emerald-400/80">TP</span>
+            {/* tabular-nums + nowrap: ราคายาว (เช่น BTC 64986.47) ต้องเป็นก้อนเดียว ไม่หักบรรทัดกลางตัวเลข */}
+            <span className="text-xs font-mono tabular-nums font-semibold text-emerald-400 whitespace-nowrap">{tp}</span>
           </div>
-          <div className="text-sm font-mono font-semibold text-red-400 mt-0.5">{signal.stop_loss}</div>
-        </div>
-        <div className="bg-emerald-500/5 rounded-lg p-2.5">
-          <div className="text-[10px] text-emerald-400/70 uppercase font-medium flex items-center gap-1">
-            <Target className="w-2.5 h-2.5" /> TP
+
+          {/* Entry */}
+          <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(entry)}%` }}>
+            <div className="w-5 h-px bg-white/40 flex-shrink-0" />
+            <span className="text-[10px] uppercase font-medium text-gray-400">Entry</span>
+            <span className="text-xs font-mono tabular-nums font-semibold text-white whitespace-nowrap">{entry}</span>
           </div>
-          <div className="text-sm font-mono font-semibold text-emerald-400 mt-0.5">{signal.take_profit}</div>
+
+          {/* SL */}
+          <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(sl)}%` }}>
+            <div className="w-5 h-px bg-red-400/60 flex-shrink-0" />
+            <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />
+            <span className="text-[10px] uppercase font-medium text-red-400/80">SL</span>
+            <span className="text-xs font-mono tabular-nums font-semibold text-red-400 whitespace-nowrap">{sl}</span>
+          </div>
+
+          {/* ราคาล่าสุดจากตัวเฝ้าราคา — จุดบนราง + label ชิดขวา จะได้ไม่ทับ label ฝั่งซ้าย */}
+          {priceMoved && (
+            <>
+              <div
+                className="absolute w-2.5 h-2.5 rounded-full bg-white ring-2 ring-black/50 -translate-y-1/2"
+                style={{ top: `${ladder.pct(cur)}%`, left: '5px' }}
+              />
+              {/* จำกัดแถว "ล่าสุด" ไว้ฝั่งขวาไม่เกิน 70% — บนการ์ดแคบ ถ้าปล่อย left-0 ถึงขวาสุด
+                  ข้อความจะลากไปทับ label TP/Entry/SL ฝั่งซ้ายเมื่อราคาอยู่ระดับใกล้กัน
+                  (การ์ดกว้างปกติเนื้อหาสั้นกว่า 70% อยู่แล้ว จึงมองไม่เห็นความต่างบนเดสก์ท็อป) */}
+              <div
+                className="absolute right-0 max-w-[70%] -translate-y-1/2 flex items-center justify-end gap-1.5 overflow-hidden"
+                style={{ top: `${ladder.pct(cur)}%` }}
+              >
+                <span className="text-[10px] text-gray-400 whitespace-nowrap">ล่าสุด</span>
+                <span className="text-xs font-mono tabular-nums font-semibold text-white whitespace-nowrap">{cur}</span>
+                {distPct !== null && (
+                  <span className={cn('text-[10px] font-mono tabular-nums whitespace-nowrap', distColor)}>
+                    ({distPct > 0 ? '+' : ''}{distPct.toFixed(2)}% จาก entry)
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        /* วาดบันไดไม่ได้ (HOLD/CLOSE หรือราคาซ้อนกัน) — โชว์ตัวเลขแบบตารางเดิม */
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-white/5 rounded-lg p-2.5">
+            <div className="text-[10px] text-gray-500 uppercase font-medium">Entry</div>
+            <div className="text-sm font-mono font-semibold text-white mt-0.5">{signal.entry_price}</div>
+          </div>
+          <div className="bg-red-500/5 rounded-lg p-2.5">
+            <div className="text-[10px] text-red-400/70 uppercase font-medium flex items-center gap-1">
+              <Shield className="w-2.5 h-2.5" /> SL
+            </div>
+            <div className="text-sm font-mono font-semibold text-red-400 mt-0.5">{signal.stop_loss}</div>
+          </div>
+          <div className="bg-emerald-500/5 rounded-lg p-2.5">
+            <div className="text-[10px] text-emerald-400/70 uppercase font-medium flex items-center gap-1">
+              <Target className="w-2.5 h-2.5" /> TP
+            </div>
+            <div className="text-sm font-mono font-semibold text-emerald-400 mt-0.5">{signal.take_profit}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div
+          className="flex items-baseline gap-1.5 flex-shrink-0"
+          title="กำไรเป้าหมายเทียบความเสี่ยง คิดจากราคา TP/SL ของสัญญาณนี้"
+        >
+          <span className="text-[10px] text-gray-500 uppercase font-medium">R:R</span>
+          <span className={cn('text-lg font-mono font-bold', rrText === '—' ? 'text-gray-500' : 'text-white')}>
+            {rrText}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-[10px] text-gray-500 uppercase font-medium">Conf</span>
+          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className={cn('h-full rounded-full', cfg.color.replace('text-', 'bg-'))}
+              style={{ width: `${conf}%` }}
+            />
+          </div>
+          <span className={cn('text-xs font-mono font-medium', cfg.color)}>{signal.confidence}%</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3 text-xs">
-        <div className="flex items-center gap-3 text-gray-400">
-          <span>TF: <span className="text-white font-medium">{signal.timeframe}</span></span>
-          <span>R:R <span className="text-white font-medium">1:{rr.toFixed(1)}</span></span>
-          <span>Conf: <span className={cn('font-medium', cfg.color)}>{signal.confidence}%</span></span>
-        </div>
-        {pnlNow !== 0 && (
-          <span className={cn('font-mono font-medium', pnlNow > 0 ? 'text-emerald-400' : 'text-red-400')}>
-            {pnlNow > 0 ? '+' : ''}{pnlNow.toFixed(2)}%
-          </span>
+      <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-500 mb-3">
+        <Clock className="w-3 h-3 flex-shrink-0" />
+        {/* ก่อน mount ยังไม่รู้เวลา "ตอนนี้" — โชว์ — ไปก่อน ดีกว่าเดาเลขผิด */}
+        <span>{createdAgo ?? '—'}</span>
+        {expiry && (
+          <>
+            <span className="text-gray-700">·</span>
+            <span className={cn(expiry.expired && 'text-amber-400')}>{expiry.text}</span>
+          </>
+        )}
+        {!ladder && distPct !== null && (
+          <>
+            <span className="text-gray-700">·</span>
+            <span className={cn('font-mono', distColor)}>
+              {distPct > 0 ? '+' : ''}{distPct.toFixed(2)}% จาก entry
+            </span>
+          </>
         )}
       </div>
 
-      <div className="space-y-1.5 mb-3">
-        {signal.reasons.slice(0, 3).map((r, i) => (
-          <div key={i} className="flex items-start gap-2 text-xs">
-            <div className={cn('w-1 h-1 rounded-full mt-1.5 flex-shrink-0', cfg.color.replace('text-', 'bg-'))} />
-            <div className="flex-1">
-              <span className="text-white font-medium">{r.label}</span>
-              <span className="text-gray-500"> — {r.detail}</span>
-            </div>
+      {signal.reasons.length > 0 && (
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-1.5">
+            {signal.reasons.map((r, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setOpenReason(openReason === i ? null : i)}
+                className={cn(
+                  'px-2 py-1 rounded-lg text-[11px] border transition-colors',
+                  openReason === i
+                    ? 'border-white/20 bg-white/10 text-white'
+                    : 'border-white/5 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+          {openReason !== null && signal.reasons[openReason] && (
+            <div className="mt-2 bg-white/5 rounded-lg p-2.5 text-xs leading-relaxed">
+              <span className="text-white font-medium">{signal.reasons[openReason].label}</span>
+              <span className="text-gray-400"> — {signal.reasons[openReason].detail}</span>
+            </div>
+          )}
+        </div>
+      )}
 
-      {onAddTrade && (signal.action === 'BUY' || signal.action === 'SELL') && (
+      {onAddTrade && tradeable && (
         <button
           onClick={() => onAddTrade(signal)}
-          className={cn('w-full btn-ghost text-xs flex items-center justify-center gap-1.5 border', cfg.border, cfg.color, 'hover:bg-white/5')}
+          // มือถือ: บังคับสูงอย่างน้อย 44px ให้กดด้วยนิ้วง่าย — lg คืนความสูงเดิม เดสก์ท็อปไม่เปลี่ยน
+          className={cn('w-full btn-ghost text-xs flex items-center justify-center gap-1.5 border mt-auto min-h-[44px] lg:min-h-0', cfg.border, cfg.color, 'hover:bg-white/5')}
         >
           <Sparkles className="w-3.5 h-3.5" />
           เพิ่มเข้าพอร์ต

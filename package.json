@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:demo": "set NEXT_PUBLIC_DEMO_MODE=true&& set NEXT_DIST_DIR=.next-demo&& next dev -p 3200",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "check:parity": "node scripts/check-monitor-parity.mjs",
+    "backtest": "node scripts/run-backtest.mjs",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/supabase.ts"

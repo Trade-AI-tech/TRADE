@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchChart } from '@/lib/market-data';
-import { resolvePriceWindow, evaluatePosition } from '@/lib/position-monitor';
+import { resolvePriceWindow, evaluatePosition, resolveSessionStart } from '@/lib/position-monitor';
 import { sendTradeClosedAlert, type ClosedTradeSummary } from '@/lib/telegram';
 import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
@@ -124,9 +124,12 @@ export async function GET(req: NextRequest) {
     const quotes = new Map<string, MarketPrice>();
     /**
      * เวลาเปิดของ "รอบซื้อขาย" ที่ high_24h/low_24h เป็นเจ้าของ
-     * = timestamp ของแท่งเทียนรายวันแท่งล่าสุดที่ fetchChart คืนมา
      * resolvePriceWindow ต้องใช้ค่านี้ตัดสินว่าเอาช่วง [low, high] มาตรวจ SL/TP ได้ไหม
      * ไม่มีค่า → null แล้วมันจะถอยไปใช้ [price, price] เอง (ปลอดภัย แค่จับ wick ไม่ได้)
+     *
+     * ห้ามใช้ timestamp ของแท่งสุดท้ายเดี่ยว ๆ — ทอง/forex ตอนตลาดเปิด Yahoo ใส่ค่านั้น
+     * เท่ากับเวลาปัจจุบัน ทำให้ออเดอร์ทุกไม้ถูกนับว่า "เปิดก่อนรอบ" แล้วปิดผิด
+     * resolveSessionStart รวมเบาะแสสองทางแล้วเลือกให้ถูกทุกตลาด
      */
     const sessionStarts = new Map<string, string | null>();
     const prices: MarketPrice[] = [];
@@ -142,7 +145,13 @@ export async function GET(req: NextRequest) {
           continue;
         }
         quotes.set(key, chart.quote);
-        sessionStarts.set(key, chart.candles[chart.candles.length - 1]?.timestamp ?? null);
+        sessionStarts.set(
+          key,
+          resolveSessionStart(
+            chart.candles[chart.candles.length - 1]?.timestamp ?? null,
+            chart.regularStart
+          )
+        );
         prices.push(chart.quote);
       } catch (e) {
         // symbol เดียวล้มไม่ควรทำให้ทั้ง job ตาย ออเดอร์ตัวอื่นยังต้องได้รับการตรวจ

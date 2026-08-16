@@ -17,8 +17,8 @@
 | Backend | Supabase (Postgres + Auth + RLS) |
 | ข้อมูลราคา | Yahoo Finance chart API v8 — **ไม่ต้องใช้ API key** |
 | แจ้งเตือน | Telegram Bot API |
-| งานตามเวลา | Vercel Cron (สแกนตลาด วันละครั้ง 08:00 น.) + GitHub Actions (เฝ้าราคา ทุก 30 นาที) |
-| Deploy | Vercel |
+| งานตามเวลา | **pg_cron บน Supabase → Edge Function `monitor-positions`** (เฝ้าราคา) · Vercel Cron (สแกนตลาดรายวัน — **หยุดอยู่**, ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) |
+| Deploy | หน้าเว็บ: Vercel (**บัญชีถูกระงับ ตอบ 402 อยู่**) · งานเบื้องหลัง: Supabase Edge Functions |
 
 ---
 
@@ -32,9 +32,10 @@
         │
         ├── กดปุ่ม "สแกนตลาด" เอง ──►  POST /api/signals/scan   (เฉพาะของคนที่ล็อกอิน)
         └── Vercel Cron 08:00 น. ──►  GET  /api/cron/scan-markets (ของผู้ใช้ทุกคน)
+              ⛔ หยุดอยู่ — Vercel ตอบ 402
                                               │
                                               ▼
-                              ดึงแท่งเทียนย้อนหลัง 1 ปี จาก Yahoo
+                    ดึงแท่งเทียนจาก Yahoo (1D ย้อนหลัง 1 ปี · 1H ย้อนหลัง 3 เดือน)
                                               │
                                               ▼
                           src/lib/indicators.ts  →  ตัวชี้วัดดิบ
@@ -54,6 +55,12 @@
 ```
 
 ออเดอร์ที่อยู่ในตาราง `trades` จะถูกเฝ้าต่อทุก 30 นาที — ดู [ระบบเฝ้าราคาระหว่างวัน](#ระบบเฝ้าราคาระหว่างวัน)
+
+> ⛔ **ผังข้างบนนี้ครึ่งบนหยุดอยู่จริง ๆ ตอนนี้** ทั้งปุ่ม "สแกนตลาด" และ Cron 08:00 น.
+> เป็น route ของ Next.js ที่รันบน Vercel ซึ่ง[บัญชีถูกระงับและตอบ 402 ทุกโดเมน](#ทำไมไม่ใช้-vercel)
+> รันในเครื่อง (`npm run dev`) ยังใช้ได้ครบทุกอย่างเหมือนเดิม
+> ส่วน**ระบบเฝ้าราคาถูกย้ายออกจาก Vercel ไปอยู่บน Supabase แล้ว** จึงไม่โดน 402 ด้วย
+> แต่มันจะเริ่มทำงานก็ต่อเมื่อติดตั้งครบตาม [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
 
 ### เครื่องคำนวณสัญญาณ
 
@@ -76,7 +83,22 @@
 - MA200 คำนวณเฉพาะเมื่อมีข้อมูลครบ 200 แท่งจริง ไม่ย่อ period ให้สั้นลงเพื่อให้มีเลขโชว์
 - ตัวชี้วัดคืน `NaN` เมื่อข้อมูลไม่พอ ไม่เดาค่าแทน
 - RSI ใช้ Wilder smoothing และ EMA seed ด้วย SMA — ตรงกับที่ TradingView/MT4 คำนวณ
-- ไม่สร้างสัญญาณ symbol+action เดิมซ้ำภายใน 20 ชั่วโมง
+- ไม่สร้างสัญญาณ symbol+action+**timeframe** เดิมซ้ำภายในหน้าต่างของ timeframe นั้น
+  (1D = 20 ชั่วโมง · 1H = 4 ชั่วโมง — แท่งรายชั่วโมงตลาดเดินเร็วกว่า ล็อก 20 ชม. เท่ากันคือปิดปาก 1H ทั้งวัน)
+
+**สแกนสอง timeframe ต่อ symbol: 1D และ 1H**
+
+| | 1D | 1H |
+|---|---|---|
+| ข้อมูลที่ใช้สแกน | แท่งรายวันย้อนหลัง 1 ปี | แท่งรายชั่วโมงย้อนหลัง 3 เดือน (เพดานข้อมูล intraday ของ Yahoo) |
+| อายุสัญญาณ (`expires_at`) | 7 วัน | **48 ชั่วโมง** — setup รายชั่วโมงมักเดินจบในไม่กี่สิบแท่ง ปล่อยค้าง 7 วันคือโชว์โอกาสที่ตลาดเดินผ่านไปแล้ว |
+| หน้าต่างกันสัญญาณซ้ำ | 20 ชม. | 4 ชม. |
+
+- ทั้งปุ่ม "สแกนตลาด" และ cron รายวัน ไล่ **1D ให้ครบทุก symbol ก่อน แล้วค่อยเก็บ 1H**
+  ภายใต้งบเวลา ~45 วิ (route มี `maxDuration` 60 วิ) — เวลาใกล้หมดจะหยุดเพิ่ม 1H
+  แล้วรายงานจำนวนที่ข้ามในฟิลด์ `hourlySkippedForTime` และในข้อความตอบกลับ ไม่เงียบหาย
+  (เหตุผลของลำดับ: ถ้าสลับ 1D/1H ต่อ symbol แล้วเวลาหมดกลางทาง จะเสียครึ่ง ๆ กลาง ๆ ทั้งสองความละเอียด)
+- symbol ที่ Yahoo ไม่มีแท่งรายชั่วโมง (หรือมีไม่ถึง 50 แท่ง) ถูกข้ามเฉพาะฝั่ง 1H และแจ้งใน `skipped`
 
 **การรับประกันเรื่อง SL/TP ของสัญญาณ** — สัญญาณ BUY ต้องได้ `stop_loss < entry < take_profit`
 และ SELL ต้องได้ `take_profit < entry < stop_loss` เสมอ บังคับไว้ 3 ชั้น:
@@ -93,6 +115,60 @@
 
 ---
 
+## Backtest — วัดความแม่นด้วยข้อมูลจริง
+
+คำถาม "สัญญาณแม่นแค่ไหน" ต้องตอบด้วยการวัด ไม่ใช่การอ้าง — ระบบจึงมีเครื่อง backtest
+ที่เอา **`generateSignal` ตัวเดียวกับที่รันจริง** (import ตรงจาก `src/lib/signal-engine.ts`
+ไม่ใช่สำเนาที่เขียนซ้ำ) ไปเดินย้อนข้อมูลราคาย้อนหลังทีละแท่ง แล้วรายงานสถิติที่วัดได้จริง
+ถ้า backtest มีเครื่องคำนวณของตัวเอง มันจะวัด "คนละเครื่อง" กับที่ผู้ใช้ได้สัญญาณจริง
+แล้วตัวเลขทุกตัวจะกลายเป็นเรื่องแต่งทันที
+
+### วิธีใช้
+
+| ทาง | ทำยังไง |
+|---|---|
+| หน้าเว็บ | เมนู **Backtest** (`/backtest`) — เลือก symbol / ตลาด / timeframe (1D หรือ 1H) / ต้นทุนต่อไม้ แล้วกด "รัน Backtest" ได้การ์ดสถิติ + equity curve (สะสมเป็น R) + ตารางทุกไม้พร้อมเหตุผลออก (ต้องล็อกอิน · Demo Mode รันบนข้อมูลจำลองและติดป้ายบอกชัด) |
+| CLI | `npm run backtest` — รัน basket ตัวอย่างครบ 5 ตลาด ทั้ง 1D และ 1H หรือระบุเอง: `node scripts/run-backtest.mjs --symbol=AAPL --market=US_STOCK --timeframe=1D --feesR=0.05 --maxHoldBars=10` (ไม่ต้องล็อกอิน/ตั้งค่า DB — ดึงราคาจาก Yahoo ตรง ๆ) |
+
+ข้อมูลที่ใช้ทดสอบ: 1D ย้อนหลัง 2 ปี · 1H ย้อนหลัง 3 เดือน (เพดานข้อมูลรายชั่วโมงของ Yahoo)
+ผลลัพธ์แสดงคู่กับช่วงเวลาและจำนวนแท่งที่ทดสอบจริงเสมอ เพื่อให้รู้ว่าตัวเลขวัดจากอะไร
+
+### กติกาการวัด — ออกแบบให้โกงตัวเองไม่ได้
+
+- **walk-forward ทีละแท่ง ไม่มี look-ahead**: สัญญาณที่แท่ง `i` เห็นข้อมูลแค่ถึงแท่ง `i` เท่านั้น
+- **เข้าไม้ที่ราคาเปิดของแท่ง `i+1`** — สัญญาณคำนวณจากราคาปิดแท่ง `i`
+  จะเข้าที่ราคานั้นไม่ได้จริง เพราะแท่งปิดไปแล้ว
+- SL/TP จากสัญญาณเป็น **ระดับราคาตายตัว** เหมือนคำสั่งที่วางค้างไว้กับโบรกเกอร์
+- **gap realism**: แท่งไหนเปิด "ทะลุ" SL/TP ไปแล้ว → ออกที่ราคาเปิดของแท่งนั้น
+  ไม่ใช่ระดับที่ตั้ง (คำสั่ง stop จริงโดน fill ที่ราคาตลาด) — ไม้พวกนี้ติดป้าย
+  `gap_stop` / `gap_target` แยกให้เห็นใน UI ว่าโดน fill ที่ราคาตลาด ไม่ใช่ระดับที่วางไว้
+- แตะทั้ง SL และ TP ในแท่งเดียว → **นับ SL ก่อนเสมอ** ตรงกับกฎของ position-monitor
+  (OHLC บอกไม่ได้ว่าอะไรเกิดก่อนในแท่ง เลือกทางแย่ไว้ก่อน ดีกว่ารายงานกำไรที่อาจไม่เคยเกิด)
+- ไม่ชนอะไรภายใน `maxHoldBars` (default 10 แท่ง) → ปิดที่ราคาปิดแท่งสุดท้ายของช่วงถือ (time exit)
+- **ถือได้ทีละไม้ ไม่ทบไม้** — ระหว่างถือ สัญญาณใหม่ถูกข้าม
+- ทุกไม้วัดเป็น **R multiple** = กำไร/ขาดทุน หารด้วยระยะจากราคาเข้าจริงถึง SL
+  ไม้ที่หาร R ไม่ได้ (แท่งเข้าข้อมูลเสีย หรือราคาเปิด gap มาทับ SL พอดี)
+  ถูกทิ้งและนับแยกในช่อง `skipped` — ไม่เงียบ และไม่เดาผลแทน
+- สถิติที่รายงาน: win rate · profit factor · avg R / expectancy · max drawdown
+  (บน equity curve สะสมเป็น R) · แพ้ติดกันสูงสุด · แยกฝั่ง BUY/SELL —
+  ค่าที่ไม่มีข้อมูลพอจะวัดแสดงเป็น `—` (null) เสมอ ไม่เดาเป็น 0
+  และ profit factor ที่ไม่มีไม้แพ้เป็น null ไม่ใช่ Infinity (อัตราส่วนที่ตัวหารเป็นศูนย์เอาไปเทียบกับใครไม่ได้)
+
+### ข้อจำกัดของตัวเลข — อ่านก่อนเชื่อ
+
+- **ผลอดีตไม่การันตีอนาคต** — นี่คือการวัดกติกากับข้อมูลย้อนหลัง ไม่ใช่คำพยากรณ์
+- **OHLC ไม่เห็นลำดับราคาภายในแท่ง** — เคสก้ำกึ่งถูกปัดไปทางแย่เสมอ (SL ก่อน TP)
+- **ไม่รวม spread / slippage / ค่าคอมจริงของโบรกเกอร์** — มีพารามิเตอร์ `feesR`
+  ให้หักเองเป็นสัดส่วนของ R ต่อไม้ (เช่น 0.05 = 5% ของระยะ SL) ค่า default = 0
+  และทั้ง UI กับ CLI จะเตือนชัด ๆ เมื่อยังเป็น 0 ว่า "ผลจริงจะแย่กว่านี้" —
+  เราไม่เดาต้นทุนให้ เพราะแต่ละโบรกเกอร์/ตลาดไม่เท่ากัน
+- **ตัวเลขผูกกับเวอร์ชันของเครื่องคำนวณ + ช่วงข้อมูลที่เลือกเท่านั้น** — แก้ signal engine
+  หรือเปลี่ยนช่วงข้อมูลเมื่อไหร่ ตัวเลขก็เปลี่ยน ไม่มี "ค่าความแม่นถาวร" ของระบบ
+- 1H มีข้อมูลให้แค่ ~3 เดือน จำนวนไม้จึงน้อย — สถิติจากไม้หลักหน่วยถึงหลักสิบแกว่งแรงตามธรรมชาติ
+  อย่าอ่านทศนิยมของ win rate จากตัวอย่างเล็กเป็นเรื่องจริงจัง
+
+---
+
 ## ระบบเฝ้าราคาระหว่างวัน
 
 > ⚠️ **ไม่ได้ต่อกับโบรกเกอร์ และไม่เคยส่งคำสั่งซื้อขายจริง**
@@ -101,11 +177,11 @@
 > เงินจริงในพอร์ตของคุณไม่ได้ขยับตาม ต้องไปจัดการที่โบรกเกอร์เอง
 
 ```
-GitHub Actions ทุก 30 นาที
-        │  Authorization: Bearer CRON_SECRET  ← บังคับต้องมี (fail-closed)
+pg_cron ในฐานข้อมูล Supabase  ทุก 30 นาที   ← ตัวจับเวลาตัวจริง (schedule_monitor.sql)
+        │  net.http_post + header  x-monitor-secret: <ค่าที่เก็บใน Vault>
         ▼
-GET /api/cron/monitor-positions
-        │
+Edge Function  monitor-positions     ← Deno รันบน Supabase ไม่ผ่าน Vercel เลย
+        │  fail-closed: ไม่มี MONITOR_SECRET = ปฏิเสธทุกคำขอ
         ▼
 ออเดอร์ทั้งหมดที่ status = 'open'  (ของผู้ใช้ทุกคน — ใช้ service-role เพราะ cron ไม่มี session)
         │
@@ -117,13 +193,26 @@ GET /api/cron/monitor-positions
         └── ชน SL หรือ TP → status = 'closed' + exit_price = ระดับที่ชน + ส่ง Telegram
 ```
 
-> ⚠ **`/api/cron/monitor-positions` เป็น fail-closed** — ไม่มี `CRON_SECRET` แล้วมันปฏิเสธ
-> ทุกคำขอ ไม่ใช่เปิดโล่ง แปลว่า **ถ้าลืมตั้ง secret ระบบเฝ้าราคาจะไม่ทำงานเลย**
-> (ต่างจาก `/api/cron/scan-markets` ที่ข้ามการตรวจเมื่อไม่มีค่า จึงยังยิงได้)
-> ฝั่ง workflow ก็จะขึ้น `::warning::` ให้เห็นเป็นสีเหลืองในแท็บ Actions แทนที่จะเงียบ
+**ทั้งเส้นทางนี้ไม่แตะ Vercel และไม่แตะ GitHub Actions เลย** — เป็นผลจากการที่บัญชี Vercel
+ถูกระงับ (ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) และจากโควตา Actions ของ repo private
+ขั้นตอนติดตั้งอยู่ที่ [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
 
-> ⚠ **ความถี่ถูกจำกัดด้วยโควตา GitHub Actions ไม่ใช่ด้วยเทคนิค** — repo นี้เป็น private
-> จึงถูกคิดนาที ดูรายละเอียดและทางเลือกที่ [ตั้งตัวจับเวลาให้ระบบเฝ้าราคา](#ตั้งตัวจับเวลาให้ระบบเฝ้าราคา)
+> 🔁 **ตรรกะ SL/TP ตอนนี้มี 2 สำเนา — และมันต้องตรงกันเป๊ะ**
+> `src/lib/position-monitor.ts` (ฝั่ง Next.js) กับสำเนาที่ฝังอยู่ใน
+> `supabase/functions/monitor-positions/index.ts` (ฝั่ง Deno)
+> ต้องซ้ำเพราะหน้า Dashboard ของ Supabase วางได้แต่ไฟล์เดียวจบ import ไฟล์ในโปรเจกต์ไม่ได้
+> **แก้กฎ SL/TP ที่ไหน ต้องแก้อีกที่ทันที แล้วรัน `npm run check:parity`**
+> ปล่อยให้เพี้ยนกันแปลว่าออเดอร์เดียวกันจะถูกตัดสินคนละแบบขึ้นกับว่าใครเป็นคนรัน
+> ดู [สำเนาตรรกะ 2 ที่ ต้องตรงกันเสมอ](#สำเนาตรรกะ-2-ที่-ต้องตรงกันเสมอ)
+
+> ⚠ **Edge Function เป็น fail-closed** — ไม่มี `MONITOR_SECRET` แล้วมันปฏิเสธทุกคำขอ
+> ไม่ใช่เปิดโล่ง แปลว่า **ลืมตั้ง secret = ไม่มีอะไรเฝ้าราคาให้เลย** (ไม่ใช่ "เฝ้าแบบไม่มีการป้องกัน")
+> ตรวจว่ามันยิงจริงไหมด้วย `select id, status_code, created from net._http_response order by created desc limit 10;`
+> — ต้องเห็น `200` ถ้าเห็น `401` แปลว่า secret ใน Vault ไม่ตรงกับที่ตั้งใน Edge Functions → Secrets
+
+> 📄 **route เดิม `/api/cron/monitor-positions` ยังอยู่ในโค้ด แต่ยิงไม่ถึงบน production**
+> (Vercel ตอบ 402) เก็บไว้เพราะยังใช้ทดสอบในเครื่องได้ และเผื่อวันที่ Vercel กลับมา
+> ถ้าวันนั้นเปิดใช้ ต้องปิด pg_cron ก่อน ไม่งั้นยิงซ้ำสองทาง
 
 ### กฎที่ใช้ตัดสินว่าชน SL/TP หรือยัง
 
@@ -137,14 +226,27 @@ GET /api/cron/monitor-positions
 
 **ช่วงราคาที่เอามาตรวจ เลือกจาก "รอบซื้อขาย" ที่ `high_24h`/`low_24h` เป็นเจ้าของ:**
 
-รอบซื้อขายตัดสินจาก **timestamp ของแท่งเทียนรายวันแท่งล่าสุด** ที่ `fetchChart` คืนมา
-(`candles[candles.length - 1].timestamp`) ซึ่ง `resolvePriceWindow` รับเป็นพารามิเตอร์ที่ 3
+เวลาเปิดรอบมาจาก `resolveSessionStart(...)` ซึ่ง `resolvePriceWindow` รับเป็นพารามิเตอร์ที่ 3
+
+**ทำไมต้องมีฟังก์ชันแยกแทนที่จะอ่านค่าเดียวตรง ๆ** — Yahoo ให้เบาะแสมา 2 ทาง
+และ **ไม่มีทางไหนเชื่อเดี่ยว ๆ ได้เลย** (ตรวจกับข้อมูลจริงครบทั้ง 5 ตลาดแล้ว)
+
+| ตลาด | `timestamp` ของแท่งล่าสุด | `meta.currentTradingPeriod.regular.start` |
+|---|---|---|
+| หุ้น US · crypto | ✅ เวลาเปิดรอบจริง | ✅ ตรงกัน |
+| หุ้นไทย (ตลาดปิด) | ✅ รอบที่เพิ่งจบ | ❌ ชี้ไปรอบ**พรุ่งนี้** (อนาคต) |
+| ทอง · forex (ตลาดเปิด) | ❌ เท่ากับ **เวลาปัจจุบัน** | ✅ เวลาเปิดรอบจริง |
+
+ใช้แท่งล่าสุดอย่างเดียว → ทอง/forex พังทุกไม้ · ใช้ `regular.start` อย่างเดียว → หุ้นไทยพังทุกไม้
+
+กฎที่ถูกกับทุกตลาด: **ตัดค่าที่อยู่ในอนาคตทิ้ง แล้วเอาค่าที่เร็วกว่า**
+เร็วกว่าปลอดภัยกว่าเสมอ เพราะยิ่ง `sessionStart` เร็ว ยิ่งเข้าเงื่อนไข `[price, price]` บ่อย
 
 | กรณี | ช่วงที่ใช้ | เหตุผล |
 |---|---|---|
-| `opened_at` **เก่ากว่า** เวลาเปิดของแท่งล่าสุด | `[low_24h, high_24h]` | ต้องจับ wick ที่แทงถึง SL/TP แล้วเด้งกลับให้ได้ |
-| `opened_at` อยู่ **ในรอบเดียวกัน** กับแท่งล่าสุด | `[price, price]` เท่านั้น | `high`/`low` ของรอบนั้นอาจเกิด *ก่อน* ที่ออเดอร์จะเปิด ใช้แล้วจะปิดออเดอร์ผิด |
-| ไม่ได้ส่งเวลาแท่งล่าสุดมา / อ่านไม่ได้ | `[price, price]` | ถอยไปทางที่ปลอดภัย ยอมพลาด wick ดีกว่าปิดออเดอร์ผิด |
+| `opened_at` **เก่ากว่า** `sessionStart` | `[low_24h, high_24h]` | ต้องจับ wick ที่แทงถึง SL/TP แล้วเด้งกลับให้ได้ |
+| `opened_at` อยู่ **ในรอบเดียวกัน** | `[price, price]` เท่านั้น | `high`/`low` ของรอบนั้นอาจเกิด *ก่อน* ที่ออเดอร์จะเปิด ใช้แล้วจะปิดออเดอร์ผิด |
+| เบาะแสทั้งสองทางอยู่ในอนาคต / อ่านไม่ได้ | `[price, price]` | ถอยไปทางที่ปลอดภัย ยอมพลาด wick ดีกว่าปิดออเดอร์ผิด |
 | `high_24h` / `low_24h` ไม่ใช่ตัวเลขที่ใช้ได้ | `[price, price]` | ไม่เดาค่าแทนข้อมูลที่ไม่มี |
 
 > 🐛 **เดิมใช้ "วัน UTC" ของ `quote.updated_at` ตัดสิน แล้วปิดออเดอร์ผิด**
@@ -179,6 +281,164 @@ pnl_percent = (diff ÷ entry_price) × 100
 
 ---
 
+## สำเนาตรรกะ 2 ที่ ต้องตรงกันเสมอ
+
+กฎที่ตัดสินว่าออเดอร์ของผู้ใช้กำไรหรือขาดทุนเท่าไร **ถูกเขียนไว้ 2 ที่**:
+
+| ที่อยู่ | ใครรัน | สถานะ |
+|---|---|---|
+| `src/lib/position-monitor.ts` | Next.js — route `/api/cron/monitor-positions` และการทดสอบในเครื่อง | ต้นฉบับ |
+| `supabase/functions/monitor-positions/index.ts` | Deno บน Supabase — ตัวที่ pg_cron ยิงจริง | สำเนา |
+
+**ทำไมต้องซ้ำ** — เจ้าของโปรเจกต์ไม่มี `SUPABASE_ACCESS_TOKEN` ในเครื่อง จึงรัน
+`supabase functions deploy` ไม่ได้ ต้องวางโค้ดผ่านหน้า Dashboard ซึ่งรับได้ทีละไฟล์เดียว
+และ import ไฟล์ในโปรเจกต์ด้วย relative path ไม่ได้ (บน Dashboard ไม่มีไฟล์พวกนั้นอยู่)
+ตรรกะจึงต้องถูกฝังลงไปในไฟล์เดียวจบ
+
+**ทำไมมันอันตราย** — ถ้าสองที่เพี้ยนกัน ออเดอร์เดียวกันจะถูกตัดสินคนละแบบขึ้นกับว่าใครเป็นคนรัน
+และการปิดออเดอร์ผิดย้อนกลับไม่ได้ Telegram ที่ส่งไปแล้วก็เรียกคืนไม่ได้
+ที่แย่กว่านั้นคือมันเงียบ — ไม่มี type checker ตัวไหนจับให้ เพราะ `tsconfig.json` ตั้ง
+`exclude: ["supabase"]` ไว้ ไฟล์ฝั่ง Edge Function จึงไม่ถูก `tsc` ตรวจเลย
+
+```bash
+npm run check:parity                  # เทียบตรรกะสองสำเนาว่ายังตรงกันอยู่ไหม
+node scripts/check-monitor-parity.mjs # ตัวเดียวกัน เรียกตรง ๆ (ไม่ต้องพึ่ง npm script)
+```
+
+สคริปต์โหลดทั้งสองไฟล์ขึ้นมาเป็นโมดูลจริง แล้วป้อนเคสชุดเดียวกันเข้าไปเทียบผลทุกฟิลด์
+ต่างกันแม้แต่ฟิลด์เดียวก็ exit 1 พร้อมโชว์เคสที่ต่าง (ใช้แค่ `node` ไม่ต้องลงอะไรเพิ่ม)
+
+> ⚠ **แก้กฎ SL/TP ที่ไหน ต้องแก้อีกที่ทันที แล้วรัน `npm run check:parity` ก่อนส่งงานทุกครั้ง**
+> รวมถึงตอนแก้ `resolvePriceWindow` / `evaluatePosition` / สูตร pnl / เกณฑ์เมินระดับที่ผิดฝั่ง
+> ถ้า `check:parity` ไม่ผ่าน อย่าเพิ่ง deploy — สองฝั่งกำลังคิดคนละแบบอยู่
+
+---
+
+## ทำไมไม่ใช้ Vercel
+
+เขียนไว้ตรง ๆ เพื่อไม่ให้คนที่มาทำต่อเผลอย้ายงานเบื้องหลังกลับไปที่เดิม
+
+**บัญชี Vercel ถูก paused เพราะใช้เกินโควตาแผน Hobby**
+
+| รายการ | ใช้ไป | โควตา Hobby |
+|---|---|---|
+| Fluid Active CPU | 11h 57m | 4h |
+| Fast Origin Transfer | 28.21 GB | 10 GB |
+
+ผลคือ **ทุกโดเมนของโปรเจกต์ตอบ HTTP 402 Payment Required** — ไม่ใช่แค่บาง route
+รวมถึง `/api/cron/monitor-positions` ที่ deploy สำเร็จไปแล้วก่อนหน้านั้นด้วย
+โค้ดไม่ได้พัง แต่ไม่มีใครยิงเข้าถึงได้ ทั้ง Vercel Cron (สแกนตลาด 08:00 น.)
+และ GitHub Actions ที่เคยเป็นตัวจับเวลาให้ระบบเฝ้าราคา จึงหมดทางไปพร้อมกัน
+
+**เจ้าของเลือกอยู่แผนฟรีต่อ ไม่อัพเกรด** แต่**จ่าย Supabase Pro อยู่แล้ว**
+ซึ่งรวม Edge Functions + `pg_cron` + `pg_net` มาให้ในราคาเดิม
+งานเบื้องหลังจึงถูกย้ายมาอยู่บนของที่จ่ายไปแล้ว แทนที่จะจ่ายเพิ่มให้ Vercel
+
+ทางที่ **ไม่** เลือก และเหตุผล:
+
+| ทางเลือก | ทำไมไม่เอา |
+|---|---|
+| อัพเกรด Vercel Pro | เจ้าของไม่ต้องการจ่ายเพิ่ม — เป็นข้อกำหนดตั้งต้น ไม่ใช่ข้อจำกัดทางเทคนิค |
+| ให้ GitHub Actions ยิงต่อไป | ปลายทางตอบ 402 อยู่ดี · ได้แค่ run สีแดงทุก 30 นาที และเผาโควตา Actions ของ repo private เดือนละ ~1,440 นาที จาก 2,000 นาที |
+| ย้ายไป host ฟรีเจ้าอื่น | ต้องดูแลอีกที่ อีกชุด secret และของที่จ่ายอยู่แล้ว (Supabase Pro) ทำงานนี้ได้ครบ |
+
+**สิ่งที่ยังพังอยู่จริงและยังไม่มีใครแก้:** หน้าเว็บ production ทั้งเว็บเข้าไม่ได้
+(สมัคร/ล็อกอิน/ดูพอร์ต/กดสแกนเอง) และการสแกนตลาดรายวันไม่ทำงาน
+เพราะสองอย่างนั้นเป็น Next.js ที่ยังอยู่บน Vercel — ตอนนี้ใช้ได้เฉพาะรันในเครื่องด้วย `npm run dev`
+ที่ย้ายมาแล้วมีอย่างเดียวคือ **ระบบเฝ้าราคา SL/TP**
+
+---
+
+## ติดตั้งตัวเฝ้าราคาบน Supabase
+
+ทำครั้งเดียว ใช้เวลาไม่กี่นาที ทุกขั้นตอนทำผ่านหน้า Dashboard ได้หมด
+(เจ้าของไม่มี `SUPABASE_ACCESS_TOKEN` จึงใช้ `supabase functions deploy` ไม่ได้ —
+ถ้าเครื่องคุณมี token ก็ deploy ด้วย CLI ได้ตามปกติ ผลลัพธ์เหมือนกัน)
+
+### 1. สร้าง Edge Function ด้วยการวางโค้ด
+
+1. เปิด **Supabase Dashboard → Edge Functions → Create function**
+2. ตั้งชื่อให้ตรงเป๊ะว่า `monitor-positions` (migration อ้างชื่อนี้ในตัว URL ที่ยิง)
+3. เปิดไฟล์ `supabase/functions/monitor-positions/index.ts` ใน repo → **คัดลอกทั้งไฟล์** → วางทับ
+   ไฟล์นี้ตั้งใจให้เป็น **ไฟล์เดียวจบ** import เฉพาะ URL (`esm.sh` / `deno.land`)
+   ไม่มี relative import สักบรรทัด เพราะบน Dashboard ไม่มีไฟล์อื่นให้ import
+4. กด **Deploy**
+5. **ปิด "Verify JWT"** ของฟังก์ชันนี้ (Edge Functions → monitor-positions → Details/Settings)
+   pg_cron ยืนยันตัวตนด้วย header `x-monitor-secret` อย่างเดียว ไม่ได้แนบ JWT ของผู้ใช้ไปด้วย
+   **ถ้าไม่ปิด gateway จะตอบ 401 ตั้งแต่ยังไม่ถึงโค้ด** แล้วจะไล่หาสาเหตุผิดที่
+
+### 2. ตั้ง secret ให้ Edge Function
+
+**Dashboard → Edge Functions → Secrets** (คนละที่กับ environment variables ของ Vercel)
+
+| ชื่อ | ค่า |
+|---|---|
+| `MONITOR_SECRET` | สุ่มเองยาว ๆ เช่น `openssl rand -hex 32` — จะเอาไปใส่ใน Vault ข้อถัดไปด้วย |
+
+`SUPABASE_URL` กับ `SUPABASE_SERVICE_ROLE_KEY` ไม่ต้องตั้งเอง Supabase ใส่ให้ Edge Function อยู่แล้ว
+
+> ⚠ `MONITOR_SECRET` **ไม่ใช่** ตัวเดียวกับ `CRON_SECRET` ที่อยู่ใน `.env.local` / Vercel
+> คนละที่ คนละตัว และไม่จำเป็นต้องเป็นค่าเดียวกัน — `CRON_SECRET` เป็นของฝั่ง Next.js เท่านั้น
+> Edge Function เป็น fail-closed: ไม่ตั้ง `MONITOR_SECRET` = ปฏิเสธทุกคำขอ = ไม่มีอะไรเฝ้าราคาให้เลย
+
+### 3. เปิด extension แล้วรัน schedule_monitor.sql
+
+`supabase/scripts/schedule_monitor.sql` เป็นตัวตั้ง `pg_cron` ให้ยิง Edge Function
+ทุก 30 นาที (`*/30 * * * *`) รันผ่าน `npm run db:push` หรือวาง SQL ลงใน **SQL Editor** ก็ได้
+
+ก่อนหน้านั้นต้องเปิด extension `pg_cron` และ `pg_net` (**Database → Extensions**
+หรือปล่อยให้ migration รัน `create extension if not exists ...` ให้เอง — ถ้า role ไม่มีสิทธิ์
+สร้าง extension จะได้ `permission denied` ต้องไปกดเปิดที่หน้าเว็บแทน)
+ถ้ายังไม่เปิด `cron.schedule` กับ `net.http_post` จะ error ว่าไม่รู้จัก schema — ไม่ใช่เงียบ ๆ ไม่ทำงาน
+
+**ต้องแก้ 3 บรรทัดในไฟล์ก่อนรัน** (มีเครื่องหมาย `<<< แก้บรรทัดนี้` กำกับไว้):
+
+| ตัวแปร | ใส่อะไร |
+|---|---|
+| `v_url` | `https://<PROJECT-REF>.supabase.co/functions/v1/monitor-positions` |
+| `v_secret` | ค่าเดียวกับ `MONITOR_SECRET` ที่ตั้งไว้ในข้อ 2 |
+
+ยังไม่แก้แล้วรัน → ไฟล์จะ `raise exception` หยุดทันที ตั้งใจให้พังเสียงดัง
+ดีกว่าตั้ง cron ยิงไป URL ปลอมแล้วเงียบ ๆ โดยเข้าใจว่าระบบเฝ้าราคาทำงานอยู่
+
+> 🔐 **อย่า commit ค่าจริงกลับขึ้น git** — ไฟล์ migration ถูก track อยู่
+> รันเสร็จแล้วให้แก้สองบรรทัดนั้นกลับเป็น placeholder เดิม (`git checkout -- <ไฟล์>` ก็ได้)
+> ค่าที่รันไปแล้วถูกเก็บใน **Vault** ของฐานข้อมูลเรียบร้อยแล้ว ไม่ต้องคาไว้ในไฟล์
+> ไฟล์นี้รันซ้ำได้ปลอดภัย และมีทางลัดสำหรับเปลี่ยน secret ทีหลังโดยไม่ต้องตั้ง cron ใหม่
+
+migration เก็บ URL + secret ไว้ใน **Vault** (ชื่อ `monitor_positions_url` / `monitor_positions_secret`)
+ไม่ได้เขียนค่าจริงลงใน `cron.schedule` ตรง ๆ เพราะคำสั่งของ job อ่านได้จากตาราง `cron.job`
+ใครอ่านตารางนั้นได้ก็จะเห็น secret เต็ม ๆ
+
+### 4. ตรวจว่ามันทำงานจริง
+
+```sql
+-- job ถูกตั้งไว้จริงไหม และรอบเป็นเท่าไร (ชื่อ job คือ monitor-positions-30m)
+select jobid, jobname, schedule, active from cron.job;
+
+-- pg_cron รันแล้วสำเร็จไหม (นี่คือฝั่ง "ยิงออก" ยังไม่ใช่คำตอบของปลายทาง)
+select jobid, status, return_message, start_time from cron.job_run_details
+order by start_time desc limit 10;
+
+-- ปลายทางตอบว่าอะไร — หลักฐานจริงว่าตัวเฝ้าราคาทำงาน (pg_net ยิงแบบ async)
+--   200 = สำเร็จ · 401 = secret ไม่ตรง หรือ anon key ใน Vault ผิด/หมดอายุ
+--   404 = URL/ชื่อฟังก์ชันผิด หรือยังไม่ได้ deploy · 5xx = ฟังก์ชันพังข้างใน (ดู Logs)
+select id, status_code, error_msg, created, left(content, 500) as content_preview
+from net._http_response order by created desc limit 5;
+
+-- เลิกใช้เมื่อไหร่ (เช่น ย้ายกลับไป Vercel):  select cron.unschedule('monitor-positions-30m');
+```
+
+ดู log ของฝั่ง Edge Function ได้ที่ **Dashboard → Edge Functions → monitor-positions → Logs**
+อยากทดสอบทันทีไม่ต้องรอถึงนาทีที่ 0/30 → ดูคำสั่งยิงเองในคอมเมนต์ข้อ 5.4 ท้ายไฟล์ migration
+(⚠ เป็นการกระตุ้นตัวเฝ้าราคาจริง มันจะปิดออเดอร์ที่แตะ SL/TP และส่ง Telegram จริง)
+
+> ⚠ **ยังไม่ได้ทำ 4 ขั้นนี้ = ไม่มีอะไรเฝ้าราคาให้เลย** ออเดอร์ที่ชน SL/TP จะไม่ถูกบันทึก
+> และไม่มี Telegram ส่งออกไป โดยที่หน้าเว็บไม่มีอะไรบอกว่ามันไม่ทำงาน
+> ตัวเลข `pnl` ของออเดอร์ที่เปิดอยู่จะค้างอยู่ที่ค่าล่าสุดที่เคยอัปเดตไว้เฉย ๆ
+
+---
+
 ## เริ่มใช้งาน
 
 ### 1. ติดตั้ง
@@ -204,6 +464,13 @@ cp .env.example .env.local
 npx supabase link --project-ref <project-ref>
 npm run db:push
 ```
+
+> ⚠ `db:push` จะรัน `schedule_monitor.sql` ด้วย ซึ่ง **ตั้งใจให้ `raise exception` หยุด**
+> ถ้ายังไม่ได้แก้ URL/secret 2 บรรทัดในไฟล์ **และใน Vault ก็ยังไม่มีค่าจริง**
+> (กันไม่ให้ตั้ง cron ยิงไป URL ปลอมแบบเงียบ ๆ) — ถ้า Vault มีค่าอยู่แล้วมันจะข้ามให้เอง
+> ไม่เขียนทับ จึงรันซ้ำได้ปลอดภัยหลังติดตั้งเสร็จ
+> ตอนนี้ยังไม่อยากตั้งตัวเฝ้าราคา → ข้ามไฟล์นั้นไปก่อนได้ ระบบส่วนอื่นไม่ได้พึ่งมัน
+> อยากตั้งเลย → ทำตาม [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
 
 ### 4. รัน
 
@@ -231,10 +498,14 @@ npm run dev
 | แจ้งเตือน "ข่าวสำคัญ" | ❌ ปุ่มในหน้าตั้งค่ายังล็อกไว้ เพราะยังไม่มีแหล่งข่าว (ส่วนแจ้งเตือน SL/TP ใช้ได้แล้ว) |
 | `total_pnl_percent` บน Dashboard | ❌ ยังไม่มีที่ให้กรอกเงินทุนตั้งต้น จึงคำนวณไม่ได้ — ตอนนี้ **ซ่อนป้ายเปอร์เซ็นต์ไปเลย** แทนที่จะโชว์ `+0.0%` ที่ไม่มีที่มา |
 | ยอดกำไร/ขาดทุนรวม | ⚠️ เป็นการ **บวกข้ามสกุลเงิน** ตรง ๆ (หุ้นไทยเป็นบาท · หุ้น US/ทอง/forex เป็นดอลลาร์) โดยไม่แปลงอัตราแลกเปลี่ยน จึงแสดงเป็นตัวเลขเปล่าไม่ติดสัญลักษณ์สกุลเงิน — ถ้าถือหลายตลาดพร้อมกัน ยอดรวมนี้ตีความตรง ๆ ไม่ได้ |
-| Backtest | ❌ ยังไม่มี — ตัวเลข win rate มาจากออเดอร์ที่บันทึกเองเท่านั้น |
+| Backtest | ✅ มีแล้ว — หน้า `/backtest` และ `npm run backtest` ([กติกาการวัด](#backtest--วัดความแม่นด้วยข้อมูลจริง)) แต่ให้อ่านตัวเลขตามที่มันเป็น: ผลของ **เครื่องคำนวณสัญญาณเวอร์ชันปัจจุบัน กับข้อมูลช่วงที่เลือก** เท่านั้น — แก้ engine หรือเปลี่ยนช่วงข้อมูลตัวเลขก็เปลี่ยน · `feesR = 0` คือยังไม่รวมค่าธรรมเนียม/slippage · และผลอดีตไม่การันตีอนาคต (ส่วน win rate บน Dashboard ยังมาจากออเดอร์ที่บันทึกเอง — คนละตัวเลขกัน อย่าเอามาปนกัน) |
+| หน้าเว็บบน production | ⛔ **เข้าไม่ได้ทั้งเว็บ** — บัญชี Vercel ถูกระงับ ทุกโดเมนตอบ 402 ([ทำไม](#ทำไมไม่ใช้-vercel)) ตอนนี้ใช้ได้เฉพาะรันในเครื่อง `npm run dev` |
+| สแกนตลาดอัตโนมัติ 08:00 น. | ⛔ ไม่ทำงาน — เป็น Vercel Cron ที่ยิงไปเจอ 402 (กดสแกนเองในเครื่องได้ตามปกติ) |
+| ระบบเฝ้าราคา SL/TP | ✅ ย้ายมาอยู่บน Supabase แล้ว ไม่โดน 402 — แต่ต้อง[ติดตั้งด้วยมือ](#ติดตั้งตัวเฝ้าราคาบน-supabase)ก่อนถึงจะเริ่มทำงาน |
 
 > ⚠️ **ระบบนี้ไม่ใช่คำแนะนำการลงทุน** สัญญาณที่ได้มาจากสูตรคณิตศาสตร์บนราคาย้อนหลัง
-> ไม่เคยผ่านการ backtest และไม่รับประกันผลใด ๆ ตัดสินใจเองก่อนลงเงินจริงเสมอ
+> การ backtest ที่มีให้ก็วัดได้แค่ผลในอดีตของกติกาปัจจุบัน ไม่รับประกันผลใด ๆ ทั้งสิ้น
+> ตัดสินใจเองก่อนลงเงินจริงเสมอ
 
 ---
 
@@ -245,17 +516,18 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── auth/callback/      แลก code → session หลังยืนยันอีเมล
+│   │   ├── backtest/           POST รัน walk-forward backtest (ต้องล็อกอิน · ตรรกะเงินทั้งหมดอยู่ใน lib/backtest.ts)
 │   │   ├── cron/
 │   │   │   ├── scan-markets/       งานรายวัน สแกนของผู้ใช้ทุกคน + ส่ง Telegram
-│   │   │   └── monitor-positions/  ทุก 30 นาที — เฝ้า SL/TP ของออเดอร์ที่เปิดอยู่
-│   │   │                           อัปเดต pnl แบบ unrealized + signals.current_price
+│   │   │   └── monitor-positions/  ฝาแฝดฝั่ง Vercel ของตัวเฝ้าราคา — ตอนนี้ยิงไม่ถึง (402)
+│   │   │                           ตัวที่ทำงานจริงคือ Edge Function ใต้ supabase/functions/
 │   │   │                           บังคับต้องมี CRON_SECRET (fail-closed)
 │   │   ├── profile/            โปรไฟล์ + การตั้งค่าแจ้งเตือน (cron อ่านจากที่นี่)
 │   │   ├── signals/scan/       ปุ่ม "สแกนตลาด" เฉพาะของคนที่ล็อกอิน
 │   │   ├── telegram/test/      ทดสอบส่งข้อความ
 │   │   ├── trades/             เปิด (POST) / ปิด (PATCH) ออเดอร์
 │   │   └── watchlist/          เพิ่ม-ลบ symbol ที่ติดตาม
-│   ├── dashboard/  markets/  signals/  trades/  news/  settings/
+│   ├── dashboard/  markets/  signals/  trades/  backtest/  news/  settings/
 │   └── auth/login/
 ├── components/
 │   ├── charts/     EquityChart
@@ -268,6 +540,8 @@ src/
 ├── lib/
 │   ├── indicators.ts      RSI · MACD · EMA/SMA · Bollinger · ATR · S/R · patterns
 │   ├── signal-engine.ts   รวมทุกตัวชี้วัด → ตัดสิน BUY/SELL/HOLD + SL/TP
+│   ├── backtest.ts        walk-forward backtest ของ signal engine — pure ล้วน ไม่แตะ network/DB
+│   │                      (กติกาการวัดอยู่หัวข้อ Backtest ข้างบน · รันจาก CLI ด้วย scripts/run-backtest.mjs)
 │   ├── position-monitor.ts  pure function ตัดสิน SL/TP + คิด pnl (ไม่แตะ DB/network)
 │   ├── market-data.ts     ตัวห่อ Yahoo Finance + แปลงชื่อ symbol ตามตลาด
 │   ├── telegram.ts        จัดรูปข้อความ + ส่ง (มี fallback เป็น plain text)
@@ -280,11 +554,19 @@ src/
 supabase/migrations/
 ├── 001_initial_schema.sql       ปลดระวางแล้ว (เดิมเป็นสคีมา TikTok)
 ├── 002_trading_schema.sql       สคีมาหลักของระบบเทรด
-└── 003_position_monitoring.sql  ฟิลด์ที่ตัวเฝ้าราคาต้องใช้ (ALTER ล้วน ไม่ลบข้อมูล)
+├── 003_position_monitoring.sql  ฟิลด์ที่ตัวเฝ้าราคาต้องใช้ (ALTER ล้วน ไม่ลบข้อมูล)
+└── schedule_monitor.sql     ตั้ง pg_cron ยิง Edge Function monitor-positions ทุก 30 นาที
+                                 (ตัวจับเวลาตัวจริงของระบบเฝ้าราคาอยู่ที่ไฟล์นี้ · ต้องแก้ 3 บรรทัดก่อนรัน)
+
+supabase/functions/
+└── monitor-positions/index.ts   ตัวเฝ้าราคาที่ทำงานจริง — Deno ไฟล์เดียวจบ ไม่มี relative import
+                                 มีสำเนาตรรกะจาก src/lib/position-monitor.ts ฝังอยู่ข้างใน
+                                 ⚠ แก้กฎ SL/TP แล้วต้องแก้ทั้งสองที่ + npm run check:parity
+                                 (ai-alerts/ กับ sync-tiktok/ ที่อยู่ข้าง ๆ เป็นซากยุค TikTok ไม่ได้ใช้)
 
 .github/workflows/
 ├── deploy.yml               lint + build ทุก push · deploy job ข้ามเองถ้าไม่มี secrets
-└── monitor-positions.yml    ตัวจับเวลายิง /api/cron/monitor-positions ทุก 30 นาที
+└── monitor-positions.yml    ⛔ schedule ถูกปิดแล้ว เหลือแค่กดรันเอง (ปลายทางตอบ 402)
 ```
 
 ### การแปลงชื่อ symbol
@@ -310,6 +592,10 @@ supabase/migrations/
 - `/api/cron/scan-markets` และ `/api/cron/monitor-positions` ป้องกันด้วย `CRON_SECRET`
   โดย **`monitor-positions` เป็น fail-closed** — ไม่มี secret แล้วปฏิเสธทุกคำขอ (จึงหยุดทำงานทั้งระบบ)
   ส่วน `scan-markets` ข้ามการตรวจเมื่อไม่ได้ตั้งค่า
+- Edge Function `monitor-positions` ป้องกันด้วย **`MONITOR_SECRET`** ซึ่งเป็นคนละตัวและคนละที่กับ
+  `CRON_SECRET` (ตั้งที่ Supabase Dashboard → Edge Functions → Secrets) และเป็น fail-closed เหมือนกัน
+  ค่าที่ pg_cron ใช้ยิงเก็บอยู่ใน **Vault** ไม่ได้เขียนลงใน `cron.schedule` ตรง ๆ
+  เพราะ SQL ของ job อ่านได้จากตาราง `cron.job`
 
 ### ⚠ กติกาการแก้ migration
 
@@ -324,9 +610,23 @@ supabase/migrations/
 
 ## Deploy
 
+ตอนนี้ระบบถูกแบ่งเป็นสองฝั่ง และสองฝั่งสถานะไม่เท่ากัน
+
+| ฝั่ง | อยู่ที่ไหน | สถานะจริง |
+|---|---|---|
+| หน้าเว็บ + API routes | Vercel (โปรเจกต์ `trading-ai`) | ⛔ **บัญชีถูกระงับ ทุกโดเมนตอบ HTTP 402** — เข้าไม่ได้ |
+| ระบบเฝ้าราคา SL/TP | Supabase Edge Functions + pg_cron | ✅ ไม่ได้พึ่ง Vercel — แต่ต้อง[ติดตั้ง](#ติดตั้งตัวเฝ้าราคาบน-supabase)ก่อนถึงจะเริ่มทำงาน |
+
+### ฝั่ง Vercel (หยุดอยู่)
+
 **Production:** https://trading-ai-ivory.vercel.app (โปรเจกต์ `trading-ai` บน Vercel)
 
-ยังไม่ได้เชื่อม Git integration — ตอนนี้ deploy ด้วยมือจากเครื่อง:
+> ⛔ **URL นี้ตอบ 402 Payment Required อยู่ ไม่ใช่แค่ช้าหรือบางหน้า** — บัญชีถูก paused
+> เพราะใช้เกินโควตาแผน Hobby เหตุผลเต็มอยู่ที่ [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)
+> จนกว่าโควตาจะรีเซ็ตหรือเจ้าของเปลี่ยนใจอัพเกรด ให้ถือว่าฝั่งนี้ **ใช้ไม่ได้ทั้งหมด**
+> อยากดูหน้าเว็บให้รันในเครื่องด้วย `npm run dev`
+
+ยังไม่ได้เชื่อม Git integration — deploy ด้วยมือจากเครื่อง (ตอนนี้ deploy ขึ้นไปก็ยังโดน 402):
 
 ```bash
 npx vercel deploy --prod
@@ -341,38 +641,42 @@ environment variables ฝั่ง production ตั้งครบแล้ว�
 ถ้าจะใช้ preview deployment ต้องตั้งเพิ่มเอง
 
 Cron ของ **การสแกนตลาด** อ่านจาก `vercel.json` → `0 1 * * *` UTC = **08:00 น. เวลาไทย**
+— ตั้งไว้เหมือนเดิม แต่**ไม่ได้ทำงาน**เพราะปลายทางตอบ 402 (สแกนเองในเครื่องได้ตามปกติ)
 
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) รัน lint + build ทุก push
 ส่วน job deploy จะข้ามไปเงียบ ๆ ถ้ายังไม่ได้ตั้ง secrets — ไม่ทำให้ CI แดงค้าง
 
-### ตั้งตัวจับเวลาให้ระบบเฝ้าราคา
+### ฝั่ง Supabase (ตัวเฝ้าราคา)
 
-Vercel Hobby plan ให้ cron ได้แค่วันละครั้ง และโควตานั้นถูกการสแกนตลาดใช้ไปแล้ว
-งานเฝ้าราคาจึงถูกยิงจาก [.github/workflows/monitor-positions.yml](.github/workflows/monitor-positions.yml) แทน
-ตอนนี้ตั้งไว้ที่ **ทุก 30 นาที** (`*/30 * * * *`)
+ขั้นตอนติดตั้งเต็มอยู่ที่ [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
+สรุปสั้น ๆ: วางโค้ด `supabase/functions/monitor-positions/index.ts` ผ่าน Dashboard →
+ตั้ง secret `MONITOR_SECRET` → รัน `schedule_monitor.sql` ที่เป็นตัวตั้ง pg_cron
 
-ต้องตั้ง secret ให้ GitHub ก่อน ไม่งั้น workflow จะข้ามตัวเองทุกรอบ (พร้อม `::warning::` สีเหลือง)
-และเพราะ endpoint เป็น fail-closed **การไม่ตั้ง secret = ไม่มีอะไรเฝ้าราคาให้เลย**
+> ⚠ ที่เขียนว่า "ต้อง Supabase Pro" ไม่ใช่เพราะ pg_cron ใช้ไม่ได้บนแผนฟรี
+> แต่เพราะ Free plan จะ **หยุดโปรเจกต์อัตโนมัติเมื่อไม่มี activity** ตัวจับเวลาจะตายตามไปด้วย
+> แบบเงียบ ๆ เจ้าของโปรเจกต์นี้จ่าย Pro อยู่แล้วจึงไม่ติดปัญหานี้
 
-1. เปิด repo บน GitHub → **Settings → Secrets and variables → Actions**
-2. กด **New repository secret**
-3. Name: `CRON_SECRET` · Secret: **ค่าเดียวกับที่ตั้งไว้ใน Vercel environment variables**
-   (ถ้าไม่ตรงกัน endpoint จะตอบ 401 แล้ว workflow จะขึ้นแดงพร้อม response body ให้ดู)
-4. กดรันเองได้ทันทีที่แท็บ **Actions → Monitor Positions → Run workflow** ไม่ต้องรอรอบถัดไป
+### GitHub Actions: schedule ถูกปิดแล้ว
 
-> GitHub schedule ไม่การันตีเวลา ช่วงคนใช้เยอะอาจดีเลย์ 5–15 นาที และถ้า repo เงียบเกิน 60 วัน
-> GitHub จะปิด schedule ให้อัตโนมัติ ต้องเข้าไปกดเปิดใหม่เอง
+[.github/workflows/monitor-positions.yml](.github/workflows/monitor-positions.yml)
+**เหลือแค่ `workflow_dispatch` (กดรันเอง)** — `schedule` ถูกคอมเมนต์ไว้
 
-#### ⚠ ทำไมถึงเป็น 30 นาที ไม่ใช่ 15 — เรื่องโควตา Actions
+เพราะปลายทางที่มันยิง (`/api/cron/monitor-positions` บน Vercel) ตอบ 402 อยู่
+ปล่อยไว้จะได้แค่ run สีแดงทุก 30 นาทีและเผาโควตา Actions ทิ้งเปล่า ๆ
+ถ้าจะเปิดกลับวันหลัง ให้อ่านคอมเมนต์หัวไฟล์นั้นก่อน — มีทั้งเรื่องโควตาและเรื่องยิงซ้ำกับ pg_cron
+
+#### ⚠ เรื่องโควตา Actions — เก็บไว้เตือนคนที่คิดจะย้ายกลับ
+
+ถึง Vercel จะกลับมาใช้ได้ ตัวเลขชุดนี้ก็ยังจริงอยู่ อย่าเผลอตั้ง `*/15` เพราะ "อยากให้ถี่"
 
 repo `SLIPandTIKTOK/TIKTOK` เป็น **private** GitHub จึงคิดนาที Actions
 (public repo เท่านั้นที่ใช้ฟรีไม่จำกัด) แผนฟรีให้ **2,000 นาที/เดือน**
-และ GitHub **ปัดขึ้นเป็นนาทีเต็มต่อ job** ต่อให้ job นี้ยิง curl เสร็จใน 10 วินาที ก็ถูกหัก 1 นาที
+และ GitHub **ปัดขึ้นเป็นนาทีเต็มต่อ job** ต่อให้ job ยิง curl เสร็จใน 10 วินาที ก็ถูกหัก 1 นาที
 
 | ความถี่ | รอบ/เดือน | นาทีที่ใช้ | ผล |
 |---|---|---|---|
 | `*/15 * * * *` | 4 × 24 × 30 = **2,880** | ≥ 2,880 | ❌ เกินโควตา 2,000 ตั้งแต่ยังไม่นับ deploy.yml |
-| `*/30 * * * *` | 2 × 24 × 30 = **1,440** | ≈ 1,440 | ✅ เหลือ ~560 นาทีให้ `deploy.yml` |
+| `*/30 * * * *` | 2 × 24 × 30 = **1,440** | ≈ 1,440 | ⚠ เหลือ ~560 นาทีให้ `deploy.yml` |
 
 `deploy.yml` รัน `npm ci` + lint + build ทุก push ตกราว 3–4 นาที/push (+1 นาทีของ `check-secrets`)
 → ~560 นาทีที่เหลือพอราว **100–140 push/เดือน**
@@ -382,68 +686,29 @@ repo `SLIPandTIKTOK/TIKTOK` เป็น **private** GitHub จึงคิด�
 ผู้ใช้จะเชื่อว่ายังมีตัวเฝ้าราคาให้อยู่ทั้งที่ไม่มีแล้ว — ออเดอร์ที่ชน SL/TP จะไม่ถูกบันทึก
 และไม่มี Telegram ส่งออกไป เช็คโควตาที่เหลือได้ที่ **Settings → Billing and plans → Usage**
 
-**อยากได้ทุก 15 นาทีจริง ๆ ต้องทำอย่างใดอย่างหนึ่งก่อน:**
+pg_cron ไม่มีปัญหานี้เลย เพราะยิงจากในฐานข้อมูลของ Supabase เอง ไม่นับเป็นนาที Actions
+และไม่ผ่าน Vercel — เป็นเหตุผลที่ตัวจับเวลาย้ายมาอยู่ที่นั่น ไม่ใช่แค่เพราะ Vercel ล่ม
 
-1. เปลี่ยน repo เป็น **public** — Actions บน public repo ไม่คิดนาที (แต่โค้ดจะเปิดเผยทั้งหมด)
-2. อัป **GitHub plan** (Team/Pro) เพื่อเพิ่มโควตานาที
-3. ย้ายไป **pg_cron บน Supabase Pro** ตามหัวข้อถัดไป — ไม่กินโควตา Actions เลย
-
-#### ทางเลือก: pg_cron บน Supabase (ต้อง Pro plan)
-
-ตรงเวลากว่า ตั้งให้ถี่กว่าได้ และไม่แตะโควตา GitHub Actions เพราะยิงจากในฐานข้อมูลเอง
-(ใช้ตัวใดตัวหนึ่งพอ ถ้าเปิดทั้งคู่จะกลายเป็นยิงซ้ำโดยเปล่าประโยชน์ —
-เปลี่ยนมาใช้ pg_cron แล้วให้ปิด schedule ใน `monitor-positions.yml` ด้วย)
-
-**ต้องเปิด extension `pg_cron` และ `pg_net` ก่อน** (Dashboard → Database → Extensions
-หรือรัน `create extension` สองบรรทัดแรกข้างล่าง) ถ้ายังไม่เปิด `cron.schedule` กับ `net.http_get`
-จะ error ว่าไม่รู้จัก schema — ไม่ใช่เงียบ ๆ ไม่ทำงาน
-
-> เช็คแผนของโปรเจกต์ตัวเองกับหน้า pricing ของ Supabase ก่อน (แผนที่รองรับเปลี่ยนได้)
-> ที่เขียนว่า "ต้อง Pro" ไว้เพราะ Free plan จะ **หยุดโปรเจกต์อัตโนมัติเมื่อไม่มี activity**
-> ซึ่งทำให้ตัวจับเวลาหยุดตามไปด้วย — เป็นการหยุดแบบเงียบแบบเดียวกับโควตา Actions หมด
-
-```sql
--- รันใน SQL Editor ของ Supabase (ต้อง Pro plan)
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
-
--- เก็บ secret ใน Vault อย่าเขียนค่าจริงลงใน cron.schedule ตรง ๆ
--- เพราะ SQL ของ job ถูกอ่านได้จากตาราง cron.job
-select vault.create_secret('<CRON_SECRET ตัวเดียวกับบน Vercel>', 'cron_secret');
-
--- ทุก 15 นาที — ตรงนี้ถี่ได้เพราะไม่ได้กินโควตา GitHub Actions
--- CRON_SECRET บังคับต้องมี ไม่งั้น endpoint ตอบ 401 ทุกครั้ง (fail-closed)
-select cron.schedule(
-  'monitor-positions',
-  '*/15 * * * *',
-  $$
-  select net.http_get(
-    url     := 'https://trading-ai-ivory.vercel.app/api/cron/monitor-positions',
-    headers := jsonb_build_object(
-      'Authorization',
-      'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
-    ),
-    timeout_milliseconds := 120000
-  );
-  $$
-);
-
--- pg_net ยิงแบบ async — ผลลัพธ์ไม่โผล่ใน cron.job_run_details ต้องดูที่นี่
--- status_code ต้องเป็น 200 ถ้าเจอ 401 แปลว่า secret ใน Vault ไม่ตรงกับบน Vercel
-select id, status_code, created from net._http_response order by created desc limit 10;
-
--- ดูว่า job ถูกตั้งไว้จริงไหม:  select jobid, jobname, schedule, active from cron.job;
--- เลิกใช้เมื่อไหร่:              select cron.unschedule('monitor-positions');
-```
+> ถ้าวันหนึ่งจะกลับไปให้ Actions ยิง Vercel จริง ๆ **ต้องปิด pg_cron ก่อน**
+> (`select cron.unschedule('monitor-positions-30m');`) เปิดทั้งคู่ = ยิงซ้ำสองทาง
+> ไม่ถึงกับทำข้อมูลพัง (การตรวจ SL/TP ซ้ำได้ผลเดิม) แต่เปลืองและ log อ่านยากขึ้นเปล่า ๆ
 
 ---
 
 ## คำสั่งที่ใช้บ่อย
 
 ```bash
-npm run dev        # dev server
-npm run build      # production build
-npm run lint       # eslint
-npm run db:push    # ส่ง migration ขึ้น Supabase
-npm run db:types   # gen TypeScript types จากสคีมา (ต้องมี local supabase)
+npm run dev           # dev server
+npm run build         # production build
+npm run lint          # eslint
+npm run backtest      # วัดผล signal engine กับข้อมูลย้อนหลังจริง (walk-forward)
+                      # (= node scripts/run-backtest.mjs — basket ตัวอย่าง 5 ตลาด ทั้ง 1D/1H
+                      #  หรือระบุ --symbol= --market= --timeframe= --feesR= --maxHoldBars=)
+                      # ⚠ แก้ signal-engine/indicators ต้องรันเทียบก่อน-หลังเสมอ
+npm run db:push       # ส่ง migration ขึ้น Supabase
+npm run db:types      # gen TypeScript types จากสคีมา (ต้องมี local supabase)
+npm run check:parity  # เทียบตรรกะ SL/TP ระหว่าง src/lib/position-monitor.ts
+                      # กับสำเนาใน supabase/functions/monitor-positions/index.ts
+                      # (= node scripts/check-monitor-parity.mjs)
+                      # ⚠ ต้องรันทุกครั้งที่แก้กฎ SL/TP — tsc ไม่ตรวจไฟล์ใต้ supabase/ ให้
 ```

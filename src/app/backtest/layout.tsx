@@ -1,6 +1,6 @@
 import AppShell from '@/components/ui/AppShell';
 
 // โครงหน้าทั้งหมดอยู่ที่ AppShell ที่เดียว — เดิมโค้ดชุดเดียวกันถูกก๊อปซ้ำทั้ง 7 layout
-export default function NewsLayout({ children }: { children: React.ReactNode }) {
+export default function BacktestLayout({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
