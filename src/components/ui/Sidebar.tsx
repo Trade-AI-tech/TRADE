@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Zap,
   LineChart,
-  Briefcase,
   FlaskConical,
   Newspaper,
   Settings,
@@ -18,11 +17,13 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/hooks/useStore';
 
+// "พอร์ตเทรด" (/trades) ถูกถอดออกจากเมนูโดยตั้งใจ — ผู้ใช้เทรดผ่านพอร์ตโบรกเกอร์ภายนอก
+// จึงไม่ต้องการหน้าพอร์ตในระบบนี้ แต่ route /trades ยังเข้าได้ตรง ๆ ทาง URL
+// (หน้า/API/ตารางยังอยู่ครบ แค่ซ่อนจากเมนู ไม่ได้ลบ)
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/signals', label: 'สัญญาณ AI', icon: Zap },
   { href: '/markets', label: 'ตลาด', icon: LineChart },
-  { href: '/trades', label: 'พอร์ตเทรด', icon: Briefcase },
   { href: '/backtest', label: 'Backtest', icon: FlaskConical },
   { href: '/news', label: 'ข่าวสาร', icon: Newspaper },
 ];

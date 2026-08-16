@@ -49,6 +49,15 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    // ใส่เมลแต่ไม่ใส่รหัส = ตั้งใจเข้าแบบไม่ใช้รหัส → ส่งลิงก์ให้เลย
+    // (ของจริงเกิดแล้ว: ผู้ใช้เห็น placeholder จุด ๆ ในช่องรหัสแล้วเข้าใจว่าไม่ต้องกรอก
+    // กดปุ่มใหญ่แล้วโดนเบราว์เซอร์ทวงรหัส ทั้งที่ปุ่มลิงก์อีเมลอยู่ถัดลงไปนิดเดียว)
+    if (mode === 'login' && !password.trim()) {
+      setLoading(false);
+      await handleMagicLink();
+      return;
+    }
+
     try {
       const { createClient } = await import('@/lib/supabase');
       const supabase = createClient();
@@ -116,14 +125,16 @@ export default function LoginPage() {
             <label className="text-xs text-gray-400 mb-1.5 block">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              {/* required เฉพาะโหมดสมัคร — โหมดเข้าระบบเว้นว่างได้ (= ขอลิงก์ทางอีเมลแทน)
+                  placeholder ห้ามเป็นจุด ๆ เด็ดขาด: ผู้ใช้จริงเคยเข้าใจว่ามีรหัสอยู่ในช่องแล้ว */}
               <input
                 type="password"
-                required
-                minLength={6}
+                required={mode === 'signup'}
+                minLength={mode === 'signup' ? 6 : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-field pl-10"
-                placeholder="••••••••"
+                placeholder={mode === 'signup' ? 'ตั้งรหัสอย่างน้อย 6 ตัว' : 'เว้นว่างได้ — ระบบจะส่งลิงก์เข้าอีเมลแทน'}
               />
             </div>
           </div>

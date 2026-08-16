@@ -3,13 +3,12 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
-  TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2, Sparkles,
+  TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2,
 } from 'lucide-react';
 import type { Signal } from '@/types';
 
 interface Props {
   signal: Signal;
-  onAddTrade?: (signal: Signal) => void;
 }
 
 const actionConfig = {
@@ -58,7 +57,7 @@ function expiresInTh(iso: string | null, now: number): { text: string; expired: 
   return { text: `หมดอายุในอีก ${Math.floor(h / 24)} วัน`, expired: false };
 }
 
-export default function SignalCard({ signal, onAddTrade }: Props) {
+export default function SignalCard({ signal }: Props) {
   const cfg = actionConfig[signal.action];
   const Icon = cfg.icon;
   const stars = strengthStars[signal.strength];
@@ -263,7 +262,10 @@ export default function SignalCard({ signal, onAddTrade }: Props) {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 mb-3">
+      {/* ปุ่ม "เพิ่มเข้าพอร์ต" ถูกถอดออก — ผู้ใช้เทรดผ่านพอร์ตโบรกเกอร์ภายนอก การ์ดนี้จึงเป็นสัญญาณล้วน
+          mt-auto ที่เคยอยู่บนปุ่มย้ายมาที่แถวข้อมูลแทน: ดันบล็อก R:R/เวลา/เหตุผล ลงชิดก้นการ์ด
+          การ์ดในกริดที่ถูกยืดสูงเท่ากัน (h-full) จะได้ไม่เหลือโพรงว่างค้างท้ายการ์ด */}
+      <div className="flex items-center justify-between gap-4 mt-auto pt-1 mb-3">
         <div
           className="flex items-baseline gap-1.5 flex-shrink-0"
           title="กำไรเป้าหมายเทียบความเสี่ยง คิดจากราคา TP/SL ของสัญญาณนี้"
@@ -306,7 +308,7 @@ export default function SignalCard({ signal, onAddTrade }: Props) {
       </div>
 
       {signal.reasons.length > 0 && (
-        <div className="mb-3">
+        <div>
           <div className="flex flex-wrap gap-1.5">
             {signal.reasons.map((r, i) => (
               <button
@@ -331,17 +333,6 @@ export default function SignalCard({ signal, onAddTrade }: Props) {
             </div>
           )}
         </div>
-      )}
-
-      {onAddTrade && tradeable && (
-        <button
-          onClick={() => onAddTrade(signal)}
-          // มือถือ: บังคับสูงอย่างน้อย 44px ให้กดด้วยนิ้วง่าย — lg คืนความสูงเดิม เดสก์ท็อปไม่เปลี่ยน
-          className={cn('w-full btn-ghost text-xs flex items-center justify-center gap-1.5 border mt-auto min-h-[44px] lg:min-h-0', cfg.border, cfg.color, 'hover:bg-white/5')}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          เพิ่มเข้าพอร์ต
-        </button>
       )}
     </div>
   );

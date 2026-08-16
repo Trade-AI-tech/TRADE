@@ -3,22 +3,8 @@
 import { useState, useMemo } from 'react';
 import SignalCard from '@/components/trading/SignalCard';
 import { useSignals } from '@/hooks/useData';
-import { useAppStore } from '@/hooks/useStore';
 import { cn } from '@/lib/utils';
-import { Zap, Filter, CheckCircle2, XCircle } from 'lucide-react';
-import type { Signal } from '@/types';
-
-/** จำนวนเริ่มต้นเมื่อเปิดออเดอร์ — ตั้งได้ที่หน้า ตั้งค่า → บัญชี */
-function defaultQuantity(): number {
-  if (typeof window === 'undefined') return 1;
-  try {
-    const raw = localStorage.getItem('trading-ai-account');
-    const qty = raw ? Number(JSON.parse(raw).defaultQuantity) : NaN;
-    return Number.isFinite(qty) && qty > 0 ? qty : 1;
-  } catch {
-    return 1;
-  }
-}
+import { Zap, Filter } from 'lucide-react';
 
 const MARKET_FILTERS = [
   { value: 'all', label: 'ทั้งหมด' },
@@ -49,12 +35,10 @@ type SortKey = (typeof SORT_OPTIONS)[number]['value'];
 
 export default function SignalsPage() {
   const { data: signals } = useSignals();
-  const refresh = useAppStore((s) => s.refresh);
   const [market, setMarket] = useState('all');
   const [action, setAction] = useState('all');
   const [timeframe, setTimeframe] = useState('all');
   const [sortBy, setSortBy] = useState<SortKey>('newest');
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const filtered = useMemo(() => {
     const base = signals.filter(s =>
@@ -79,38 +63,6 @@ export default function SignalsPage() {
       sell: active.filter(s => s.action === 'SELL').length,
     };
   }, [signals]);
-
-  const addTrade = async (signal: Signal) => {
-    setMsg(null);
-    try {
-      const res = await fetch('/api/trades', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          signal_id: signal.id,
-          symbol: signal.symbol,
-          name: signal.name,
-          market: signal.market,
-          direction: signal.action === 'BUY' ? 'long' : 'short',
-          entry_price: signal.entry_price,
-          stop_loss: signal.stop_loss,
-          take_profit: signal.take_profit,
-          quantity: defaultQuantity(),
-        }),
-      });
-      const data = await res.json();
-      setMsg({
-        ok: Boolean(data.success),
-        text: data.success
-          ? `เพิ่ม ${signal.symbol} เข้าพอร์ตแล้ว`
-          : data.error ?? 'เพิ่มเข้าพอร์ตไม่สำเร็จ',
-      });
-      if (data.success) refresh();
-    } catch (err) {
-      setMsg({ ok: false, text: String(err) });
-    }
-    setTimeout(() => setMsg(null), 6000);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -223,20 +175,6 @@ export default function SignalsPage() {
         </div>
       </div>
 
-      {msg && (
-        <div
-          className={cn(
-            'flex items-center gap-2 px-4 py-3 rounded-xl border text-sm',
-            msg.ok
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
-          )}
-        >
-          {msg.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-          {msg.text}
-        </div>
-      )}
-
       {filtered.length === 0 ? (
         <div className="card text-center py-16">
           <Zap className="w-12 h-12 text-gray-600 mx-auto mb-3" />
@@ -249,7 +187,7 @@ export default function SignalsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(s => (
-            <SignalCard key={s.id} signal={s} onAddTrade={addTrade} />
+            <SignalCard key={s.id} signal={s} />
           ))}
         </div>
       )}

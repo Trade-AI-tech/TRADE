@@ -2,17 +2,29 @@
 
 import { cn } from '@/lib/utils';
 import {
-  Bell, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2,
+  Bell, BellRing, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2,
 } from 'lucide-react';
 import { useCallback, useState, useEffect } from 'react';
+import {
+  pushSupportStatus, getExistingSubscription, enablePush, disablePush,
+} from '@/lib/push-client';
 import type { AlertPreferences } from '@/types';
 
+// แจ้งเตือนบนเครื่องอยู่แท็บแรก — ผู้ใช้เทรดผ่านมือถือเป็นหลัก ช่องทางนี้ไม่ต้องตั้ง bot ก่อนเหมือน Telegram
 const tabs = [
+  { id: 'push', label: 'แจ้งเตือนบนเครื่อง', icon: BellRing },
   { id: 'telegram', label: 'Telegram Bot', icon: Send },
   { id: 'alerts', label: 'การแจ้งเตือน', icon: Bell },
   { id: 'account', label: 'บัญชี', icon: User },
   { id: 'api', label: 'API Keys', icon: Key },
 ];
+
+/**
+ * สถานะ push ของเครื่องนี้ — ต้องวัดใน useEffect เท่านั้น (อ่าน window/navigator)
+ * ถ้าเดาตอน render แรกจะ hydration mismatch เพราะ server ไม่รู้จักเบราว์เซอร์ผู้ใช้
+ * 'checking' = ยังไม่เคยวัด → UI ต้องโชว์กำลังตรวจสอบ ห้ามทึกทักว่าปิดอยู่
+ */
+type PushStatus = 'checking' | 'unsupported' | 'off' | 'on';
 
 const DEFAULT_PREFS: AlertPreferences = {
   buy_signals: true,
@@ -27,36 +39,30 @@ const DEFAULT_PREFS: AlertPreferences = {
  * รายการแจ้งเตือน
  * live = cron ใช้ค่านี้จริงตอนส่ง Telegram
  * ตัวที่ไม่ใช่ live ยังไม่มีงานเบื้องหลังคอยเฝ้า จึงล็อกไว้ไม่ให้เข้าใจผิดว่าเปิดแล้วจะได้รับ
+ * allChannels = ค่านี้คุมทุกช่องทางพร้อมกัน (Telegram + แจ้งเตือนบนเครื่อง)
+ * เพราะตัวส่งฝั่ง Supabase อ่าน alert_preferences ชุดเดียวกัน — ไม่มีสวิตช์แยกรายช่องทาง
  */
-const ALERT_ROWS: { key: keyof AlertPreferences; label: string; desc: string; color: string; live: boolean }[] = [
-  { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400', live: true },
-  { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400', live: true },
-  { key: 'strong_signals_only', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะ strong / very_strong เท่านั้น', color: 'text-accent-glow', live: true },
+const ALERT_ROWS: { key: keyof AlertPreferences; label: string; desc: string; color: string; live: boolean; allChannels?: boolean }[] = [
+  { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400', live: true, allChannels: true },
+  { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400', live: true, allChannels: true },
+  { key: 'strong_signals_only', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะ strong / very_strong เท่านั้น', color: 'text-accent-glow', live: true, allChannels: true },
   { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาแตะจุดตัดขาดทุนของออเดอร์ที่ถืออยู่', color: 'text-red-400', live: true },
   { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาแตะเป้าทำกำไรของออเดอร์ที่ถืออยู่', color: 'text-emerald-400', live: true },
   { key: 'news_alerts', label: 'ข่าวสำคัญ', desc: 'ต้องต่อแหล่งข่าวก่อน', color: 'text-blue-400', live: false },
 ];
 
-function loadLocal<T>(key: string, defaults: T): T {
-  if (typeof window === 'undefined') return defaults;
-  try {
-    const stored = localStorage.getItem(`trading-ai-${key}`);
-    return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
-  } catch {
-    return defaults;
-  }
-}
-
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('telegram');
+  const [activeTab, setActiveTab] = useState('push');
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [telegram, setTelegram] = useState({ botToken: '', chatId: '', enabled: false, hasBotToken: false });
   const [alerts, setAlerts] = useState<AlertPreferences>(DEFAULT_PREFS);
+  const [pushStatus, setPushStatus] = useState<PushStatus>('checking');
+  const [pushReason, setPushReason] = useState<string | null>(null);
   const [account, setAccount] = useState({
-    full_name: '', email: '', timezone: 'Asia/Bangkok', defaultQuantity: 1,
+    full_name: '', email: '', timezone: 'Asia/Bangkok',
   });
 
   const flash = useCallback((ok: boolean, msg: string) => {
@@ -79,7 +85,6 @@ export default function SettingsPage() {
             full_name: p.full_name ?? '',
             email: p.email ?? '',
             timezone: p.timezone ?? 'Asia/Bangkok',
-            ...loadLocal('account', { defaultQuantity: 1 }),
           }));
         }
       } catch {
@@ -89,6 +94,59 @@ export default function SettingsPage() {
       }
     })();
   }, []);
+
+  // วัดความสามารถ push ของเครื่องนี้หลัง mount เท่านั้น — กัน hydration mismatch
+  // (server render ไม่มี navigator จึงตอบคำถาม "เครื่องนี้รองรับไหม" ไม่ได้)
+  useEffect(() => {
+    const support = pushSupportStatus();
+    if (!support.ok) {
+      setPushReason(support.reason);
+      setPushStatus('unsupported');
+      return;
+    }
+    let cancelled = false;
+    getExistingSubscription()
+      .then((sub) => {
+        if (!cancelled) setPushStatus(sub ? 'on' : 'off');
+      })
+      .catch(() => {
+        // อ่านสถานะไม่สำเร็จ → โชว์ปุ่มเปิดไว้ ถ้ากดแล้วมีปัญหาจริง enablePush จะคืนข้อความอธิบายเอง
+        if (!cancelled) setPushStatus('off');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleEnablePush = async () => {
+    setSavingKey('push');
+    try {
+      const result = await enablePush();
+      if (result.success) {
+        setPushStatus('on');
+        flash(true, 'เปิดแจ้งเตือนบนเครื่องนี้แล้ว');
+      } else {
+        flash(false, result.error ?? 'เปิดแจ้งเตือนไม่สำเร็จ');
+      }
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setSavingKey('push');
+    try {
+      const result = await disablePush();
+      if (result.success) {
+        setPushStatus('off');
+        flash(true, 'ปิดแจ้งเตือนของเครื่องนี้แล้ว');
+      } else {
+        flash(false, result.error ?? 'ปิดแจ้งเตือนไม่สำเร็จ');
+      }
+    } finally {
+      setSavingKey(null);
+    }
+  };
 
   const patchProfile = async (key: string, patch: Record<string, unknown>) => {
     setSavingKey(key);
@@ -128,7 +186,6 @@ export default function SettingsPage() {
   };
 
   const saveAccount = async () => {
-    localStorage.setItem('trading-ai-account', JSON.stringify({ defaultQuantity: account.defaultQuantity }));
     await patchProfile('account', { full_name: account.full_name, timezone: account.timezone });
   };
 
@@ -155,7 +212,7 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-display text-white">ตั้งค่า</h1>
-        <p className="text-sm text-gray-500 mt-0.5">จัดการ Telegram Bot, แจ้งเตือน และบัญชี</p>
+        <p className="text-sm text-gray-500 mt-0.5">จัดการแจ้งเตือนบนเครื่อง, Telegram Bot และบัญชี</p>
       </div>
 
       {toast && (
@@ -194,6 +251,82 @@ export default function SettingsPage() {
           {loading && (
             <div className="card flex items-center gap-2 text-sm text-gray-500">
               <Loader2 className="w-4 h-4 animate-spin" /> กำลังโหลดการตั้งค่า...
+            </div>
+          )}
+
+          {activeTab === 'push' && (
+            <div className="card">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-accent-glow/10 flex items-center justify-center">
+                  <BellRing className="w-5 h-5 text-accent-glow" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">แจ้งเตือนบนเครื่อง</h3>
+                  <p className="text-xs text-gray-500">เด้งเตือนบนเครื่องนี้เมื่อมีสัญญาณ BUY/SELL ใหม่ — ไม่ต้องพึ่ง Telegram</p>
+                </div>
+              </div>
+
+              {pushStatus === 'checking' && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 p-3">
+                  <Loader2 className="w-4 h-4 animate-spin" /> กำลังตรวจสอบว่าเครื่องนี้รองรับหรือไม่...
+                </div>
+              )}
+
+              {pushStatus === 'unsupported' && (
+                <div className="space-y-4">
+                  {/* โชว์ reason จาก pushSupportStatus ตรง ๆ — ข้อความอธิบายเงื่อนไข iOS ฝังมาในตัวแล้ว */}
+                  <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+                    <p className="text-xs text-amber-300 flex items-start gap-1.5">
+                      <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>{pushReason ?? '—'}</span>
+                    </p>
+                  </div>
+                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                    <p className="text-xs text-blue-300 font-medium mb-2">วิธีเปิดใช้บน iPhone (3 ขั้น):</p>
+                    <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
+                      <li>เปิดเว็บนี้ใน Safari แล้วกดปุ่มแชร์ (สี่เหลี่ยมลูกศรชี้ขึ้น)</li>
+                      <li>เลือก &ldquo;เพิ่มไปยังหน้าจอโฮม&rdquo; แล้วกดเพิ่ม</li>
+                      <li>เปิดแอปจากไอคอนบนหน้าจอโฮม แล้วกลับมาหน้านี้เพื่อกดเปิดแจ้งเตือน</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {pushStatus === 'off' && (
+                <button
+                  onClick={handleEnablePush}
+                  disabled={savingKey === 'push'}
+                  className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+                >
+                  {savingKey === 'push'
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <BellRing className="w-4 h-4" />}
+                  เปิดแจ้งเตือนบนเครื่องนี้
+                </button>
+              )}
+
+              {pushStatus === 'on' && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                  <p className="text-sm text-emerald-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> เปิดแจ้งเตือนบนเครื่องนี้อยู่
+                  </p>
+                  <button
+                    onClick={handleDisablePush}
+                    disabled={savingKey === 'push'}
+                    className="btn-ghost text-sm flex items-center gap-2 flex-shrink-0 disabled:opacity-40"
+                  >
+                    {savingKey === 'push' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    ปิดแจ้งเตือน
+                  </button>
+                </div>
+              )}
+
+              {/* กำกับตรง ๆ ว่าตัวส่งยังไม่ได้ติดตั้ง — กันผู้ใช้เข้าใจผิดว่ากดปุ๊บแล้วจะมีแจ้งเตือนทันที */}
+              <p className="text-[11px] text-gray-500 mt-4">
+                การกดเปิดที่นี่เป็นการลงทะเบียนเครื่องนี้ไว้รับแจ้งเตือนเท่านั้น —
+                การแจ้งเตือนสัญญาณอัตโนมัติจะเริ่มทำงานเมื่อติดตั้งตัวสแกนบน Supabase แล้ว (ดูวิธีติดตั้งใน README)
+                · การสมัครแยกรายเครื่อง ถ้าใช้หลายเครื่องต้องกดเปิดในแต่ละเครื่อง
+              </p>
             </div>
           )}
 
@@ -250,7 +383,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-white/5">
                   <div>
                     <p className="text-sm text-white">เปิดใช้งาน Telegram Alerts</p>
-                    <p className="text-xs text-gray-500">ส่งสัญญาณเทรดเข้า Telegram อัตโนมัติทุกวัน 08:00 น.</p>
+                    <p className="text-xs text-gray-500">ส่งสัญญาณเข้า Telegram อัตโนมัติทุกรอบสแกน (รายวัน 08:00 น. และรายชั่วโมงเมื่อติดตั้งตัวสแกนบน Supabase แล้ว)</p>
                   </div>
                   <button
                     onClick={() => setTelegram({ ...telegram, enabled: !telegram.enabled })}
@@ -311,7 +444,12 @@ export default function SettingsPage() {
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-500">{n.desc}</p>
+                      <p className="text-xs text-gray-500">
+                        {n.desc}
+                        {n.allChannels && (
+                          <span className="text-gray-600"> — มีผลกับทุกช่องทาง (Telegram และแจ้งเตือนบนเครื่อง)</span>
+                        )}
+                      </p>
                     </div>
                     <button
                       disabled={!n.live}
@@ -356,13 +494,6 @@ export default function SettingsPage() {
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">America/New_York</option>
                   </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">จำนวนเริ่มต้นเมื่อเทรด</label>
-                  <input type="number" min={0} step="any" className="input-field" placeholder="1"
-                    value={account.defaultQuantity}
-                    onChange={(e) => setAccount({ ...account, defaultQuantity: Number(e.target.value) })} />
-                  <p className="text-[10px] text-gray-500 mt-1">ใช้ตอนกด &ldquo;เพิ่มเข้าพอร์ต&rdquo; จากการ์ดสัญญาณ</p>
                 </div>
                 <div className="flex justify-end pt-2">
                   <button

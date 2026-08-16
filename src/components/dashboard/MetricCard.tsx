@@ -6,7 +6,8 @@ import type { LucideIcon } from 'lucide-react';
 
 interface MetricCardProps {
   label: string;
-  value: number;
+  /** null = ยังไม่เคยวัด (เช่นกำลังโหลด) → แสดง '—' ห้ามส่ง 0 แทนความหมายนี้ */
+  value: number | null;
   /**
    * เปอร์เซ็นต์การเปลี่ยนแปลง — ส่ง null เมื่อ "ยังไม่เคยวัด"
    * ห้ามส่ง 0 แทน เพราะ 0 แปลว่า "วัดแล้วไม่เปลี่ยน" ซึ่งคนละความหมาย
@@ -32,6 +33,7 @@ export default function MetricCard({
   delay = 0,
 }: MetricCardProps) {
   const formatted = (() => {
+    if (value === null) return '—';
     switch (format) {
       case 'currency': return formatCurrency(value, 'THB', true);
       case 'amount': return formatAmount(value, true);

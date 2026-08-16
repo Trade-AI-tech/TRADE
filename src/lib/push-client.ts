@@ -85,12 +85,18 @@ export async function enablePush(): Promise<{ success: boolean; error?: string }
       };
     }
 
+    // แยกสองกิ่งให้รู้ว่า subscription "สร้างใหม่รอบนี้" หรือหยิบของเดิม —
+    // ถ้าสร้างใหม่แล้ว server บันทึกล้ม (401/500) ต้องถอนทิ้ง ไม่งั้นเบราว์เซอร์ถือ
+    // subscription ที่ server ไม่รู้จักค้างไว้ หน้า settings จะโชว์ "เปิดอยู่" ทั้งที่
+    // ไม่มีวันได้รับแจ้งเตือนจริงสักครั้ง (สถานะโกหกถาวรจนกว่าจะกดปิดเอง)
+    const existing = await reg.pushManager.getSubscription();
     const sub =
-      (await reg.pushManager.getSubscription()) ??
+      existing ??
       (await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       }));
+    const createdThisCall = existing === null;
 
     const res = await fetch('/api/push/subscribe', {
       method: 'POST',
@@ -98,7 +104,12 @@ export async function enablePush(): Promise<{ success: boolean; error?: string }
       body: JSON.stringify(sub.toJSON()),
     });
     const data = await res.json();
-    if (!data.success) return { success: false, error: data.error ?? 'บันทึกไม่สำเร็จ' };
+    if (!data.success) {
+      if (createdThisCall) {
+        try { await sub.unsubscribe(); } catch { /* best-effort — อย่าให้การถอนล้มกลบ error จริง */ }
+      }
+      return { success: false, error: data.error ?? 'บันทึกไม่สำเร็จ' };
+    }
 
     return { success: true };
   } catch (err) {

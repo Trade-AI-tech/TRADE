@@ -1,6 +1,7 @@
 # 📈 Trading AI — Pro Signals
 
-ระบบสแกนตลาดหาจุดเข้า/ออก จากการวิเคราะห์เทคนิค แล้วแจ้งเตือนเข้า Telegram อัตโนมัติ
+ระบบสแกนตลาดหาจุดเข้า/ออก จากการวิเคราะห์เทคนิค แล้วแจ้งเตือนอัตโนมัติสองช่องทาง:
+**เด้งบนเครื่อง (Web Push)** และ **Telegram**
 
 รองรับ 5 ตลาด: **ทอง · Forex · หุ้นไทย · หุ้น US · Crypto**
 
@@ -16,9 +17,9 @@
 | Frontend | Next.js 14 (App Router) + TypeScript + Tailwind |
 | Backend | Supabase (Postgres + Auth + RLS) |
 | ข้อมูลราคา | Yahoo Finance chart API v8 — **ไม่ต้องใช้ API key** |
-| แจ้งเตือน | Telegram Bot API |
-| งานตามเวลา | **pg_cron บน Supabase → Edge Function `monitor-positions`** (เฝ้าราคา) · Vercel Cron (สแกนตลาดรายวัน — **หยุดอยู่**, ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) |
-| Deploy | หน้าเว็บ: Vercel (**บัญชีถูกระงับ ตอบ 402 อยู่**) · งานเบื้องหลัง: Supabase Edge Functions |
+| แจ้งเตือน | **Web Push** (VAPID → APNs/FCM — เด้งบนเครื่อง, [ต้องติดตั้งฝั่งส่งก่อน](#แจ้งเตือนบนเครื่อง-web-push)) + Telegram Bot API |
+| งานตามเวลา | **pg_cron บน Supabase** → Edge Functions: `monitor-positions` (เฝ้าราคาทุก 30 นาที) + `scan-signals` (สแกน + push ทุกต้นชั่วโมง) · Vercel Cron รายวัน 08:00 น. (ตัวสำรอง — กลับมาทำงานแล้ว, ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) |
+| Deploy | หน้าเว็บ: Vercel — **กลับมาออนไลน์แล้ว** ที่ https://trading-ai-ivory.vercel.app · งานเบื้องหลัง: Supabase Edge Functions |
 
 ---
 
@@ -31,8 +32,9 @@
    ตาราง watchlist
         │
         ├── กดปุ่ม "สแกนตลาด" เอง ──►  POST /api/signals/scan   (เฉพาะของคนที่ล็อกอิน)
-        └── Vercel Cron 08:00 น. ──►  GET  /api/cron/scan-markets (ของผู้ใช้ทุกคน)
-              ⛔ หยุดอยู่ — Vercel ตอบ 402
+        ├── pg_cron ทุกต้นชั่วโมง ──►  Edge Function scan-signals (ของผู้ใช้ทุกคน)
+        │     ⚠ ต้องติดตั้งบน Supabase ก่อนถึงจะทำงาน — ดู "แจ้งเตือนบนเครื่อง (Web Push)"
+        └── Vercel Cron 08:00 น. ──►  GET  /api/cron/scan-markets (ของผู้ใช้ทุกคน — ตัวสำรองรายวัน)
                                               │
                                               ▼
                     ดึงแท่งเทียนจาก Yahoo (1D ย้อนหลัง 1 ปี · 1H ย้อนหลัง 3 เดือน)
@@ -48,19 +50,36 @@
                                               ▼
                                      ตาราง signals
                                               │
-                            ┌─────────────────┴─────────────────┐
-                            ▼                                   ▼
-                  แสดงที่หน้า "สัญญาณ"                    ส่ง Telegram
-                  กด "เพิ่มเข้าพอร์ต" → trades       (ตาม alert_preferences ของแต่ละคน)
+                     ┌────────────────────────┼──────────────────────────┐
+                     ▼                        ▼                          ▼
+          แสดงที่หน้า "สัญญาณ"      แจ้งเตือนเด้งบนเครื่อง            ส่ง Telegram
+          (การ์ดสัญญาณล้วน —       (Web Push — เฉพาะรอบสแกนของ    (เฉพาะรอบสแกนอัตโนมัติ:
+           ไม่มีปุ่มเพิ่มเข้าพอร์ตแล้ว)   scan-signals และเฉพาะเครื่อง     scan-signals + cron รายวัน
+                                     ที่กดเปิดในหน้าตั้งค่า)          ตาม alert_preferences)
 ```
 
-ออเดอร์ที่อยู่ในตาราง `trades` จะถูกเฝ้าต่อทุก 30 นาที — ดู [ระบบเฝ้าราคาระหว่างวัน](#ระบบเฝ้าราคาระหว่างวัน)
+ทุกทางสแกนกันสัญญาณซ้ำ (dedupe) ด้วยกุญแจ `user:symbol:action:timeframe` เดียวกัน
+(หน้าต่าง 1D = 20 ชม. / 1H = 4 ชม.) — pg_cron รายชั่วโมงกับ Vercel Cron รายวันจึงวิ่งซ้อนกันได้
+โดยไม่มีสัญญาณซ้ำและไม่มีแจ้งเตือนเด้งสองรอบ ใครมาก่อนได้บันทึก ใครมาทีหลังเจอของเดิมแล้วข้าม
 
-> ⛔ **ผังข้างบนนี้ครึ่งบนหยุดอยู่จริง ๆ ตอนนี้** ทั้งปุ่ม "สแกนตลาด" และ Cron 08:00 น.
-> เป็น route ของ Next.js ที่รันบน Vercel ซึ่ง[บัญชีถูกระงับและตอบ 402 ทุกโดเมน](#ทำไมไม่ใช้-vercel)
-> รันในเครื่อง (`npm run dev`) ยังใช้ได้ครบทุกอย่างเหมือนเดิม
-> ส่วน**ระบบเฝ้าราคาถูกย้ายออกจาก Vercel ไปอยู่บน Supabase แล้ว** จึงไม่โดน 402 ด้วย
-> แต่มันจะเริ่มทำงานก็ต่อเมื่อติดตั้งครบตาม [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
+ออเดอร์ที่บันทึกไว้ในตาราง `trades` จะถูกเฝ้าต่อทุก 30 นาที — ดู [ระบบเฝ้าราคาระหว่างวัน](#ระบบเฝ้าราคาระหว่างวัน)
+
+> ⚠ **สแกนอัตโนมัติรายชั่วโมง + แจ้งเตือนเด้งบนเครื่อง ยังไม่ทำงานจนกว่าจะติดตั้งบน Supabase**
+> (วาง Edge Function `scan-signals` + ตั้ง secrets + รัน `schedule_scan.sql` — ขั้นตอนครบอยู่ที่
+> [แจ้งเตือนบนเครื่อง (Web Push)](#แจ้งเตือนบนเครื่อง-web-push))
+> ส่วนปุ่ม "สแกนตลาด" และ Vercel Cron 08:00 น. กลับมาใช้ได้แล้วบน production
+> หลัง[บัญชี Vercel ถูกปลดระงับ](#ทำไมไม่ใช้-vercel)
+
+### พอร์ตเทรดถูกซ่อนจาก UI — โดยตั้งใจ
+
+ผู้ใช้เทรดจริงผ่านพอร์ตของโบรกเกอร์ภายนอก ระบบนี้จึงเหลือหน้าที่ "สแกน + แจ้งเตือน" ล้วน ๆ
+สิ่งที่ถูกถอดออกจาก UI: เมนู **พอร์ตเทรด** ใน Sidebar · ปุ่ม **เพิ่มเข้าพอร์ต** บนการ์ดสัญญาณ ·
+การ์ดสถิติพอร์ต (กำไร/ขาดทุน, Win Rate, equity curve) บน Dashboard
+
+**ซ่อนอย่างเดียว ไม่ได้ลบ** — route `/trades` (เข้าตรงทาง URL ได้), API `/api/trades`,
+ตาราง `trades` และตัวเฝ้าราคายังอยู่ครบทุกตัว และ**ตัวเฝ้าราคายังจำเป็นต่อให้ไม่มีใครใช้หน้าพอร์ต**
+เพราะมันเป็นตัวอัปเดต `signals.current_price` ที่การ์ดสัญญาณใช้แสดงราคาล่าสุดด้วย
+(รายละเอียดใน [ระบบเฝ้าราคาระหว่างวัน](#ระบบเฝ้าราคาระหว่างวัน))
 
 ### เครื่องคำนวณสัญญาณ
 
@@ -193,9 +212,10 @@ Edge Function  monitor-positions     ← Deno รันบน Supabase ไม่
         └── ชน SL หรือ TP → status = 'closed' + exit_price = ระดับที่ชน + ส่ง Telegram
 ```
 
-**ทั้งเส้นทางนี้ไม่แตะ Vercel และไม่แตะ GitHub Actions เลย** — เป็นผลจากการที่บัญชี Vercel
-ถูกระงับ (ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) และจากโควตา Actions ของ repo private
-ขั้นตอนติดตั้งอยู่ที่ [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
+**ทั้งเส้นทางนี้ไม่แตะ Vercel และไม่แตะ GitHub Actions เลย** — เดิมย้ายมาเพราะบัญชี Vercel
+ถูกระงับ ตอนนี้บัญชีกลับมาแล้วแต่**ยังอยู่ที่นี่ต่อโดยตั้งใจ** เพราะงานยิงถี่คือตัวเผาโควตา
+Vercel จนโดนระงับครั้งก่อน (ดู [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)) และโควตา Actions
+ของ repo private ก็มีจำกัด — ขั้นตอนติดตั้งอยู่ที่ [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
 
 > 🔁 **ตรรกะ SL/TP ตอนนี้มี 2 สำเนา — และมันต้องตรงกันเป๊ะ**
 > `src/lib/position-monitor.ts` (ฝั่ง Next.js) กับสำเนาที่ฝังอยู่ใน
@@ -210,9 +230,10 @@ Edge Function  monitor-positions     ← Deno รันบน Supabase ไม่
 > ตรวจว่ามันยิงจริงไหมด้วย `select id, status_code, created from net._http_response order by created desc limit 10;`
 > — ต้องเห็น `200` ถ้าเห็น `401` แปลว่า secret ใน Vault ไม่ตรงกับที่ตั้งใน Edge Functions → Secrets
 
-> 📄 **route เดิม `/api/cron/monitor-positions` ยังอยู่ในโค้ด แต่ยิงไม่ถึงบน production**
-> (Vercel ตอบ 402) เก็บไว้เพราะยังใช้ทดสอบในเครื่องได้ และเผื่อวันที่ Vercel กลับมา
-> ถ้าวันนั้นเปิดใช้ ต้องปิด pg_cron ก่อน ไม่งั้นยิงซ้ำสองทาง
+> 📄 **route เดิม `/api/cron/monitor-positions` ยังอยู่ในโค้ดและยิงถึงได้แล้ว** (Vercel กลับมา
+> ออนไลน์) แต่**ไม่มีตัวจับเวลาไหนยิงมันอยู่** — `vercel.json` ไม่มี cron ของ route นี้
+> เก็บไว้ใช้ทดสอบในเครื่อง ถ้าวันไหนจะตั้งตัวจับเวลาให้มันจริง ต้องปิด pg_cron ก่อน
+> (`select cron.unschedule('monitor-positions-30m');`) ไม่งั้นยิงซ้ำสองทาง
 
 ### กฎที่ใช้ตัดสินว่าชน SL/TP หรือยัง
 
@@ -281,71 +302,224 @@ pnl_percent = (diff ÷ entry_price) × 100
 
 ---
 
+## แจ้งเตือนบนเครื่อง (Web Push)
+
+แจ้งเตือนสัญญาณ BUY/SELL ใหม่ **เด้งบนมือถือ/เดสก์ท็อปโดยตรง ไม่พึ่ง Telegram**
+ส่งผ่านบริการ push ของระบบปฏิบัติการ (APNs บน iPhone · FCM บน Android/Chrome)
+
+> ⚠ **สถานะปัจจุบัน: โค้ดพร้อมครบทั้งเส้นทาง แต่ฝั่งส่งยังไม่ได้ติดตั้งบน Supabase**
+> ปุ่ม "เปิดแจ้งเตือนบนเครื่องนี้" ในหน้าตั้งค่ากดได้จริง (ลงทะเบียนเครื่องลงตาราง
+> `push_subscriptions`) แต่**ยังไม่มีแจ้งเตือนอัตโนมัติเด้งจนกว่าจะทำครบทุกขั้นข้างล่าง** —
+> ตัวสแกน + ตัวส่ง push ทั้งหมดอยู่ใน Edge Function `scan-signals` ที่ต้องติดตั้งเอง
+
+```
+pg_cron ในฐานข้อมูล Supabase  ทุกต้นชั่วโมง   ← ตัวจับเวลา (schedule_scan.sql · job: scan-signals-hourly)
+        │  net.http_post + header  x-monitor-secret  (+ Bearer anon key ผ่านด่าน Verify JWT)
+        ▼
+Edge Function  scan-signals          ← Deno ไฟล์เดียวจบ ไม่ผ่าน Vercel เลย
+        │  fail-closed: ไม่มี MONITOR_SECRET = ปฏิเสธทุกคำขอ (ตัวเดียวกับของ monitor-positions)
+        │  สแกน watchlist ของผู้ใช้ทุกคน (1D + 1H) ด้วยสำเนา signal-engine + indicators ที่ฝังอยู่
+        │  กันซ้ำ (dedupe) ชุดเดียวกับฝั่ง Vercel — วิ่งซ้อนกับ Vercel Cron รายวันได้
+        ▼
+สัญญาณใหม่ (BUY/SELL ที่ไม่ weak) → บันทึกลงตาราง signals
+        │  กรองตาม alert_preferences ของเจ้าของสัญญาณ (ชุดเดียวคุมทั้ง Telegram และ push)
+        ├── Telegram (ถ้าผู้ใช้ตั้ง bot ไว้ — ไม่ตั้งก็ข้ามช่องทางนี้ ไม่กระทบ push)
+        └── Web Push เข้า "ทุกเครื่อง" ที่ผู้ใช้กดเปิดแจ้งเตือนไว้
+                │  เข้ารหัส payload ต่อเครื่อง (RFC 8291) + VAPID JWT (RFC 8292)
+                ▼
+        บริการ push ของ OS: APNs (iPhone/iPad) · FCM (Android/Chrome)
+                ▼
+        Service Worker  public/sw.js  บนเครื่องผู้ใช้ → เด้งแจ้งเตือน
+        (tag = id ของสัญญาณ → ส่งซ้ำจะทับแจ้งเตือนเดิม ไม่เด้งรัว · แตะแล้วเปิดหน้า /signals)
+```
+
+พฤติกรรมที่ควรรู้:
+
+- ข้อความ push มีอายุ 4 ชั่วโมง (`PUSH_TTL_SECONDS`) — เครื่องออฟไลน์นานกว่านั้นจะไม่ได้รับ
+  เพราะสัญญาณเทรดที่เด้งช้าครึ่งวันมีแต่พาเข้าไม้ผิดจังหวะ
+- subscription ที่ตายแล้ว (บริการ push ตอบ 404/410 — ผู้ใช้ถอนสิทธิ์/ลบแอป) ถูก**ลบแถวทิ้งอัตโนมัติ**
+- ส่งสำเร็จเมื่อไหร่ ตัวส่งอัปเดต `push_subscriptions.last_used_at` — ใช้เป็นหลักฐานตรวจว่า push ออกจริง
+- ตั้งกุญแจ VAPID ไม่ครบ/รูปแบบผิด → **สแกน + Telegram ยังทำงานปกติ แต่ข้าม push ทั้งรอบ**
+  พร้อมบอกเหตุผลตรง ๆ ใน response ของฟังก์ชัน (ไม่เงียบ และไม่ล้มทั้งงาน)
+- รอบสแกนที่ไม่มีสัญญาณใหม่ = ไม่มีแจ้งเตือน — เป็นเรื่องปกติ ไม่ใช่ระบบพัง
+
+### ติดตั้งฝั่ง Supabase (ทำครั้งเดียว)
+
+ก่อนเริ่ม: ควรทำ[ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)ให้ผ่านก่อน
+เพราะขั้นที่ 4 หยิบ secret + anon key ชุดเดียวกันจาก Vault ของไฟล์นั้น (ถ้ายังไม่มีจะ
+`raise exception` บอกให้ไปรันก่อน)
+
+**1. รัน migration 005** — สร้างตาราง `push_subscriptions`
+
+```bash
+npm run db:push
+```
+
+**2. วาง Edge Function `scan-signals` ผ่าน Dashboard**
+
+1. **Dashboard → Edge Functions → Create function** ตั้งชื่อให้ตรงเป๊ะว่า `scan-signals`
+2. เปิด `supabase/functions/scan-signals/index.ts` ใน repo → **คัดลอกทั้งไฟล์** → วางทับ → Deploy
+   (ไฟล์เป็นไฟล์เดียวจบ import เฉพาะ URL/jsr — เหตุผลเดียวกับ `monitor-positions`)
+3. สวิตช์ **"Verify JWT" เปิดไว้ตามค่าเริ่มต้น — อย่าปิด** (`schedule_scan.sql` แนบ anon key
+   ผ่านด่านให้แล้ว สิทธิ์จริงมาจาก `x-monitor-secret`)
+
+**3. ตั้ง secrets** (Dashboard → Edge Functions → Secrets — เป็นของทั้งโปรเจกต์ ทุกฟังก์ชันเห็นร่วมกัน)
+
+| ชื่อ | ค่า |
+|---|---|
+| `MONITOR_SECRET` | **ตัวเดิม**ที่ตั้งไว้ตอนติดตั้งตัวเฝ้าราคา — ใช้ร่วมกันทั้งสองฟังก์ชัน ไม่ต้องตั้งใหม่ |
+| `VAPID_PUBLIC_KEY` | ต้องตรง**ทุกตัวอักษร**กับค่าที่ฝังใน `src/lib/push-client.ts` (ดูค่าเต็มในคอมเมนต์หัวไฟล์ `scan-signals/index.ts`) |
+| `VAPID_PRIVATE_KEY` | กุญแจลับคู่กัน — รูปแบบเดียวกับที่ `npx web-push generate-vapid-keys` พ่นออกมา |
+| `VAPID_SUBJECT` | ที่ติดต่อเจ้าของเซิร์ฟเวอร์ตาม RFC 8292 เช่น `mailto:you@example.com` |
+
+> ⚠ กุญแจ VAPID เป็น**คู่** — public ฝังอยู่ฝั่งเว็บ (`push-client.ts`) / private อยู่ฝั่งส่งเท่านั้น
+> ถ้า generate คู่ใหม่ ต้องแก้ `VAPID_PUBLIC_KEY` ใน `push-client.ts` ให้ตรงกัน + deploy เว็บใหม่
+> **และผู้ใช้ทุกเครื่องต้องกดปิด-เปิดแจ้งเตือนใหม่** (subscription เดิมผูกกับกุญแจเก่า)
+> คู่กุญแจไม่ตรงกัน = บริการ push ปฏิเสธ (401/403) ทุกเครื่อง
+
+**4. รัน `supabase/scripts/schedule_scan.sql`** — ตัวตั้ง pg_cron ยิงทุกต้นชั่วโมง (`0 * * * *`)
+
+วางทั้งไฟล์ลง **SQL Editor** (ไม่ใช่ migration — `db:push` ไม่รันให้) **แก้ 1 บรรทัดก่อนรัน**:
+`v_url` → `https://<PROJECT-REF>.supabase.co/functions/v1/scan-signals`
+(secret กับ anon key ไม่ต้องกรอกซ้ำ — ไฟล์หยิบของเดิมจาก Vault ที่ `schedule_monitor.sql` ตั้งไว้)
+รันเสร็จอย่าลืมแก้บรรทัดนั้นกลับเป็น placeholder ก่อน commit
+
+### ฝั่งเครื่องผู้ใช้ (ทำต่อเครื่อง — การสมัครแยกรายเครื่อง)
+
+เงื่อนไขพื้นฐาน: ต้องเปิดผ่าน **HTTPS** (โดเมน production) หรือ `localhost` ตอน dev
+และหน้าเว็บที่ deploy ต้องเป็นเวอร์ชันที่มีแท็บ "แจ้งเตือนบนเครื่อง" ในหน้าตั้งค่าแล้ว
+
+**iPhone / iPad (iOS 16.4 ขึ้นไป — ข้อบังคับของ Apple):**
+
+1. เปิดเว็บใน **Safari** ผ่าน HTTPS → กดปุ่ม**แชร์** → **"เพิ่มไปยังหน้าจอโฮม"**
+   (push บน iOS ทำงานเฉพาะเว็บที่ถูกเพิ่มเป็นแอปบนหน้าจอโฮมเท่านั้น — เปิดใน Safari เฉย ๆ ไม่ได้)
+2. **เปิดแอปจากไอคอนบนหน้าจอโฮม** (ไม่ใช่จาก Safari)
+3. ไปหน้า **ตั้งค่า → แจ้งเตือนบนเครื่อง** → กด **"เปิดแจ้งเตือนบนเครื่องนี้"** → กด**อนุญาต**
+   (ถ้าเผลอกดไม่อนุญาต ไปเปิดเองที่ ตั้งค่า iOS → การแจ้งเตือน → Trading AI)
+
+**Android / เดสก์ท็อป (Chrome, Edge):** เปิดเว็บ → **ตั้งค่า → แจ้งเตือนบนเครื่อง** →
+กดเปิด → อนุญาต — จบ ไม่ต้องเพิ่มหน้าจอโฮม
+
+### เด้งจริงเมื่อไหร่ — เช็คลิสต์ครบทุกข้อเท่านั้น
+
+| # | เงื่อนไข | ยังไม่ทำ = |
+|---|---|---|
+| 1 | migration 005 รันแล้ว (`push_subscriptions` มีจริง) | ปุ่มเปิดแจ้งเตือนบันทึกไม่สำเร็จ |
+| 2 | Edge Function `scan-signals` วางผ่าน Dashboard แล้ว | ไม่มีตัวสแกนรายชั่วโมง ไม่มีตัวส่ง push |
+| 3 | `MONITOR_SECRET` ตั้งแล้ว (fail-closed) | ฟังก์ชันปฏิเสธทุกคำขอ — เงียบทั้งระบบ |
+| 4 | `VAPID_*` ครบ 3 ตัวและคู่กุญแจตรงกับฝั่งเว็บ | สแกน+Telegram ทำงาน แต่ push ไม่ออก |
+| 5 | `schedule_scan.sql` รันผ่าน (job `scan-signals-hourly` active) | ไม่มีใครยิงฟังก์ชันตามเวลา |
+| 6 | เครื่องผู้ใช้กดเปิดแจ้งเตือนแล้ว (มีแถวใน `push_subscriptions`) | ไม่มีปลายทางให้ส่ง |
+| 7 | รอบสแกนนั้นเกิด**สัญญาณใหม่**จริง | ไม่มีอะไรให้แจ้ง — ปกติ ไม่ใช่พัง |
+
+ตรวจหลักฐานจริง (SQL Editor — ชุดเต็มอยู่ในคอมเมนต์ข้อ 5.1–5.6 ท้าย `schedule_scan.sql`):
+
+```sql
+-- ตัวจับเวลาถูกตั้งจริงไหม
+select jobid, jobname, schedule, active from cron.job;
+
+-- ปลายทางตอบอะไร (200 = ฟังก์ชันรันจบ · 401 = secret/anon key ไม่ตรง · 404 = ยังไม่ deploy)
+select id, status_code, error_msg, created, left(content, 500) as content_preview
+from net._http_response order by created desc limit 5;
+
+-- push ออกจริงไหม — last_used_at ขยับหลังรอบที่มีสัญญาณใหม่ = ออกจริง
+-- (null = เครื่องนั้นยังไม่เคยรับสำเร็จเลย — "ยังไม่เคยวัด" ไม่ใช่ 0 ปลอม)
+select user_id, left(endpoint, 60) as endpoint_preview, user_agent, created_at, last_used_at
+from push_subscriptions order by last_used_at desc nulls last;
+```
+
+ดู log ฝั่งฟังก์ชัน: **Dashboard → Edge Functions → scan-signals → Logs**
+อยากยิงทดสอบทันทีไม่รอต้นชั่วโมง → คำสั่งอยู่ในคอมเมนต์ข้อ 5.5 ของ `schedule_scan.sql`
+(⚠ เป็นการสแกนจริง เจอสัญญาณใหม่จะบันทึกและแจ้งเตือนจริง)
+
+---
+
 ## สำเนาตรรกะ 2 ที่ ต้องตรงกันเสมอ
 
-กฎที่ตัดสินว่าออเดอร์ของผู้ใช้กำไรหรือขาดทุนเท่าไร **ถูกเขียนไว้ 2 ที่**:
+ตรรกะสำคัญของระบบถูกเขียนไว้ **สองที่** (ต้นฉบับฝั่ง Next.js + สำเนาฝัง Edge Function)
+อยู่ **2 คู่** และแต่ละคู่มีเครื่องตรวจความตรงกันของตัวเอง:
 
-| ที่อยู่ | ใครรัน | สถานะ |
-|---|---|---|
-| `src/lib/position-monitor.ts` | Next.js — route `/api/cron/monitor-positions` และการทดสอบในเครื่อง | ต้นฉบับ |
-| `supabase/functions/monitor-positions/index.ts` | Deno บน Supabase — ตัวที่ pg_cron ยิงจริง | สำเนา |
+| ตรรกะ | ต้นฉบับ | สำเนา (Deno บน Supabase) | เครื่องตรวจ |
+|---|---|---|---|
+| กฎ SL/TP + สูตร pnl | `src/lib/position-monitor.ts` | `supabase/functions/monitor-positions/index.ts` | `npm run check:parity` |
+| เครื่องคำนวณสัญญาณ + ตัวชี้วัด | `src/lib/signal-engine.ts` + `src/lib/indicators.ts` | `supabase/functions/scan-signals/index.ts` | `npm run check:parity:scan` |
 
 **ทำไมต้องซ้ำ** — เจ้าของโปรเจกต์ไม่มี `SUPABASE_ACCESS_TOKEN` ในเครื่อง จึงรัน
 `supabase functions deploy` ไม่ได้ ต้องวางโค้ดผ่านหน้า Dashboard ซึ่งรับได้ทีละไฟล์เดียว
 และ import ไฟล์ในโปรเจกต์ด้วย relative path ไม่ได้ (บน Dashboard ไม่มีไฟล์พวกนั้นอยู่)
 ตรรกะจึงต้องถูกฝังลงไปในไฟล์เดียวจบ
 
-**ทำไมมันอันตราย** — ถ้าสองที่เพี้ยนกัน ออเดอร์เดียวกันจะถูกตัดสินคนละแบบขึ้นกับว่าใครเป็นคนรัน
-และการปิดออเดอร์ผิดย้อนกลับไม่ได้ Telegram ที่ส่งไปแล้วก็เรียกคืนไม่ได้
-ที่แย่กว่านั้นคือมันเงียบ — ไม่มี type checker ตัวไหนจับให้ เพราะ `tsconfig.json` ตั้ง
-`exclude: ["supabase"]` ไว้ ไฟล์ฝั่ง Edge Function จึงไม่ถูก `tsc` ตรวจเลย
+**ทำไมมันอันตราย** — ถ้าสองที่เพี้ยนกัน ออเดอร์เดียวกันจะถูกตัดสินคนละแบบ / สัญญาณตัวเดียวกัน
+จะได้คะแนนคนละคะแนน ขึ้นกับว่าใครเป็นคนรัน และผลที่ออกไปแล้วย้อนกลับไม่ได้
+(ออเดอร์ที่ถูกปิด · Telegram · push ที่เด้งไปแล้ว) ที่แย่กว่านั้นคือมันเงียบ —
+ไม่มี type checker ตัวไหนจับให้ เพราะ `tsconfig.json` ตั้ง `exclude: ["supabase"]` ไว้
+ไฟล์ฝั่ง Edge Function จึงไม่ถูก `tsc` ตรวจเลย
 
 ```bash
-npm run check:parity                  # เทียบตรรกะสองสำเนาว่ายังตรงกันอยู่ไหม
-node scripts/check-monitor-parity.mjs # ตัวเดียวกัน เรียกตรง ๆ (ไม่ต้องพึ่ง npm script)
+npm run check:parity       # คู่ SL/TP     (= node scripts/check-monitor-parity.mjs)
+npm run check:parity:scan  # คู่สัญญาณ     (= node scripts/check-scan-parity.mjs)
 ```
 
-สคริปต์โหลดทั้งสองไฟล์ขึ้นมาเป็นโมดูลจริง แล้วป้อนเคสชุดเดียวกันเข้าไปเทียบผลทุกฟิลด์
-ต่างกันแม้แต่ฟิลด์เดียวก็ exit 1 พร้อมโชว์เคสที่ต่าง (ใช้แค่ `node` ไม่ต้องลงอะไรเพิ่ม)
+ทั้งสองสคริปต์โหลดทั้งสองฝั่งขึ้นมาเป็นโมดูลจริง แล้วป้อนเคสชุดเดียวกัน (seed ตายตัว)
+เข้าไปเทียบผลทุกฟิลด์ ต่างกันแม้แต่ฟิลด์เดียวก็ exit 1 พร้อมโชว์เคสที่ต่าง
+(ใช้แค่ `node` ไม่ต้องลงอะไรเพิ่ม) ฝั่ง `check:parity:scan` ตรวจเพิ่มอีกชั้น:
+บล็อกสำเนาใน `scan-signals` ถูกคั่นด้วย marker
+`// >>> BEGIN COPY OF src/lib/...` / `// <<< END COPY OF src/lib/...`
+และ**ข้อความในบล็อกต้องตรงกับไฟล์ต้นฉบับทุกตัวอักษร** (ยกเว้นบรรทัด import)
 
-> ⚠ **แก้กฎ SL/TP ที่ไหน ต้องแก้อีกที่ทันที แล้วรัน `npm run check:parity` ก่อนส่งงานทุกครั้ง**
-> รวมถึงตอนแก้ `resolvePriceWindow` / `evaluatePosition` / สูตร pnl / เกณฑ์เมินระดับที่ผิดฝั่ง
-> ถ้า `check:parity` ไม่ผ่าน อย่าเพิ่ง deploy — สองฝั่งกำลังคิดคนละแบบอยู่
+> ⚠ **แก้ตรรกะฝั่งไหนของคู่ไหน ต้องแก้อีกฝั่งทันที แล้วรันเครื่องตรวจของคู่นั้นก่อนส่งงานทุกครั้ง**
+> - แก้กฎ SL/TP (`resolvePriceWindow` / `evaluatePosition` / สูตร pnl / เกณฑ์เมินระดับผิดฝั่ง)
+>   → `npm run check:parity`
+> - แก้ `signal-engine.ts` / `indicators.ts` → แก้สำเนาใน `scan-signals/index.ts`
+>   แล้วรัน**ทั้งคู่**: `npm run check:parity:scan` และ `npm run check:parity`
+>   (และอย่าลืมกติกา backtest ก่อน-หลังของ signal engine)
+> ถ้า parity ตัวไหนไม่ผ่าน อย่าเพิ่ง deploy — สองฝั่งกำลังคิดคนละแบบอยู่
 
 ---
 
 ## ทำไมไม่ใช้ Vercel
 
-เขียนไว้ตรง ๆ เพื่อไม่ให้คนที่มาทำต่อเผลอย้ายงานเบื้องหลังกลับไปที่เดิม
+หัวข้อนี้เดิมเขียนตอนบัญชี Vercel ถูกระงับ ตอนนี้สถานะเปลี่ยนแล้ว แต่**บทเรียนยังจริงอยู่ครบ**
+— เขียนไว้เพื่อไม่ให้คนที่มาทำต่อเผลอย้ายงานเบื้องหลังที่ยิงถี่กลับไปไว้บน Vercel
 
-**บัญชี Vercel ถูก paused เพราะใช้เกินโควตาแผน Hobby**
+**สถานะปัจจุบัน (อัปเดตหลังรอบบิลรีเซ็ต):** บัญชีถูก**ปลดระงับแล้ว**
+เว็บกลับมาออนไลน์ที่ https://trading-ai-ivory.vercel.app (deploy ล่าสุด: commit `e3790ad`)
+และ Vercel Cron สแกนตลาดรายวัน 08:00 น. กลับมาทำงานตามปกติ
+
+**สิ่งที่เกิดขึ้นก่อนหน้า และทำไมมันจะเกิดซ้ำได้:** บัญชีถูก paused เพราะใช้เกินโควตาแผน Hobby
 
 | รายการ | ใช้ไป | โควตา Hobby |
 |---|---|---|
 | Fluid Active CPU | 11h 57m | 4h |
 | Fast Origin Transfer | 28.21 GB | 10 GB |
 
-ผลคือ **ทุกโดเมนของโปรเจกต์ตอบ HTTP 402 Payment Required** — ไม่ใช่แค่บาง route
-รวมถึง `/api/cron/monitor-positions` ที่ deploy สำเร็จไปแล้วก่อนหน้านั้นด้วย
-โค้ดไม่ได้พัง แต่ไม่มีใครยิงเข้าถึงได้ ทั้ง Vercel Cron (สแกนตลาด 08:00 น.)
-และ GitHub Actions ที่เคยเป็นตัวจับเวลาให้ระบบเฝ้าราคา จึงหมดทางไปพร้อมกัน
+ตอนนั้น**ทุกโดเมนของโปรเจกต์ตอบ HTTP 402 Payment Required** — ไม่ใช่แค่บาง route
+โค้ดไม่ได้พัง แต่ไม่มีใครยิงเข้าถึงได้เลยอยู่หลายสัปดาห์ ตัวการหลักที่เผาโควตาคือ
+**งานเบื้องหลังที่ยิงถี่** (ตัวเฝ้าราคาที่ตอนนั้นรันทุก 30 นาทีบน Vercel)
+ไม่ใช่คนเปิดหน้าเว็บ
 
-**เจ้าของเลือกอยู่แผนฟรีต่อ ไม่อัพเกรด** แต่**จ่าย Supabase Pro อยู่แล้ว**
-ซึ่งรวม Edge Functions + `pg_cron` + `pg_net` มาให้ในราคาเดิม
-งานเบื้องหลังจึงถูกย้ายมาอยู่บนของที่จ่ายไปแล้ว แทนที่จะจ่ายเพิ่มให้ Vercel
+**ข้อสรุปที่ยังบังคับใช้อยู่:** เจ้าของ**อยู่แผนฟรีต่อ ไม่อัพเกรด** แต่**จ่าย Supabase Pro อยู่แล้ว**
+ซึ่งรวม Edge Functions + `pg_cron` + `pg_net` มาให้ในราคาเดิม — งานถี่ทั้งหมดจึง**อยู่บน Supabase ต่อไป**
+แม้ Vercel จะกลับมาแล้วก็ตาม:
+
+| งาน | ความถี่ | รันที่ไหน |
+|---|---|---|
+| เฝ้าราคา SL/TP (`monitor-positions`) | ทุก 30 นาที | Supabase — **ห้ามย้ายกลับ Vercel** |
+| สแกนสัญญาณ + Web Push (`scan-signals`) | ทุกต้นชั่วโมง | Supabase — **ห้ามย้ายกลับ Vercel** |
+| สแกนตลาดรายวัน (`/api/cron/scan-markets`) | วันละครั้ง 08:00 น. | Vercel Cron — ตัวสำรอง วันละครั้งเบาพอไม่กระทบโควตา |
+| หน้าเว็บ + API ตามคำขอผู้ใช้ | ตามการใช้งาน | Vercel |
+
+เหตุผลตรง ๆ: งานยิงถี่คือสิ่งที่ทำให้โควตาระเบิดครั้งก่อน ย้ายกลับ = นับถอยหลังรอโดนระงับรอบใหม่
+แล้วคราวนี้จะพาหน้าเว็บทั้งเว็บดับไปด้วยเหมือนเดิม (402 ตอบทั้งโดเมน ไม่เลือก route)
 
 ทางที่ **ไม่** เลือก และเหตุผล:
 
 | ทางเลือก | ทำไมไม่เอา |
 |---|---|
 | อัพเกรด Vercel Pro | เจ้าของไม่ต้องการจ่ายเพิ่ม — เป็นข้อกำหนดตั้งต้น ไม่ใช่ข้อจำกัดทางเทคนิค |
-| ให้ GitHub Actions ยิงต่อไป | ปลายทางตอบ 402 อยู่ดี · ได้แค่ run สีแดงทุก 30 นาที และเผาโควตา Actions ของ repo private เดือนละ ~1,440 นาที จาก 2,000 นาที |
+| ย้ายงานถี่กลับ Vercel ตอนนี้ที่บัญชีกลับมาแล้ว | โควตา Hobby เท่าเดิม พฤติกรรมเดิมให้ผลเดิม — โดนระงับซ้ำ |
+| ให้ GitHub Actions เป็นตัวจับเวลา | เผาโควตา Actions ของ repo private เดือนละ ~1,440 นาที จาก 2,000 นาที และโควตาหมดแล้ว workflow หยุดเงียบ ๆ ไม่มีอะไรเตือน |
 | ย้ายไป host ฟรีเจ้าอื่น | ต้องดูแลอีกที่ อีกชุด secret และของที่จ่ายอยู่แล้ว (Supabase Pro) ทำงานนี้ได้ครบ |
-
-**สิ่งที่ยังพังอยู่จริงและยังไม่มีใครแก้:** หน้าเว็บ production ทั้งเว็บเข้าไม่ได้
-(สมัคร/ล็อกอิน/ดูพอร์ต/กดสแกนเอง) และการสแกนตลาดรายวันไม่ทำงาน
-เพราะสองอย่างนั้นเป็น Next.js ที่ยังอยู่บน Vercel — ตอนนี้ใช้ได้เฉพาะรันในเครื่องด้วย `npm run dev`
-ที่ย้ายมาแล้วมีอย่างเดียวคือ **ระบบเฝ้าราคา SL/TP**
 
 ---
 
@@ -358,14 +532,15 @@ node scripts/check-monitor-parity.mjs # ตัวเดียวกัน เร
 ### 1. สร้าง Edge Function ด้วยการวางโค้ด
 
 1. เปิด **Supabase Dashboard → Edge Functions → Create function**
-2. ตั้งชื่อให้ตรงเป๊ะว่า `monitor-positions` (migration อ้างชื่อนี้ในตัว URL ที่ยิง)
+2. ตั้งชื่อให้ตรงเป๊ะว่า `monitor-positions` (`schedule_monitor.sql` อ้างชื่อนี้ในตัว URL ที่ยิง)
 3. เปิดไฟล์ `supabase/functions/monitor-positions/index.ts` ใน repo → **คัดลอกทั้งไฟล์** → วางทับ
    ไฟล์นี้ตั้งใจให้เป็น **ไฟล์เดียวจบ** import เฉพาะ URL (`esm.sh` / `deno.land`)
    ไม่มี relative import สักบรรทัด เพราะบน Dashboard ไม่มีไฟล์อื่นให้ import
 4. กด **Deploy**
-5. **ปิด "Verify JWT"** ของฟังก์ชันนี้ (Edge Functions → monitor-positions → Details/Settings)
-   pg_cron ยืนยันตัวตนด้วย header `x-monitor-secret` อย่างเดียว ไม่ได้แนบ JWT ของผู้ใช้ไปด้วย
-   **ถ้าไม่ปิด gateway จะตอบ 401 ตั้งแต่ยังไม่ถึงโค้ด** แล้วจะไล่หาสาเหตุผิดที่
+5. สวิตช์ **"Verify JWT" เปิดไว้ตามค่าเริ่มต้น — อย่าปิด**
+   `schedule_monitor.sql` แนบ `Authorization: Bearer <anon key>` ไปให้ผ่านด่าน gateway อยู่แล้ว
+   ส่วนสิทธิ์จริงของงานนี้มาจาก header `x-monitor-secret` ล้วน ๆ (anon key เปิดเผยได้)
+   การปิด Verify JWT จะเปิดทางให้ใครก็ยิงฟังก์ชันได้โดยไม่ต้องมี key ของโปรเจกต์เลย
 
 ### 2. ตั้ง secret ให้ Edge Function
 
@@ -384,10 +559,13 @@ node scripts/check-monitor-parity.mjs # ตัวเดียวกัน เร
 ### 3. เปิด extension แล้วรัน schedule_monitor.sql
 
 `supabase/scripts/schedule_monitor.sql` เป็นตัวตั้ง `pg_cron` ให้ยิง Edge Function
-ทุก 30 นาที (`*/30 * * * *`) รันผ่าน `npm run db:push` หรือวาง SQL ลงใน **SQL Editor** ก็ได้
+ทุก 30 นาที (`*/30 * * * *`) — **รันด้วยมือครั้งเดียว** โดยวางทั้งไฟล์ลงใน **SQL Editor**
+(ไฟล์นี้อยู่ใน `supabase/scripts/` ไม่ใช่ `supabase/migrations/` โดยตั้งใจ `npm run db:push`
+จึง**ไม่รันมันให้** — เพราะมันต้องให้คนแก้ค่าก่อนรัน ถ้าวางใน migrations/ แล้ว db push
+ไปเจอตอนยังเป็นค่าตัวอย่าง มันจะ raise exception จนฐานข้อมูลใหม่สร้างไม่สำเร็จ)
 
 ก่อนหน้านั้นต้องเปิด extension `pg_cron` และ `pg_net` (**Database → Extensions**
-หรือปล่อยให้ migration รัน `create extension if not exists ...` ให้เอง — ถ้า role ไม่มีสิทธิ์
+หรือปล่อยให้ไฟล์รัน `create extension if not exists ...` ให้เอง — ถ้า role ไม่มีสิทธิ์
 สร้าง extension จะได้ `permission denied` ต้องไปกดเปิดที่หน้าเว็บแทน)
 ถ้ายังไม่เปิด `cron.schedule` กับ `net.http_post` จะ error ว่าไม่รู้จัก schema — ไม่ใช่เงียบ ๆ ไม่ทำงาน
 
@@ -397,16 +575,18 @@ node scripts/check-monitor-parity.mjs # ตัวเดียวกัน เร
 |---|---|
 | `v_url` | `https://<PROJECT-REF>.supabase.co/functions/v1/monitor-positions` |
 | `v_secret` | ค่าเดียวกับ `MONITOR_SECRET` ที่ตั้งไว้ในข้อ 2 |
+| `v_anon_key` | anon key ของโปรเจกต์ (Project Settings → API) — ใช้ผ่านด่าน Verify JWT ของ gateway เท่านั้น ไม่ใช่ตัวยืนยันสิทธิ์ |
 
 ยังไม่แก้แล้วรัน → ไฟล์จะ `raise exception` หยุดทันที ตั้งใจให้พังเสียงดัง
 ดีกว่าตั้ง cron ยิงไป URL ปลอมแล้วเงียบ ๆ โดยเข้าใจว่าระบบเฝ้าราคาทำงานอยู่
 
-> 🔐 **อย่า commit ค่าจริงกลับขึ้น git** — ไฟล์ migration ถูก track อยู่
-> รันเสร็จแล้วให้แก้สองบรรทัดนั้นกลับเป็น placeholder เดิม (`git checkout -- <ไฟล์>` ก็ได้)
+> 🔐 **อย่า commit ค่าจริงกลับขึ้น git** — ไฟล์ถูก track อยู่
+> รันเสร็จแล้วให้แก้บรรทัดพวกนั้นกลับเป็น placeholder เดิม (`git checkout -- <ไฟล์>` ก็ได้)
 > ค่าที่รันไปแล้วถูกเก็บใน **Vault** ของฐานข้อมูลเรียบร้อยแล้ว ไม่ต้องคาไว้ในไฟล์
 > ไฟล์นี้รันซ้ำได้ปลอดภัย และมีทางลัดสำหรับเปลี่ยน secret ทีหลังโดยไม่ต้องตั้ง cron ใหม่
 
-migration เก็บ URL + secret ไว้ใน **Vault** (ชื่อ `monitor_positions_url` / `monitor_positions_secret`)
+ไฟล์นี้เก็บ URL + secret + anon key ไว้ใน **Vault** (ชื่อ `monitor_positions_url` /
+`monitor_positions_secret` / `monitor_positions_anon_key`)
 ไม่ได้เขียนค่าจริงลงใน `cron.schedule` ตรง ๆ เพราะคำสั่งของ job อ่านได้จากตาราง `cron.job`
 ใครอ่านตารางนั้นได้ก็จะเห็น secret เต็ม ๆ
 
@@ -430,7 +610,7 @@ from net._http_response order by created desc limit 5;
 ```
 
 ดู log ของฝั่ง Edge Function ได้ที่ **Dashboard → Edge Functions → monitor-positions → Logs**
-อยากทดสอบทันทีไม่ต้องรอถึงนาทีที่ 0/30 → ดูคำสั่งยิงเองในคอมเมนต์ข้อ 5.4 ท้ายไฟล์ migration
+อยากทดสอบทันทีไม่ต้องรอถึงนาทีที่ 0/30 → ดูคำสั่งยิงเองในคอมเมนต์ท้ายไฟล์ `schedule_monitor.sql`
 (⚠ เป็นการกระตุ้นตัวเฝ้าราคาจริง มันจะปิดออเดอร์ที่แตะ SL/TP และส่ง Telegram จริง)
 
 > ⚠ **ยังไม่ได้ทำ 4 ขั้นนี้ = ไม่มีอะไรเฝ้าราคาให้เลย** ออเดอร์ที่ชน SL/TP จะไม่ถูกบันทึก
@@ -465,12 +645,12 @@ npx supabase link --project-ref <project-ref>
 npm run db:push
 ```
 
-> ⚠ `db:push` จะรัน `schedule_monitor.sql` ด้วย ซึ่ง **ตั้งใจให้ `raise exception` หยุด**
-> ถ้ายังไม่ได้แก้ URL/secret 2 บรรทัดในไฟล์ **และใน Vault ก็ยังไม่มีค่าจริง**
-> (กันไม่ให้ตั้ง cron ยิงไป URL ปลอมแบบเงียบ ๆ) — ถ้า Vault มีค่าอยู่แล้วมันจะข้ามให้เอง
-> ไม่เขียนทับ จึงรันซ้ำได้ปลอดภัยหลังติดตั้งเสร็จ
-> ตอนนี้ยังไม่อยากตั้งตัวเฝ้าราคา → ข้ามไฟล์นั้นไปก่อนได้ ระบบส่วนอื่นไม่ได้พึ่งมัน
-> อยากตั้งเลย → ทำตาม [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
+> `db:push` รันเฉพาะไฟล์ใน `supabase/migrations/` (รวม `005_push_subscriptions.sql`
+> ที่สร้างตารางเก็บเครื่องรับแจ้งเตือน) ส่วนตัวตั้งเวลา `schedule_monitor.sql` /
+> `schedule_scan.sql` อยู่ใน `supabase/scripts/` **ต้องรันเองผ่าน SQL Editor**
+> เพราะต้องแก้ค่าในไฟล์ก่อนรัน — ยังไม่อยากตั้งตอนนี้ก็ข้ามได้ ระบบส่วนอื่นไม่ได้พึ่งมัน
+> อยากตั้ง → [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase) และ
+> [แจ้งเตือนบนเครื่อง (Web Push)](#แจ้งเตือนบนเครื่อง-web-push)
 
 ### 4. รัน
 
@@ -480,10 +660,13 @@ npm run dev
 
 เปิด http://localhost:3000 → สมัครบัญชี → เพิ่ม symbol ที่หน้า **ตลาด** → กด **สแกนตลาด**
 
-### 5. เปิดแจ้งเตือน Telegram (ไม่บังคับ)
+### 5. เปิดแจ้งเตือน (ไม่บังคับ)
 
-ไปที่หน้า **ตั้งค่า → Telegram Bot** แล้วทำตามขั้นตอนที่แสดงไว้ในหน้านั้น
-ค่าที่กรอกจะถูกเก็บลงตาราง `profiles` — cron อ่านจากตรงนี้ ไม่ใช่จาก localStorage
+- **แจ้งเตือนเด้งบนเครื่อง (Web Push):** หน้า **ตั้งค่า → แจ้งเตือนบนเครื่อง** กดเปิดได้เลย
+  (ปุ่มลงทะเบียนเครื่องนี้ไว้รับแจ้งเตือน — แต่แจ้งเตือนอัตโนมัติจะเริ่มเด้งจริง
+  ก็ต่อเมื่อติดตั้งตัวส่งฝั่ง Supabase ครบตาม [แจ้งเตือนบนเครื่อง (Web Push)](#แจ้งเตือนบนเครื่อง-web-push))
+- **Telegram:** หน้า **ตั้งค่า → Telegram Bot** แล้วทำตามขั้นตอนที่แสดงไว้ในหน้านั้น
+  ค่าที่กรอกจะถูกเก็บลงตาราง `profiles` — cron อ่านจากตรงนี้ ไม่ใช่จาก localStorage
 
 ---
 
@@ -496,12 +679,12 @@ npm run dev
 | หน้าข่าว | ❌ ไม่มีโค้ดดึงข่าว ตาราง `news` ว่างเปล่าถาวร (แต่ `generateSignal` รองรับ `newsSentiment` ไว้แล้ว รอแค่คนป้อนค่าเข้ามา) |
 | AI (Claude) | ❌ ยังไม่ได้ต่อ — `@anthropic-ai/sdk` ติดตั้งไว้แต่ยังไม่มีไฟล์ไหน import สัญญาณทุกตัวมาจาก rule-based scoring ล้วน |
 | แจ้งเตือน "ข่าวสำคัญ" | ❌ ปุ่มในหน้าตั้งค่ายังล็อกไว้ เพราะยังไม่มีแหล่งข่าว (ส่วนแจ้งเตือน SL/TP ใช้ได้แล้ว) |
-| `total_pnl_percent` บน Dashboard | ❌ ยังไม่มีที่ให้กรอกเงินทุนตั้งต้น จึงคำนวณไม่ได้ — ตอนนี้ **ซ่อนป้ายเปอร์เซ็นต์ไปเลย** แทนที่จะโชว์ `+0.0%` ที่ไม่มีที่มา |
-| ยอดกำไร/ขาดทุนรวม | ⚠️ เป็นการ **บวกข้ามสกุลเงิน** ตรง ๆ (หุ้นไทยเป็นบาท · หุ้น US/ทอง/forex เป็นดอลลาร์) โดยไม่แปลงอัตราแลกเปลี่ยน จึงแสดงเป็นตัวเลขเปล่าไม่ติดสัญลักษณ์สกุลเงิน — ถ้าถือหลายตลาดพร้อมกัน ยอดรวมนี้ตีความตรง ๆ ไม่ได้ |
-| Backtest | ✅ มีแล้ว — หน้า `/backtest` และ `npm run backtest` ([กติกาการวัด](#backtest--วัดความแม่นด้วยข้อมูลจริง)) แต่ให้อ่านตัวเลขตามที่มันเป็น: ผลของ **เครื่องคำนวณสัญญาณเวอร์ชันปัจจุบัน กับข้อมูลช่วงที่เลือก** เท่านั้น — แก้ engine หรือเปลี่ยนช่วงข้อมูลตัวเลขก็เปลี่ยน · `feesR = 0` คือยังไม่รวมค่าธรรมเนียม/slippage · และผลอดีตไม่การันตีอนาคต (ส่วน win rate บน Dashboard ยังมาจากออเดอร์ที่บันทึกเอง — คนละตัวเลขกัน อย่าเอามาปนกัน) |
-| หน้าเว็บบน production | ⛔ **เข้าไม่ได้ทั้งเว็บ** — บัญชี Vercel ถูกระงับ ทุกโดเมนตอบ 402 ([ทำไม](#ทำไมไม่ใช้-vercel)) ตอนนี้ใช้ได้เฉพาะรันในเครื่อง `npm run dev` |
-| สแกนตลาดอัตโนมัติ 08:00 น. | ⛔ ไม่ทำงาน — เป็น Vercel Cron ที่ยิงไปเจอ 402 (กดสแกนเองในเครื่องได้ตามปกติ) |
-| ระบบเฝ้าราคา SL/TP | ✅ ย้ายมาอยู่บน Supabase แล้ว ไม่โดน 402 — แต่ต้อง[ติดตั้งด้วยมือ](#ติดตั้งตัวเฝ้าราคาบน-supabase)ก่อนถึงจะเริ่มทำงาน |
+| แจ้งเตือนเด้งบนเครื่อง (Web Push) | ⚠️ **โค้ดครบแต่ฝั่งส่งยังไม่ได้ติดตั้งบน Supabase** — ปุ่มเปิดในหน้าตั้งค่าใช้ได้จริง (ลงทะเบียนเครื่อง) แต่จะยังไม่มีแจ้งเตือนอัตโนมัติเด้งจนกว่าจะติดตั้งครบตาม [แจ้งเตือนบนเครื่อง (Web Push)](#แจ้งเตือนบนเครื่อง-web-push) |
+| หน้าพอร์ตเทรด | 🙈 ถูก**ซ่อนจากเมนู**โดยตั้งใจ (ผู้ใช้เทรดผ่านโบรกเกอร์ภายนอก) — เข้าตรงได้ที่ `/trades` ยอดรวมในหน้านั้นยังเป็นการ**บวกข้ามสกุลเงิน**ตรง ๆ โดยไม่แปลงอัตราแลกเปลี่ยน ตีความตรง ๆ ไม่ได้ถ้าถือหลายตลาด และ `total_pnl_percent` ยังคำนวณไม่ได้เพราะไม่มีที่กรอกเงินทุนตั้งต้น |
+| Backtest | ✅ มีแล้ว — หน้า `/backtest` และ `npm run backtest` ([กติกาการวัด](#backtest--วัดความแม่นด้วยข้อมูลจริง)) แต่ให้อ่านตัวเลขตามที่มันเป็น: ผลของ **เครื่องคำนวณสัญญาณเวอร์ชันปัจจุบัน กับข้อมูลช่วงที่เลือก** เท่านั้น — แก้ engine หรือเปลี่ยนช่วงข้อมูลตัวเลขก็เปลี่ยน · `feesR = 0` คือยังไม่รวมค่าธรรมเนียม/slippage · และผลอดีตไม่การันตีอนาคต |
+| หน้าเว็บบน production | ✅ **กลับมาออนไลน์แล้ว** ที่ https://trading-ai-ivory.vercel.app หลังบัญชี Vercel ถูกปลดระงับ ([ประวัติและเงื่อนไข](#ทำไมไม่ใช้-vercel)) |
+| สแกนตลาดอัตโนมัติ | ✅ Vercel Cron รายวัน 08:00 น. กลับมาทำงานแล้ว · ⚠️ ตัวสแกน**รายชั่วโมง** (`scan-signals` ฝั่ง Supabase — ตัวเดียวที่ส่ง Web Push) ต้อง[ติดตั้งก่อน](#แจ้งเตือนบนเครื่อง-web-push)ถึงจะทำงาน |
+| ระบบเฝ้าราคา SL/TP | ✅ อยู่บน Supabase (pg_cron ทุก 30 นาที) — แต่ต้อง[ติดตั้งด้วยมือ](#ติดตั้งตัวเฝ้าราคาบน-supabase)ก่อนถึงจะเริ่มทำงาน |
 
 > ⚠️ **ระบบนี้ไม่ใช่คำแนะนำการลงทุน** สัญญาณที่ได้มาจากสูตรคณิตศาสตร์บนราคาย้อนหลัง
 > การ backtest ที่มีให้ก็วัดได้แค่ผลในอดีตของกติกาปัจจุบัน ไม่รับประกันผลใด ๆ ทั้งสิ้น
@@ -518,16 +701,19 @@ src/
 │   │   ├── auth/callback/      แลก code → session หลังยืนยันอีเมล
 │   │   ├── backtest/           POST รัน walk-forward backtest (ต้องล็อกอิน · ตรรกะเงินทั้งหมดอยู่ใน lib/backtest.ts)
 │   │   ├── cron/
-│   │   │   ├── scan-markets/       งานรายวัน สแกนของผู้ใช้ทุกคน + ส่ง Telegram
-│   │   │   └── monitor-positions/  ฝาแฝดฝั่ง Vercel ของตัวเฝ้าราคา — ตอนนี้ยิงไม่ถึง (402)
+│   │   │   ├── scan-markets/       สแกนรายวันของผู้ใช้ทุกคน + ส่ง Telegram (Vercel Cron 08:00 น. —
+│   │   │   │                       ตัวสำรองของ Edge Function scan-signals ที่สแกนรายชั่วโมง)
+│   │   │   └── monitor-positions/  ฝาแฝดฝั่ง Vercel ของตัวเฝ้าราคา — ยิงถึงได้แต่ไม่มี cron ตั้งไว้
 │   │   │                           ตัวที่ทำงานจริงคือ Edge Function ใต้ supabase/functions/
 │   │   │                           บังคับต้องมี CRON_SECRET (fail-closed)
 │   │   ├── profile/            โปรไฟล์ + การตั้งค่าแจ้งเตือน (cron อ่านจากที่นี่)
+│   │   ├── push/subscribe/     ลงทะเบียน (POST) / ถอน (DELETE) เครื่องรับแจ้งเตือน Web Push
 │   │   ├── signals/scan/       ปุ่ม "สแกนตลาด" เฉพาะของคนที่ล็อกอิน
 │   │   ├── telegram/test/      ทดสอบส่งข้อความ
 │   │   ├── trades/             เปิด (POST) / ปิด (PATCH) ออเดอร์
 │   │   └── watchlist/          เพิ่ม-ลบ symbol ที่ติดตาม
 │   ├── dashboard/  markets/  signals/  trades/  backtest/  news/  settings/
+│   │               (trades/ ถูกซ่อนจากเมนู — เข้าตรงทาง URL ได้ ดูหัวข้อ "พอร์ตเทรดถูกซ่อนจาก UI")
 │   └── auth/login/
 ├── components/
 │   ├── charts/     EquityChart
@@ -545,28 +731,46 @@ src/
 │   ├── position-monitor.ts  pure function ตัดสิน SL/TP + คิด pnl (ไม่แตะ DB/network)
 │   ├── market-data.ts     ตัวห่อ Yahoo Finance + แปลงชื่อ symbol ตามตลาด
 │   ├── telegram.ts        จัดรูปข้อความ + ส่ง (มี fallback เป็น plain text)
+│   ├── push-client.ts     ฝั่ง client ของ Web Push — enablePush/disablePush + VAPID public key
 │   ├── supabase.ts        client ฝั่ง browser
 │   ├── supabase-server.ts client ฝั่ง server — route client (ติด RLS) + admin (ข้าม RLS)
 │   └── demo-data.ts       ข้อมูลตัวอย่างสำหรับโหมด Demo
 ├── middleware.ts          ตรวจ session จริงผ่าน Supabase + ต่ออายุ token
 └── types/index.ts
 
-supabase/migrations/
+public/
+├── sw.js                    Service Worker — รับ push แล้วเด้งแจ้งเตือน + จัดการคลิก
+├── manifest.webmanifest     ให้ iOS "เพิ่มไปยังหน้าจอโฮม" เป็นแอปได้ (เงื่อนไขบังคับของ push บน iPhone)
+└── icons/                   ไอคอนแอป + ไอคอนแจ้งเตือน
+
+supabase/migrations/                รันผ่าน npm run db:push
 ├── 001_initial_schema.sql       ปลดระวางแล้ว (เดิมเป็นสคีมา TikTok)
 ├── 002_trading_schema.sql       สคีมาหลักของระบบเทรด
 ├── 003_position_monitoring.sql  ฟิลด์ที่ตัวเฝ้าราคาต้องใช้ (ALTER ล้วน ไม่ลบข้อมูล)
-└── schedule_monitor.sql     ตั้ง pg_cron ยิง Edge Function monitor-positions ทุก 30 นาที
-                                 (ตัวจับเวลาตัวจริงของระบบเฝ้าราคาอยู่ที่ไฟล์นี้ · ต้องแก้ 3 บรรทัดก่อนรัน)
+└── 005_push_subscriptions.sql   ตารางเก็บเครื่องที่กดเปิดแจ้งเตือน Web Push (RLS รายผู้ใช้)
+
+supabase/scripts/                   ⚠ ไม่ใช่ migration — ต้องแก้ค่าในไฟล์แล้วรันมือผ่าน SQL Editor
+├── schedule_monitor.sql         ตั้ง pg_cron ยิง monitor-positions ทุก 30 นาที (แก้ 3 บรรทัดก่อนรัน)
+└── schedule_scan.sql            ตั้ง pg_cron ยิง scan-signals ทุกต้นชั่วโมง (แก้ 1 บรรทัด —
+                                 ใช้ secret/anon key ชุดเดียวกับ schedule_monitor.sql ต้องรันไฟล์นั้นก่อน)
 
 supabase/functions/
-└── monitor-positions/index.ts   ตัวเฝ้าราคาที่ทำงานจริง — Deno ไฟล์เดียวจบ ไม่มี relative import
-                                 มีสำเนาตรรกะจาก src/lib/position-monitor.ts ฝังอยู่ข้างใน
-                                 ⚠ แก้กฎ SL/TP แล้วต้องแก้ทั้งสองที่ + npm run check:parity
+├── monitor-positions/index.ts   ตัวเฝ้าราคาที่ทำงานจริง — Deno ไฟล์เดียวจบ ไม่มี relative import
+│                                มีสำเนาตรรกะจาก src/lib/position-monitor.ts ฝังอยู่ข้างใน
+│                                ⚠ แก้กฎ SL/TP แล้วต้องแก้ทั้งสองที่ + npm run check:parity
+└── scan-signals/index.ts        ตัวสแกนรายชั่วโมง + ส่ง Web Push — Deno ไฟล์เดียวจบเช่นกัน
+                                 มีสำเนา signal-engine + indicators ฝังอยู่ (คั่นด้วย marker BEGIN/END COPY)
+                                 ⚠ แก้เครื่องคำนวณสัญญาณแล้วต้องแก้ทั้งสองที่ + npm run check:parity:scan
                                  (ai-alerts/ กับ sync-tiktok/ ที่อยู่ข้าง ๆ เป็นซากยุค TikTok ไม่ได้ใช้)
+
+scripts/
+├── run-backtest.mjs             npm run backtest — transpile src จริงมารัน ไม่ใช่สำเนา
+├── check-monitor-parity.mjs     npm run check:parity
+└── check-scan-parity.mjs        npm run check:parity:scan
 
 .github/workflows/
 ├── deploy.yml               lint + build ทุก push · deploy job ข้ามเองถ้าไม่มี secrets
-└── monitor-positions.yml    ⛔ schedule ถูกปิดแล้ว เหลือแค่กดรันเอง (ปลายทางตอบ 402)
+└── monitor-positions.yml    ⛔ schedule ถูกปิดไว้ เหลือแค่กดรันเอง (ตัวจับเวลาตัวจริงคือ pg_cron)
 ```
 
 ### การแปลงชื่อ symbol
@@ -592,10 +796,14 @@ supabase/functions/
 - `/api/cron/scan-markets` และ `/api/cron/monitor-positions` ป้องกันด้วย `CRON_SECRET`
   โดย **`monitor-positions` เป็น fail-closed** — ไม่มี secret แล้วปฏิเสธทุกคำขอ (จึงหยุดทำงานทั้งระบบ)
   ส่วน `scan-markets` ข้ามการตรวจเมื่อไม่ได้ตั้งค่า
-- Edge Function `monitor-positions` ป้องกันด้วย **`MONITOR_SECRET`** ซึ่งเป็นคนละตัวและคนละที่กับ
-  `CRON_SECRET` (ตั้งที่ Supabase Dashboard → Edge Functions → Secrets) และเป็น fail-closed เหมือนกัน
+- Edge Functions ทั้งสองตัว (`monitor-positions` และ `scan-signals`) ป้องกันด้วย **`MONITOR_SECRET`**
+  ตัวเดียวกัน ซึ่งเป็นคนละตัวและคนละที่กับ `CRON_SECRET` (ตั้งที่ Supabase Dashboard →
+  Edge Functions → Secrets) และเป็น fail-closed เหมือนกันทั้งคู่
   ค่าที่ pg_cron ใช้ยิงเก็บอยู่ใน **Vault** ไม่ได้เขียนลงใน `cron.schedule` ตรง ๆ
   เพราะ SQL ของ job อ่านได้จากตาราง `cron.job`
+- ตาราง `push_subscriptions` ติด RLS รายผู้ใช้ — แต่ละคนจัดการเครื่องของตัวเองเท่านั้น
+  ฝั่งส่ง (Edge Function ใช้ service role) อ่านข้ามผู้ใช้ได้เพราะ cron ไม่มี session
+  และ `VAPID_PRIVATE_KEY` อยู่ใน Edge Function Secrets ฝั่งเดียว ไม่เคยไปอยู่ฝั่ง browser
 
 ### ⚠ กติกาการแก้ migration
 
@@ -610,23 +818,27 @@ supabase/functions/
 
 ## Deploy
 
-ตอนนี้ระบบถูกแบ่งเป็นสองฝั่ง และสองฝั่งสถานะไม่เท่ากัน
+ตอนนี้ระบบถูกแบ่งเป็นสองฝั่ง
 
 | ฝั่ง | อยู่ที่ไหน | สถานะจริง |
 |---|---|---|
-| หน้าเว็บ + API routes | Vercel (โปรเจกต์ `trading-ai`) | ⛔ **บัญชีถูกระงับ ทุกโดเมนตอบ HTTP 402** — เข้าไม่ได้ |
-| ระบบเฝ้าราคา SL/TP | Supabase Edge Functions + pg_cron | ✅ ไม่ได้พึ่ง Vercel — แต่ต้อง[ติดตั้ง](#ติดตั้งตัวเฝ้าราคาบน-supabase)ก่อนถึงจะเริ่มทำงาน |
+| หน้าเว็บ + API routes + Cron สแกนรายวัน | Vercel (โปรเจกต์ `trading-ai`) | ✅ **ออนไลน์** — deploy ล่าสุด commit `e3790ad` สำเร็จ หลังบัญชีถูกปลดระงับ |
+| ระบบเฝ้าราคา SL/TP + สแกนรายชั่วโมง + Web Push | Supabase Edge Functions + pg_cron | ⚠️ โค้ดพร้อม — แต่ต้องติดตั้งด้วยมือก่อน: [ตัวเฝ้าราคา](#ติดตั้งตัวเฝ้าราคาบน-supabase) · [ตัวสแกน + push](#แจ้งเตือนบนเครื่อง-web-push) |
 
-### ฝั่ง Vercel (หยุดอยู่)
+### ฝั่ง Vercel (กลับมาออนไลน์แล้ว)
 
 **Production:** https://trading-ai-ivory.vercel.app (โปรเจกต์ `trading-ai` บน Vercel)
 
-> ⛔ **URL นี้ตอบ 402 Payment Required อยู่ ไม่ใช่แค่ช้าหรือบางหน้า** — บัญชีถูก paused
-> เพราะใช้เกินโควตาแผน Hobby เหตุผลเต็มอยู่ที่ [ทำไมไม่ใช้ Vercel](#ทำไมไม่ใช้-vercel)
-> จนกว่าโควตาจะรีเซ็ตหรือเจ้าของเปลี่ยนใจอัพเกรด ให้ถือว่าฝั่งนี้ **ใช้ไม่ได้ทั้งหมด**
-> อยากดูหน้าเว็บให้รันในเครื่องด้วย `npm run dev`
+deploy ล่าสุดคือ **commit `e3790ad`** (backtest + สัญญาณ 1H + mobile UI + โครง Web Push ฝั่ง client)
+สิ่งที่ออนไลน์อยู่ตอนนี้: หน้าเว็บทุกหน้า (สมัคร/ล็อกอิน/Dashboard/สัญญาณ/ตลาด/Backtest/ตั้งค่า) ·
+API routes ทั้งหมด (รวม `/api/push/subscribe` ที่ปุ่มเปิดแจ้งเตือนใช้) ·
+Vercel Cron สแกนตลาดรายวัน — ส่วน**การซ่อนพอร์ตเทรด + หน้าตั้งค่า push แท็บใหม่
+ยังไม่ถูก deploy** (เป็นงานชุดถัดไปหลัง `e3790ad` ต้อง `npx vercel deploy --prod` รอบใหม่)
 
-ยังไม่ได้เชื่อม Git integration — deploy ด้วยมือจากเครื่อง (ตอนนี้ deploy ขึ้นไปก็ยังโดน 402):
+> ⚠ บัญชีนี้**เคยถูกระงับเพราะโควตา Hobby หมด** และเงื่อนไขนั้นยังไม่เปลี่ยน —
+> ห้ามย้ายงานเบื้องหลังที่ยิงถี่กลับมา ([เหตุผลเต็ม](#ทำไมไม่ใช้-vercel))
+
+ยังไม่ได้เชื่อม Git integration — deploy ด้วยมือจากเครื่อง:
 
 ```bash
 npx vercel deploy --prod
@@ -641,28 +853,32 @@ environment variables ฝั่ง production ตั้งครบแล้ว�
 ถ้าจะใช้ preview deployment ต้องตั้งเพิ่มเอง
 
 Cron ของ **การสแกนตลาด** อ่านจาก `vercel.json` → `0 1 * * *` UTC = **08:00 น. เวลาไทย**
-— ตั้งไว้เหมือนเดิม แต่**ไม่ได้ทำงาน**เพราะปลายทางตอบ 402 (สแกนเองในเครื่องได้ตามปกติ)
+กลับมาทำงานแล้วพร้อมบัญชี — ทำหน้าที่เป็นตัวสำรองรายวันของตัวสแกนรายชั่วโมงฝั่ง Supabase
+(สองตัวกันซ้ำด้วย dedupe ชุดเดียวกัน วิ่งซ้อนกันได้ไม่มีสัญญาณซ้ำ)
 
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) รัน lint + build ทุก push
 ส่วน job deploy จะข้ามไปเงียบ ๆ ถ้ายังไม่ได้ตั้ง secrets — ไม่ทำให้ CI แดงค้าง
 
-### ฝั่ง Supabase (ตัวเฝ้าราคา)
+### ฝั่ง Supabase (ตัวเฝ้าราคา + ตัวสแกน/Web Push)
 
-ขั้นตอนติดตั้งเต็มอยู่ที่ [ติดตั้งตัวเฝ้าราคาบน Supabase](#ติดตั้งตัวเฝ้าราคาบน-supabase)
-สรุปสั้น ๆ: วางโค้ด `supabase/functions/monitor-positions/index.ts` ผ่าน Dashboard →
-ตั้ง secret `MONITOR_SECRET` → รัน `schedule_monitor.sql` ที่เป็นตัวตั้ง pg_cron
+ขั้นตอนติดตั้งเต็ม: [ตัวเฝ้าราคา](#ติดตั้งตัวเฝ้าราคาบน-supabase) ·
+[ตัวสแกน + แจ้งเตือนเด้งบนเครื่อง](#แจ้งเตือนบนเครื่อง-web-push)
+สรุปสั้น ๆ: วางโค้ด Edge Function ทั้งสองตัวผ่าน Dashboard (`monitor-positions` +
+`scan-signals`) → ตั้ง secrets (`MONITOR_SECRET` + กุญแจ VAPID) → รัน
+`schedule_monitor.sql` แล้วตามด้วย `schedule_scan.sql` (ตัวตั้ง pg_cron ทั้งคู่)
 
 > ⚠ ที่เขียนว่า "ต้อง Supabase Pro" ไม่ใช่เพราะ pg_cron ใช้ไม่ได้บนแผนฟรี
 > แต่เพราะ Free plan จะ **หยุดโปรเจกต์อัตโนมัติเมื่อไม่มี activity** ตัวจับเวลาจะตายตามไปด้วย
 > แบบเงียบ ๆ เจ้าของโปรเจกต์นี้จ่าย Pro อยู่แล้วจึงไม่ติดปัญหานี้
 
-### GitHub Actions: schedule ถูกปิดแล้ว
+### GitHub Actions: schedule ถูกปิดแล้ว (และควรปิดต่อไป)
 
 [.github/workflows/monitor-positions.yml](.github/workflows/monitor-positions.yml)
 **เหลือแค่ `workflow_dispatch` (กดรันเอง)** — `schedule` ถูกคอมเมนต์ไว้
 
-เพราะปลายทางที่มันยิง (`/api/cron/monitor-positions` บน Vercel) ตอบ 402 อยู่
-ปล่อยไว้จะได้แค่ run สีแดงทุก 30 นาทีและเผาโควตา Actions ทิ้งเปล่า ๆ
+เดิมปิดเพราะปลายทางบน Vercel ตอบ 402 — ตอนนี้ Vercel กลับมาแล้ว แต่**เหตุผลให้ปิดต่อยังครบ**:
+ตัวเฝ้าราคาตัวจริงคือ pg_cron บน Supabase เปิด schedule กลับ = ยิงซ้ำสองทาง
+และเผาโควตา Actions ของ repo private เดือนละ ~1,440 นาทีทิ้งเปล่า ๆ
 ถ้าจะเปิดกลับวันหลัง ให้อ่านคอมเมนต์หัวไฟล์นั้นก่อน — มีทั้งเรื่องโควตาและเรื่องยิงซ้ำกับ pg_cron
 
 #### ⚠ เรื่องโควตา Actions — เก็บไว้เตือนคนที่คิดจะย้ายกลับ
@@ -705,10 +921,14 @@ npm run backtest      # วัดผล signal engine กับข้อมู�
                       # (= node scripts/run-backtest.mjs — basket ตัวอย่าง 5 ตลาด ทั้ง 1D/1H
                       #  หรือระบุ --symbol= --market= --timeframe= --feesR= --maxHoldBars=)
                       # ⚠ แก้ signal-engine/indicators ต้องรันเทียบก่อน-หลังเสมอ
-npm run db:push       # ส่ง migration ขึ้น Supabase
+npm run db:push       # ส่ง migration ขึ้น Supabase (ไม่รวมไฟล์ใน supabase/scripts/ — พวกนั้นรันมือ)
 npm run db:types      # gen TypeScript types จากสคีมา (ต้องมี local supabase)
 npm run check:parity  # เทียบตรรกะ SL/TP ระหว่าง src/lib/position-monitor.ts
                       # กับสำเนาใน supabase/functions/monitor-positions/index.ts
                       # (= node scripts/check-monitor-parity.mjs)
                       # ⚠ ต้องรันทุกครั้งที่แก้กฎ SL/TP — tsc ไม่ตรวจไฟล์ใต้ supabase/ ให้
+npm run check:parity:scan  # เทียบเครื่องคำนวณสัญญาณ (signal-engine + indicators)
+                      # กับสำเนาใน supabase/functions/scan-signals/index.ts
+                      # (= node scripts/check-scan-parity.mjs)
+                      # ⚠ แก้ signal-engine/indicators ต้องรันทั้ง check:parity:scan และ check:parity
 ```
