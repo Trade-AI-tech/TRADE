@@ -74,18 +74,32 @@ export default function LoginPage() {
         setError('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล');
         return;
       }
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: code,
-        type: 'email',
-      });
-      if (verifyError) throw verifyError;
-      window.location.href = '/dashboard';
+      // ชนิดของ token ต่างกันตามที่มา: รหัสจาก signInWithOtp เป็น 'email'
+      // ส่วนรหัสที่ออกด้วย admin generateLink เป็น 'magiclink'
+      // ผู้ใช้แยกไม่ออกว่ารหัสในมือมาจากทางไหน จึงลองให้ครบทั้งสองแบบ
+      // (ลองผิดไม่ทำให้รหัสถูกเผา — Supabase ปฏิเสธเฉย ๆ เมื่อชนิดไม่ตรง)
+      const types = ['email', 'magiclink'] as const;
+      let lastError: unknown = null;
+      for (const type of types) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: code,
+          type,
+        });
+        if (!verifyError) {
+          window.location.href = '/dashboard';
+          return;
+        }
+        lastError = verifyError;
+      }
+      throw lastError;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(
         msg.includes('expired') || msg.includes('invalid')
-          ? 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว — กดขอรหัสใหม่อีกครั้ง (รหัสเก่าจะใช้ไม่ได้ทันทีที่ขอใหม่)'
+          ? 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว — ขอรหัสใหม่อีกครั้ง (รหัสเก่าใช้ไม่ได้ทันทีที่ขอใหม่)'
+          : msg.includes('rate limit')
+          ? 'ส่งอีเมลบ่อยเกินไป — Supabase จำกัดไว้ราว 3-4 ฉบับต่อชั่วโมง รอสักครู่แล้วลองใหม่'
           : msg
       );
     } finally {
@@ -261,8 +275,19 @@ export default function LoginPage() {
             className="btn-ghost w-full flex items-center justify-center gap-2 text-sm"
           >
             <Wand2 className="w-4 h-4" />
-            รับลิงก์เข้าระบบทางอีเมล — ไม่ต้องใช้รหัสผ่าน
+            ขอรหัสเข้าระบบทางอีเมล — ไม่ต้องใช้รหัสผ่าน
           </button>
+          {/* ทางเข้าสำหรับคนที่มีรหัสอยู่แล้วโดยไม่ได้กดขอจากหน้านี้
+              (เช่นรหัสที่ออกให้จากฝั่งผู้ดูแลระบบตอนโควตาอีเมลเต็ม) */}
+          {!otpSent && (
+            <button
+              type="button"
+              onClick={() => { setOtpSent(true); setError(''); }}
+              className="w-full text-xs text-gray-400 hover:text-accent-glow transition-colors"
+            >
+              มีรหัส 6 หลักอยู่แล้ว? กรอกที่นี่
+            </button>
+          )}
           <p className="text-[11px] text-gray-500 text-center">
             กรอกอีเมลข้างบนแล้วกดปุ่มนี้ ลิงก์จะพาเข้าระบบเลย ครั้งแรกระบบสร้างบัญชีให้อัตโนมัติ
           </p>
