@@ -5,6 +5,7 @@ import { sendTradeClosedAlert, type ClosedTradeSummary } from '@/lib/telegram';
 import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { MarketPrice, AlertPreferences, MarketType, TradeDirection } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -403,6 +404,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error('cron error:', err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }

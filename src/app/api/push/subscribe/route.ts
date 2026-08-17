@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isDemoMode } from '@/lib/supabase';
 import { createRouteClient, getSessionUser } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'เปิดแจ้งเตือนบนเครื่องนี้แล้ว' });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -82,6 +83,6 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'ปิดแจ้งเตือนบนเครื่องนี้แล้ว' });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }

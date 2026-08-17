@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isDemoMode } from '@/lib/supabase';
 import { createRouteClient, getSessionUser } from '@/lib/supabase-server';
 import type { AlertPreferences } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 
@@ -110,6 +111,6 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'บันทึกเรียบร้อย' });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }

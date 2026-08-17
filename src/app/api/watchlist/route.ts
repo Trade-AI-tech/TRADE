@@ -4,6 +4,7 @@ import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient, createRouteClient, getSessionUser } from '@/lib/supabase-server';
 import { DEMO_WATCHLIST } from '@/lib/demo-data';
 import type { MarketType } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
       message: `เพิ่ม ${symbol} เรียบร้อย`,
     });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }
 

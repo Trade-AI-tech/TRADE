@@ -5,6 +5,7 @@ import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient, createRouteClient, getSessionUser } from '@/lib/supabase-server';
 import { DEMO_WATCHLIST, DEMO_SIGNALS, DEMO_PRICES } from '@/lib/demo-data';
 import type { Signal, MarketPrice } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -205,6 +206,6 @@ export async function POST() {
     });
   } catch (err) {
     console.error('scan route error:', err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }

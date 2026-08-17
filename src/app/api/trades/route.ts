@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isDemoMode } from '@/lib/supabase';
 import { createRouteClient, getSessionUser } from '@/lib/supabase-server';
 import type { MarketType } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, trade: data, message: 'เพิ่มเข้าพอร์ตเรียบร้อย' });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -162,6 +163,6 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true, trade: updatedRows[0], message: 'ปิดออเดอร์เรียบร้อย' });
   } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }

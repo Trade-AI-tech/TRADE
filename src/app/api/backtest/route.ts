@@ -5,6 +5,7 @@ import { isDemoMode } from '@/lib/supabase';
 import { getSessionUser } from '@/lib/supabase-server';
 import { DEMO_PRICES, generateCandleData } from '@/lib/demo-data';
 import type { MarketType } from '@/types';
+import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -149,6 +150,6 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error('backtest route error:', err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }
