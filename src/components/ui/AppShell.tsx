@@ -29,7 +29,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         <Header />
-        <div className="p-4 sm:p-6">{children}</div>
+        {/* เว้นล่างเท่าแถบ home indicator ของ iPhone — ไม่งั้นการ์ดใบสุดท้ายถูกขีดขาวคาดทับ
+            (viewportFit: 'cover' ใน layout.tsx ทำให้เนื้อหากินลงไปถึงขอบล่างจริง)
+            บวก 1rem เป็นระยะหายใจ ให้เท่ากับ p-4 เดิมบนเครื่องที่ inset เป็น 0 */}
+        <div
+          className="p-4 sm:p-6"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+        >
+          {children}
+        </div>
       </main>
     </div>
   );

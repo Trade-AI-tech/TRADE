@@ -50,7 +50,17 @@ export default function Header() {
   return (
     // แถวหลักย้ายเข้า div ชั้นใน เพื่อให้มือถือมีแถวผลสแกนเต็มความกว้างต่อท้ายด้านล่างได้
     // โดยเดสก์ท็อปยังเห็น header สูง h-16 แถวเดียวเหมือนเดิมทุกอย่าง
-    <header className="sticky top-0 z-30 bg-surface-0/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
+    //
+    // paddingTop = safe-area-inset-top: layout.tsx ตั้ง viewportFit: 'cover' ไว้
+    // เนื้อหาจึงกินพื้นที่ขึ้นไปถึงขอบบนสุดของจอ "ใต้แถบสถานะ" (นาฬิกา/สัญญาณ/แบตเตอรี่)
+    // header ตัวนี้เป็น sticky top-0 จึงไปนั่งทับแถบนั้นพอดี — ช่องค้นหาซ้อนกับนาฬิกา
+    // (เจอจริงบน iPhone: ช่อง "ค้นหา symbol" ทับเวลา 18:39 และไอคอน 5G)
+    // ค่านี้เป็น 0 บนเครื่องที่ไม่มี notch จึงไม่กระทบเดสก์ท็อปเลย
+    // ⚠ ต้องใส่ที่ <header> ไม่ใช่ที่ div ชั้นใน ไม่งั้นพื้นหลัง/เส้นขอบจะไม่คลุมพื้นที่ที่เผื่อไว้
+    <header
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      className="sticky top-0 z-30 bg-surface-0/80 backdrop-blur-xl border-b border-[var(--border-subtle)]"
+    >
       <div className="h-16 flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6">
         {/* hamburger เปิด drawer — มือถือเท่านั้น (เดสก์ท็อปมี rail อยู่แล้ว) */}
         <button
