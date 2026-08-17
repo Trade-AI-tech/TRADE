@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchChart } from '@/lib/market-data';
 import { generateSignal } from '@/lib/signal-engine';
 import { sendSignalAlert } from '@/lib/telegram';
+import { sendPushToUser, signalToPush } from '@/lib/push-server';
 import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { Signal, MarketPrice, AlertPreferences, CandleData } from '@/types';
@@ -192,9 +193,17 @@ export async function GET(req: NextRequest) {
       if (insErr) throw insErr;
     }
 
-    // 5. แจ้งเตือน Telegram ตามการตั้งค่าของแต่ละคน
+    // 5. แจ้งเตือน — Push เข้าโทรศัพท์เป็นช่องทางหลัก, Telegram เป็นของเสริมถ้าตั้งไว้
+    //
+    // สองช่องทางนี้ต้อง "ไม่ผูกกัน": เดิมโค้ดข้ามทั้ง user ไปเลยเมื่อ Telegram ยังไม่ได้ตั้งค่า
+    // ถ้าเอา push มาต่อท้ายในกิ่งเดียวกัน คนที่ไม่ใช้ Telegram (คือเจ้าของระบบ)
+    // จะไม่ได้รับแจ้งเตือนสักช่องทางเดียว ทั้งที่กดเปิดแจ้งเตือนบนมือถือไว้แล้ว
     let alertsSent = 0;
     let alertsFailed = 0;
+    let pushSent = 0;
+    let pushFailed = 0;
+    let pushPruned = 0;
+    const pushErrors: string[] = [];
     const userIds = [...new Set(signalsToInsert.map(s => s.user_id))];
 
     for (const userId of userIds) {
@@ -204,15 +213,32 @@ export async function GET(req: NextRequest) {
         .eq('id', userId)
         .maybeSingle();
 
+      // ไม่มีแถว profile ก็ยังต้องแจ้งเตือน — ใช้ค่าเริ่มต้นคือ "ส่งทุกสัญญาณ"
+      // การเงียบเพราะ profile หายไปคือความล้มเหลวที่ผู้ใช้มองไม่เห็น
+      const prefs = (profile?.alert_preferences ?? {}) as AlertPreferences;
+
+      const mine = signalsToInsert.filter(s => s.user_id === userId).filter(signal => {
+        if (signal.action === 'BUY' && prefs.buy_signals === false) return false;
+        if (signal.action === 'SELL' && prefs.sell_signals === false) return false;
+        if (prefs.strong_signals_only && signal.strength !== 'strong' && signal.strength !== 'very_strong') return false;
+        return true;
+      });
+
+      // 5a. Push เข้าเครื่อง — ทำก่อนเสมอ ไม่ขึ้นกับสถานะ Telegram
+      for (const signal of mine) {
+        const res = await sendPushToUser(supabase, userId, signalToPush(signal));
+        pushSent += res.sent;
+        pushFailed += res.failed;
+        pushPruned += res.pruned;
+        // เก็บเหตุผลไว้ใน response ของ cron ให้ไล่ปัญหาได้โดยไม่ต้องเปิด log ของ Vercel
+        // (จำกัดจำนวนกันยาวเกิน — สาเหตุมักซ้ำกันทุกแถวอยู่แล้ว)
+        for (const e of res.errors) if (pushErrors.length < 5 && !pushErrors.includes(e)) pushErrors.push(e);
+      }
+
+      // 5b. Telegram — เฉพาะคนที่ตั้งค่าไว้ครบ
       if (!profile?.telegram_enabled || !profile.telegram_bot_token || !profile.telegram_chat_id) continue;
 
-      const prefs = (profile.alert_preferences ?? {}) as AlertPreferences;
-
-      for (const signal of signalsToInsert.filter(s => s.user_id === userId)) {
-        if (signal.action === 'BUY' && prefs.buy_signals === false) continue;
-        if (signal.action === 'SELL' && prefs.sell_signals === false) continue;
-        if (prefs.strong_signals_only && signal.strength !== 'strong' && signal.strength !== 'very_strong') continue;
-
+      for (const signal of mine) {
         const res = await sendSignalAlert(
           { botToken: profile.telegram_bot_token, chatId: profile.telegram_chat_id },
           signal
@@ -253,6 +279,10 @@ export async function GET(req: NextRequest) {
       hourlySkippedForTime,
       alertsSent,
       alertsFailed,
+      pushSent,
+      pushFailed,
+      pushPruned,
+      pushErrors,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

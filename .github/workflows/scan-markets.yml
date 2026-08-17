@@ -1,0 +1,116 @@
+name: Scan Markets
+
+# ============================================
+# ตัวสแกนสัญญาณอัตโนมัติ — หัวใจของระบบ
+#
+# ทำอะไร: ยิง /api/cron/scan-markets บน Vercel ทุกต้นชั่วโมง
+#         → สแกน watchlist → สร้างสัญญาณ → เด้งแจ้งเตือนเข้าโทรศัพท์ (Web Push)
+#
+# ทำไมชั่วโมงละครั้งพอ:
+#   ความละเอียดสูงสุดของตัวสแกนคือแท่งเทียนราย 1 ชั่วโมง ยิงถี่กว่านั้นก็เจอแท่งเดิม
+#   ได้สัญญาณเดิม แล้วโดน dedupe ทิ้งอยู่ดี (หน้าต่างกันซ้ำของ 1H คือ 4 ชม.)
+#   — เปลืองทั้งโควตา Vercel และโควตา Actions โดยไม่ได้สัญญาณเพิ่มสักตัว
+#
+# ทำไมข้ามวันเสาร์ (0-5 = อาทิตย์ถึงศุกร์):
+#   watchlist ตอนนี้เป็นทองกับค่าเงิน ซึ่งตลาดปิดตั้งแต่เช้าวันเสาร์ถึงเย็นวันอาทิตย์
+#   ยิงวันเสาร์ = ดึงราคาเดิมซ้ำ ๆ ไม่มีแท่งใหม่ ไม่มีทางเกิดสัญญาณ
+#   ⚠ ถ้าวันไหนเพิ่มคริปโตเข้า watchlist (ตลาดเปิด 24/7 รวมเสาร์) ให้แก้เป็น '0 * * * *'
+#
+# โควตาที่ใช้ (repo นี้เป็น PRIVATE จึงถูกคิดนาที แผนฟรีให้ 2,000 นาที/เดือน
+#            และ GitHub ปัดขึ้นเป็นนาทีเต็มต่อ job ต่อให้ยิง curl เสร็จใน 10 วินาที):
+#   24 ชม. × 6 วัน × ~4.3 สัปดาห์ ≈ 620 นาที/เดือน → เหลือ ~1,380 นาทีให้ deploy.yml
+#   (deploy.yml ตกราว 4-5 นาที/push → พอราว 280 push/เดือน)
+#
+# ⚠ พอโควตาหมด GitHub จะ "หยุดรัน" workflow เงียบ ๆ ไม่มี notification ไม่มี run สีแดง
+#   ผู้ใช้จะเชื่อว่ายังมีตัวสแกนอยู่ทั้งที่ไม่มีแล้ว — เช็คโควตาได้ที่
+#   Settings → Billing and plans → Plans and usage
+# ============================================
+
+on:
+  schedule:
+    # นาทีที่ 0 ของทุกชั่วโมง วันอาทิตย์–ศุกร์ (เวลา UTC)
+    # ⚠ GitHub ไม่การันตีว่าตรงเวลา ช่วงคนใช้เยอะอาจดีเลย์ 5–15 นาที — ยอมรับได้
+    #   เพราะสัญญาณผูกกับแท่งเทียนที่ปิดแล้ว ไม่ใช่ราคาวินาทีต่อวินาที
+    - cron: '0 * * * 0-5'
+
+  # กดรันเองได้จากแท็บ Actions — ใช้ตอนอยากได้สัญญาณเดี๋ยวนี้ ไม่ต้องรอต้นชั่วโมง
+  workflow_dispatch:
+
+# กันรอบใหม่ยิงซ้อนตอนรอบเก่ายังไม่จบ
+# ถ้าซ้อนกัน ตัวกันสัญญาณซ้ำจะกันไม่อยู่ (รอบที่สองอ่านตาราง signals ก่อนรอบแรกเขียนเสร็จ)
+# ผลคือได้สัญญาณซ้ำและแจ้งเตือนเด้งสองครั้ง ซึ่งเรียกคืนไม่ได้
+concurrency:
+  group: scan-markets
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      # ไม่ต้อง checkout — งานนี้ยิง HTTP อย่างเดียว ไม่ได้แตะโค้ดใน repo
+      - name: เรียก /api/cron/scan-markets
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENDPOINT: 'https://trading-ai-ivory.vercel.app/api/cron/scan-markets'
+        run: |
+          # ยังไม่ได้ตั้ง secret → หยุดแบบแดง ไม่ใช่ข้ามเงียบ ๆ
+          #
+          # ต่างจาก monitor-positions.yml ที่ยอมข้ามได้ เพราะ route นั้นเป็น fail-closed
+          # (ไม่มี secret = ปฏิเสธทุกคำขอ) แต่ scan-markets เป็น fail-OPEN:
+          # โค้ดข้ามการตรวจสิทธิ์ทั้งหมดเมื่อ CRON_SECRET ฝั่ง Vercel ว่าง
+          # การ "ข้ามเงียบ" ตรงนี้จึงกลบสองปัญหาพร้อมกัน — ตัวสแกนไม่ทำงาน
+          # และ endpoint อาจเปิดโล่งให้ใครก็ยิงได้ ทั้งคู่ต้องเห็นทันที
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret CRON_SECRET (Settings → Secrets and variables → Actions) ค่าต้องตรงกับที่ตั้งไว้บน Vercel"
+            exit 1
+          fi
+
+          # เตรียมไฟล์ไว้ก่อน เผื่อ curl ต่อไม่ติดเลยจนไม่ได้เขียนอะไรลงไป
+          : > response.json
+
+          # || true เพื่อให้โค้ดเดินต่อไปพิมพ์ body ได้แม้ curl จะล้มเอง (DNS พัง/timeout)
+          # ตัว exit code จริงตัดสินจาก http_code ข้างล่างอีกที
+          # --max-time 120 ให้เผื่อ maxDuration 60 วิของ route + เวลา cold start
+          status=$(curl -sS -X GET "$ENDPOINT" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --max-time 120 \
+            -o response.json \
+            -w '%{http_code}') || true
+
+          echo "HTTP ${status:-000}"
+          echo "--- response ---"
+          cat response.json || true
+          echo
+
+          case "${status:-000}" in
+            2??) ;;
+            401)
+              echo "::error::HTTP 401 — CRON_SECRET ใน GitHub ไม่ตรงกับที่ตั้งบน Vercel (Project → Settings → Environment Variables) หรือแก้ค่าบน Vercel แล้วยังไม่ได้ redeploy"
+              exit 1
+              ;;
+            402)
+              echo "::error::HTTP 402 — บัญชี Vercel ถูกระงับเพราะใช้เกินโควตาแผน Hobby ทุกโดเมนตอบ 402 อยู่ ตัวสแกนจะไม่ทำงานจนกว่าโควตาจะรีเซ็ต · ลดความถี่ของ cron ในไฟล์นี้เพื่อกันไม่ให้เกิดซ้ำ"
+              exit 1
+              ;;
+            *)
+              echo "::error::ตัวสแกนล้มเหลว (HTTP ${status:-000}) — ดู response ด้านบน"
+              exit 1
+              ;;
+          esac
+
+          # ตอบ 200 แต่ success:false = route จับ exception ไว้แล้วรายงานกลับมาดี ๆ
+          # ถ้าไม่เช็คตรงนี้ run จะขึ้นเขียวทั้งที่ไม่ได้สแกนอะไรเลยสักตัว
+          if ! grep -q '"success":true' response.json; then
+            echo "::error::endpoint ตอบ 200 แต่ทำงานไม่สำเร็จ — ดู field error ใน response ด้านบน"
+            exit 1
+          fi
+
+          # สรุปสั้น ๆ ขึ้นหน้า summary ของ run จะได้ไม่ต้องเปิด log อ่านทุกครั้ง
+          node -e '
+            const r = require("./response.json");
+            const line = `สแกน ${r.scanned} ตัว · ราคาอัปเดต ${r.pricesUpdated} · สัญญาณใหม่ ${r.signalsGenerated} · push ส่ง ${r.pushSent ?? 0} ล้ม ${r.pushFailed ?? 0}`;
+            console.log(`::notice::${line}`);
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### ตัวสแกนสัญญาณ\n\n${line}\n`);
+            // push ล้มไม่ทำให้ run แดง (สแกนสำเร็จแล้ว) แต่ต้องเห็นเป็น warning ไม่ใช่เงียบ
+            for (const e of r.pushErrors ?? []) console.log(`::warning::push: ${e}`);
+          '
