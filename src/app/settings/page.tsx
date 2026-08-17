@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import {
-  Bell, BellRing, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2,
+  Bell, BellRing, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2, Lock,
 } from 'lucide-react';
 import { useCallback, useState, useEffect } from 'react';
 import {
@@ -64,6 +64,10 @@ export default function SettingsPage() {
   const [account, setAccount] = useState({
     full_name: '', email: '', timezone: 'Asia/Bangkok',
   });
+  // รหัสผ่านใหม่อยู่ใน state ชั่วคราวเท่านั้น ล้างทิ้งทันทีที่ตั้งสำเร็จ
+  // ไม่เก็บลง localStorage และไม่ส่งผ่าน API ของเรา
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const flash = useCallback((ok: boolean, msg: string) => {
     setToast({ ok, msg });
@@ -183,6 +187,37 @@ export default function SettingsPage() {
     const updated = { ...alerts, [key]: !alerts[key] };
     setAlerts(updated);
     await patchProfile('alerts', { alert_preferences: updated });
+  };
+
+  /**
+   * ตั้งรหัสผ่านของบัญชีตัวเอง
+   * เรียก updateUser จากเบราว์เซอร์ตรงไป Supabase — รหัสไม่ผ่านเซิร์ฟเวอร์ของเราเลย
+   * (Supabase เก็บเป็น hash ฝั่งมัน อ่านกลับไม่ได้แม้แต่เจ้าของโปรเจกต์)
+   */
+  const savePassword = async () => {
+    if (newPassword.length < 6) {
+      flash(false, 'รหัสต้องยาวอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      flash(false, 'รหัสสองช่องไม่ตรงกัน');
+      return;
+    }
+    setSavingKey('password');
+    try {
+      const { getSupabase } = await import('@/lib/supabase');
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล');
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword('');
+      setConfirmPassword('');
+      flash(true, 'ตั้งรหัสผ่านแล้ว — ใช้อีเมลกับรหัสนี้เข้าระบบได้จากทุกเครื่อง');
+    } catch (err) {
+      flash(false, err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   const saveAccount = async () => {
@@ -504,6 +539,62 @@ export default function SettingsPage() {
                     {savingKey === 'account' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     บันทึก
                   </button>
+                </div>
+
+                {/* ตั้งรหัสผ่าน — ทางเข้าที่ไม่พึ่งอีเมลเลย
+                    จำเป็นเพราะเข้าเครื่องใหม่ (มือถือ / PWA ที่เพิ่มไปหน้าจอโฮม ซึ่ง iOS นับเป็นแอปแยก
+                    จาก Safari จึงไม่ได้ session มาด้วย) ต้องล็อกอินใหม่ทุกครั้ง
+                    และการขอรหัสทางอีเมลติดโควตา ~3-4 ฉบับ/ชั่วโมงของ Supabase
+                    รหัสถูกส่งตรงจากเบราว์เซอร์ไป Supabase ผ่าน updateUser — ไม่ผ่านเซิร์ฟเวอร์ของเรา */}
+                <div className="border-t border-white/5 pt-5 mt-5 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-accent-glow" />
+                      ตั้งรหัสผ่าน
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ตั้งไว้แล้วจะเข้าระบบจากเครื่องไหนก็ได้ด้วยอีเมล + รหัสผ่าน ไม่ต้องรออีเมลอีก
+                      — จำเป็นถ้าจะใช้บนมือถือ
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1.5 block">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</label>
+                    <input
+                      type="password"
+                      className="input-field"
+                      autoComplete="new-password"
+                      placeholder="ตั้งรหัสที่จำได้"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1.5 block">พิมพ์รหัสอีกครั้ง</label>
+                    <input
+                      type="password"
+                      className="input-field"
+                      autoComplete="new-password"
+                      placeholder="ยืนยันรหัสเดิมอีกรอบ"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={savePassword}
+                      disabled={savingKey === 'password' || newPassword.length < 6 || newPassword !== confirmPassword}
+                      className="btn-primary text-sm flex items-center gap-2 disabled:opacity-40"
+                    >
+                      {savingKey === 'password' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                      ตั้งรหัสผ่าน
+                    </button>
+                  </div>
+                  {newPassword.length > 0 && newPassword.length < 6 && (
+                    <p className="text-[11px] text-amber-400">รหัสสั้นไป — ต้องอย่างน้อย 6 ตัวอักษร</p>
+                  )}
+                  {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                    <p className="text-[11px] text-red-400">รหัสสองช่องไม่ตรงกัน</p>
+                  )}
                 </div>
               </div>
             </div>
