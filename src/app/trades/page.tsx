@@ -107,11 +107,16 @@ export default function TradesPage() {
         </p>
       </div>
 
-      {/* มือถือ: ตัวเลขลดเป็น text-xl กันยอดเงินยาว (formatAmount หลายหลัก) ล้นการ์ดครึ่งจอ — md ขึ้นไปขนาดเดิม */}
+      {/* มือถือ: ตัวเลขลดเป็น text-xl กันยอดเงินยาว (formatAmount หลายหลัก) ล้นการ์ดครึ่งจอ — md ขึ้นไปขนาดเดิม
+
+          ตัวเลขกำไร/ขาดทุนทั้งบล็อกนี้ใช้โทเคน text-up / text-down ไม่ใช่ emerald-400 / red-400 ตายตัว
+          เพราะเฉด 400 ถูกออกแบบมาสำหรับพื้นมืด พอมาอยู่บนการ์ดสีขาวของธีมสว่างเหลือคอนทราสต์
+          แค่ 1.91:1 (เขียว) กับ 2.75:1 (แดง) — ตัวเลขที่สำคัญที่สุดของหน้านี้แทบมองไม่เห็น
+          โทเคนให้ 5.5:1 / 4.8:1 บนธีมสว่าง ส่วนธีมมืดคืนเป็น #34d399 / #f87171 เฉดเดิมเป๊ะ */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1">กำไรที่ปิดแล้ว</div>
-          <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+          <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.realizedPnl >= 0 ? 'text-up' : 'text-down')}>
             {formatAmount(stats.realizedPnl, true)}
           </div>
           <div className="text-[10px] text-gray-500 mt-1">ปิดจบแล้ว ไม่ขยับอีก · รวมหลายสกุล</div>
@@ -123,7 +128,7 @@ export default function TradesPage() {
             // หรือมีแต่ตัวเฝ้าราคายังไม่เคยตรวจ อย่าแสดง 0.00 ให้เข้าใจผิดว่าเสมอตัว
             <div className="text-xl md:text-2xl font-mono font-bold text-gray-500">—</div>
           ) : (
-            <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            <div className={cn('text-xl md:text-2xl font-mono font-bold', stats.unrealizedPnl >= 0 ? 'text-up' : 'text-down')}>
               {formatAmount(stats.unrealizedPnl, true)}
             </div>
           )}
@@ -135,16 +140,16 @@ export default function TradesPage() {
         </div>
         <div className="card">
           <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3 text-emerald-400" /> ชนะ
+            <TrendingUp className="w-3 h-3 text-up" /> ชนะ
           </div>
-          <div className="text-xl md:text-2xl font-mono font-bold text-emerald-400">{stats.wins}</div>
+          <div className="text-xl md:text-2xl font-mono font-bold text-up">{stats.wins}</div>
         </div>
         {/* ใบที่ 5 บน grid 2 คอลัมน์จะเหลือช่องว่างข้าง ๆ — ให้เต็มแถวบนมือถือ (md ขึ้นไปกลับเป็น 1 ช่องเดิม) */}
         <div className="card col-span-2 md:col-span-1">
           <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
-            <TrendingDown className="w-3 h-3 text-red-400" /> แพ้
+            <TrendingDown className="w-3 h-3 text-down" /> แพ้
           </div>
-          <div className="text-xl md:text-2xl font-mono font-bold text-red-400">{stats.losses}</div>
+          <div className="text-xl md:text-2xl font-mono font-bold text-down">{stats.losses}</div>
         </div>
       </div>
 
@@ -155,8 +160,10 @@ export default function TradesPage() {
             onClick={() => setFilter(f.value)}
             className={cn(
               'px-4 py-2 rounded-xl text-sm font-medium transition-colors border',
+              // ปุ่มที่เลือกอยู่มีพื้นฟ้าจาง 10% ทับอีกชั้น ทำให้ text-accent-glow เหลือ 4.41:1 ตกเกณฑ์ AA
+              // จึงลงเฉดเป็น cyan-800 เฉพาะธีมสว่าง ส่วนธีมมืดคืนสีนีออนเดิม (แบบเดียวกับหน้าอื่น)
               filter === f.value
-                ? 'border-accent-glow/30 bg-accent-glow/10 text-accent-glow'
+                ? 'border-accent-glow/30 bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
                 : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
             )}
           >
@@ -221,7 +228,9 @@ export default function TradesPage() {
               />
             </div>
 
-            {error && <p className="text-xs text-red-400 bg-red-500/10 rounded-xl p-3">{error}</p>}
+            {/* ข้อความ error อยู่บนพื้นแดงจาง 10% อีกชั้น ทำให้ text-down (แดงของธีมสว่าง) เหลือ 4.24:1
+                จึงลงเฉดเป็น red-700 เฉพาะธีมสว่าง (5.7:1) ธีมมืดคืนเป็น #f87171 เท่าเดิม */}
+            {error && <p className="text-xs text-red-700 dark:text-down bg-red-500/10 rounded-xl p-3">{error}</p>}
 
             <div className="flex justify-end gap-3">
               <button onClick={() => setClosing(null)} className="btn-ghost text-sm">ยกเลิก</button>

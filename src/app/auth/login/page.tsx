@@ -159,11 +159,16 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-glow to-accent-hot flex items-center justify-center mx-auto mb-4">
-            <Bot className="w-8 h-8 text-white" />
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-3 border-surface-1" />
+            {/* พื้นหลังโลโก้เป็น gradient สีเข้มจัดทั้งสองธีม ไอคอนจึงต้องเป็น "ขาวจริง"
+                ใช้ text-white ไม่ได้แล้ว เพราะ tailwind.config ผูก text-white ไว้กับสีตัวอักษรของธีม
+                (ธีมสว่างจะกลายเป็นดำบนพื้นเข้ม อ่านยากกว่าเดิม) */}
+            <Bot className="w-8 h-8 text-[#fff]" />
+            {/* จุดสถานะสีเขียว — ใช้ bg-up เพื่อให้เขียวเข้มขึ้นเองบนพื้นสว่าง
+                (emerald-400 บนพื้นขาวจางจนแทบไม่เห็นว่ามีจุดอยู่) */}
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-up rounded-full border-3 border-surface-1" />
           </div>
-          <h1 className="font-display text-2xl text-white">Trading AI</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="font-display text-2xl text-[rgb(var(--text-primary))]">Trading AI</h1>
+          <p className="text-sm text-[rgb(var(--text-muted))] mt-1">
             {mode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}
           </p>
         </div>
@@ -171,9 +176,9 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Email</label>
+            <label className="text-xs text-[rgb(var(--text-secondary))] mb-1.5 block">Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--text-muted))]" />
               <input
                 type="email"
                 required
@@ -186,9 +191,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Password</label>
+            <label className="text-xs text-[rgb(var(--text-secondary))] mb-1.5 block">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--text-muted))]" />
               {/* required เฉพาะโหมดสมัคร — โหมดเข้าระบบเว้นว่างได้ (= ขอลิงก์ทางอีเมลแทน)
                   placeholder ห้ามเป็นจุด ๆ เด็ดขาด: ผู้ใช้จริงเคยเข้าใจว่ามีรหัสอยู่ในช่องแล้ว */}
               <input
@@ -203,13 +208,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* กล่องนี้ถูกใช้ทั้งกรณีสำเร็จ (ส่งเมลแล้ว) และกรณีผิดพลาด — พื้นหลังต้องเปลี่ยนตามด้วย
+              ไม่งั้นบนธีมสว่างจะเป็นตัวหนังสือเขียวบนพื้นแดงจาง ซึ่งอ่านความหมายผิด */}
           {error && (
-            <p className={`text-xs ${error.includes('ส่ง email') ? 'text-emerald-400' : 'text-red-400'} bg-red-500/10 rounded-xl p-3`}>
+            <p className={`text-xs ${error.includes('ส่ง email') ? 'text-up bg-emerald-500/10' : 'text-red-700 dark:text-down bg-red-500/10'} rounded-xl p-3`}>
               {error}
             </p>
           )}
           {notice && (
-            <p className="text-xs text-emerald-400 bg-emerald-500/10 rounded-xl p-3">
+            <p className="text-xs text-up bg-emerald-500/10 rounded-xl p-3">
               {notice}
             </p>
           )}
@@ -242,7 +249,7 @@ export default function LoginPage() {
                   ยืนยัน
                 </button>
               </div>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-[rgb(var(--text-muted))]">
                 ไม่เจออีเมล? เช็คโฟลเดอร์ Junk/สแปม หรือกดปุ่มด้านล่างขอรหัสใหม่
               </p>
             </div>
@@ -254,6 +261,8 @@ export default function LoginPage() {
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
             {loading ? (
+              /* border-white ถูก tailwind.config ผูกไว้กับ --invert (ขาวบนธีมมืด / ดำบนธีมสว่าง)
+                 วงหมุนจึงพลิกสีตามธีมเองและยังเข้ากับสีตัวหนังสือของปุ่ม .btn-primary */
               <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
             ) : (
               <>
@@ -266,8 +275,8 @@ export default function LoginPage() {
           {/* ทางเข้าแบบไม่ใช้รหัสผ่าน — สำหรับคนที่ไม่อยากตั้ง/จำรหัสเลย
               ใช้อีเมลจากช่องข้างบน ครั้งแรกระบบสร้างบัญชีให้อัตโนมัติ */}
           <div className="relative my-2">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-            <div className="relative flex justify-center"><span className="px-3 text-[11px] text-gray-500 bg-surface-1">หรือ</span></div>
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--border-subtle)]" /></div>
+            <div className="relative flex justify-center"><span className="px-3 text-[11px] text-[rgb(var(--text-muted))] bg-surface-1">หรือ</span></div>
           </div>
           <button
             type="button"
@@ -284,12 +293,12 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setOtpSent(true); setError(''); }}
-              className="w-full text-xs text-gray-400 hover:text-accent-glow transition-colors"
+              className="w-full text-xs text-[rgb(var(--text-secondary))] hover:text-accent-glow transition-colors"
             >
               มีรหัสอยู่แล้ว? กรอกที่นี่
             </button>
           )}
-          <p className="text-[11px] text-gray-500 text-center">
+          <p className="text-[11px] text-[rgb(var(--text-muted))] text-center">
             กรอกอีเมลข้างบนแล้วกดปุ่มนี้ ลิงก์จะพาเข้าระบบเลย ครั้งแรกระบบสร้างบัญชีให้อัตโนมัติ
           </p>
         </form>
@@ -297,7 +306,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-            className="text-sm text-gray-400 hover:text-accent-glow transition-colors"
+            className="text-sm text-[rgb(var(--text-secondary))] hover:text-accent-glow transition-colors"
           >
             {mode === 'login' ? 'ยังไม่มีบัญชี? สร้างใหม่' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
           </button>

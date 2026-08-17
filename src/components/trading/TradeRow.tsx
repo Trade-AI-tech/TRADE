@@ -12,9 +12,23 @@ const marketLabel: Record<string, string> = {
  * 'manual' กับ null ใช้ป้ายเดียวกัน เพราะออเดอร์ที่ปิดไว้ก่อนจะมีตัวเฝ้าราคาก็ไม่มีค่านี้เก็บไว้
  * จะเดาย้อนหลังว่าโดน SL/TP ไม่ได้
  */
+/**
+ * ทำไมป้ายแดงใช้ text-red-700 แทนโทเคน text-down บนธีมสว่าง
+ *
+ * โทเคน --down ธีมสว่างคือ #dc2626 ซึ่งได้ 4.8:1 บนพื้นการ์ดขาว (ผ่าน)
+ * แต่ป้ายพวกนี้มีพื้น bg-red-500/10 ทับอยู่ พื้นจึงกลายเป็น rgb(253,236,236)
+ * วัดจริงแล้วเหลือ 4.23:1 ตกเกณฑ์ AA — ลงเฉดอีกขั้นเป็น red-700 ได้ 5.66:1
+ * ธีมมืดสลับกลับไปใช้ --down (#f87171) เหมือนเดิมเป๊ะ ไม่มีอะไรเปลี่ยน
+ *
+ * ฝั่งเขียวไม่ต้องแก้: #047857 บนพื้น emerald จาง ๆ ได้ 5.06:1 ผ่านอยู่แล้ว
+ */
+const RED_ON_TINT = 'text-red-700 [.dark_&]:text-down';
+
 const closeReasonConfig: Record<string, { label: string; className: string }> = {
-  stop_loss: { label: '🛑 ตัดขาดทุน', className: 'bg-red-500/10 text-red-400 border-red-500/30' },
-  take_profit: { label: '🎯 ปิดทำกำไร', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+  // สีตัวหนังสือมาจากตัวแปรธีม เพราะแดง/เขียวเฉด 400 จางเกินจะอ่านออกบนพื้นสว่าง
+  // ความหมายคงเดิม: แดง = โดนตัดขาดทุน, เขียว = ปิดทำกำไร
+  stop_loss: { label: '🛑 ตัดขาดทุน', className: `bg-red-500/10 ${RED_ON_TINT} border-red-500/30` },
+  take_profit: { label: '🎯 ปิดทำกำไร', className: 'bg-emerald-500/10 text-up border-emerald-500/30' },
   manual: { label: 'ปิดเอง', className: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
 };
 
@@ -65,21 +79,22 @@ export default function TradeRow({
   const checkedTitle = checkedAt ? `ตัวเฝ้าราคาตรวจล่าสุด ${checkedAt}` : undefined;
 
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+    <tr className="border-b border-[var(--border-subtle)] hover:bg-surface-2 transition-colors">
       <td className="py-3 px-4">
         <div className="flex items-center gap-2">
-          <div className={cn('w-1.5 h-8 rounded-full', trade.direction === 'long' ? 'bg-emerald-400' : 'bg-red-400')} />
+          {/* แถบสีบอกทิศ: เขียว = Long (ได้กำไรตอนขึ้น), แดง = Short */}
+          <div className={cn('w-1.5 h-8 rounded-full', trade.direction === 'long' ? 'bg-up' : 'bg-down')} />
           <div>
             <div className="font-semibold text-white text-sm">{trade.symbol}</div>
-            <div className="text-xs text-gray-500">{trade.name}</div>
+            <div className="text-xs text-gray-400">{trade.name}</div>
           </div>
         </div>
       </td>
       <td className="py-3 px-4 text-xs">
-        <span className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">{marketLabel[trade.market] || trade.market}</span>
+        <span className="text-[10px] px-1.5 py-0.5 bg-surface-2 rounded text-gray-400">{marketLabel[trade.market] || trade.market}</span>
       </td>
       <td className="py-3 px-4">
-        <span className={cn('text-xs font-medium uppercase', trade.direction === 'long' ? 'text-emerald-400' : 'text-red-400')}>
+        <span className={cn('text-xs font-medium uppercase', trade.direction === 'long' ? 'text-up' : 'text-down')}>
           {trade.direction === 'long' ? 'Long' : 'Short'}
         </span>
       </td>
@@ -91,8 +106,8 @@ export default function TradeRow({
           // ใช้ monitored ตัวเดียวกับช่อง P/L ไม่งั้นแถวเดียวกันจะขัดกันเอง
           monitored ? (
             <div title={checkedTitle} className={cn(checkedTitle && 'cursor-help')}>
-              <div className="font-mono text-sm text-gray-300">{trade.current_price}</div>
-              <div className="text-[10px] text-gray-500">ราคาปัจจุบัน</div>
+              <div className="font-mono text-sm text-white">{trade.current_price}</div>
+              <div className="text-[10px] text-gray-400">ราคาปัจจุบัน</div>
             </div>
           ) : (
             <span className="font-mono text-sm text-gray-500">—</span>
@@ -105,10 +120,12 @@ export default function TradeRow({
       <td className="py-3 px-4">
         {showPnl ? (
           <>
-            <div className={cn('font-mono font-semibold', isProfit ? 'text-emerald-400' : 'text-red-400')}>
+            {/* กำไร = เขียว, ขาดทุน = แดง (บรรทัด % ใช้สีเต็มเช่นกัน เพราะเฉดจาง 70%
+                บนพื้นขาวอ่านไม่ออก ความต่างของลำดับความสำคัญมาจากขนาดตัวอักษรแทน) */}
+            <div className={cn('font-mono font-semibold', isProfit ? 'text-up' : 'text-down')}>
               {isProfit ? '+' : ''}{trade.pnl.toFixed(2)}
             </div>
-            <div className={cn('text-xs', isProfit ? 'text-emerald-400/70' : 'text-red-400/70')}>
+            <div className={cn('text-xs', isProfit ? 'text-up' : 'text-down')}>
               {isProfit ? '+' : ''}{trade.pnl_percent.toFixed(2)}%
             </div>
             {isOpen && (
@@ -116,7 +133,7 @@ export default function TradeRow({
               <span
                 title={checkedTitle}
                 className={cn(
-                  'inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400',
+                  'inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-gray-400',
                   checkedTitle && 'cursor-help'
                 )}
               >
@@ -131,7 +148,7 @@ export default function TradeRow({
             <div className="font-mono font-semibold text-gray-500">—</div>
             <span
               title="ตัวเฝ้าราคายังไม่เคยตรวจออเดอร์นี้ จึงยังไม่มีกำไร/ขาดทุนให้แสดง"
-              className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 cursor-help"
+              className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-gray-400 cursor-help"
             >
               ยังไม่ได้ตรวจราคา
             </span>
@@ -142,10 +159,12 @@ export default function TradeRow({
         <span className={cn(
           'text-[11px] px-2 py-0.5 rounded-full border',
           isOpen
-            ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+            // น้ำเงินไม่มีโทเคนของธีม จึงระบุสองเฉด: blue-700 บนพื้นสว่าง / blue-400 ใต้ .dark
+            ? 'bg-blue-500/10 text-blue-700 [.dark_&]:text-blue-400 border-blue-500/30'
             : trade.status === 'closed'
             ? 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-            : 'bg-red-500/10 text-red-400 border-red-500/30'
+            // ป้าย "ยกเลิก" อยู่บนพื้นแดงจางเหมือนกัน จึงต้องลงเฉดตามเหตุผลเดียวกับ RED_ON_TINT
+            : `bg-red-500/10 ${RED_ON_TINT} border-red-500/30`
         )}>
           {isOpen ? 'กำลังถือ' : trade.status === 'closed' ? 'ปิดแล้ว' : 'ยกเลิก'}
         </span>
@@ -164,14 +183,16 @@ export default function TradeRow({
           </div>
         )}
       </td>
-      <td className="py-3 px-4 text-xs text-gray-500">
+      <td className="py-3 px-4 text-xs text-gray-400">
         {new Date(trade.opened_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
       </td>
       <td className="py-3 px-4 text-right">
         {isOpen && onClose && (
           <button
             onClick={() => onClose(trade)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+            // ขอบปุ่มต้องมีสีจริงเสมอ ไม่ใช่ขาวโปร่งที่หายไปบนพื้นสว่าง
+            // เผื่อธีมมีโทเคนขอบเข้มไว้ให้ใช้ ถ้าไม่มีก็ถอยไปใช้ขอบจาง (ยังเห็นอยู่ทั้งสองธีม)
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border-strong,var(--border-subtle))] text-gray-400 hover:text-white hover:bg-surface-2 transition-colors"
           >
             ปิดออเดอร์
           </button>

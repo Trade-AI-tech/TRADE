@@ -4,21 +4,151 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   ระบบสีกลางของทั้งแอป — แก้ที่นี่ที่เดียว ทุกหน้าเปลี่ยนตาม
+
+   ทำไมเก็บเป็น "ช่อง RGB" (247 248 250) แทน hex (#f7f8fa):
+   Tailwind ต้องเติมค่า alpha เองเมื่อเจอคลาสอย่าง bg-surface-1/95 หรือ
+   from-accent-glow/20 โดยแทนค่าลงในรูปแบบ rgb(var(--x) / <alpha-value>)
+   ถ้าตัวแปรเก็บเป็น hex ตัว Tailwind จะ parse ไม่ออกแล้ว "ข้ามไม่สร้างคลาสนั้นเลย"
+   แบบเงียบ ๆ — พื้นหลัง/เส้นขอบครึ่งแอปจะหายไปโดยไม่มี error ให้เห็น
+   ผลข้างเคียง: เวลาใช้ในไฟล์นี้ต้องเขียน rgb(var(--x)) ครอบเสมอ
+
+   ธีมสว่างอยู่ที่ :root = ค่าเริ่มต้นเมื่อ <html> ไม่มีคลาส dark
+   ธีมมืดอยู่ที่ .dark = ค่าเดิมของระบบทุกตัว (ต้องเหมือนเดิมเป๊ะเมื่อสลับกลับ)
+   ═══════════════════════════════════════════════════════════════════════ */
 :root {
   --font-display: 'Instrument Serif', serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* ── พื้นผิว: 0 = พื้นหลังหน้า → 4 = ชั้นที่ลอยสูงสุด ── */
+  --surface-0: 247 248 250; /* #f7f8fa */
+  --surface-1: 255 255 255; /* #ffffff — การ์ด */
+  --surface-2: 241 243 247; /* #f1f3f7 — ช่องกรอก/พื้นรอง */
+  --surface-3: 230 233 239; /* #e6e9ef */
+  --surface-4: 217 221 229; /* #d9dde5 */
+
+  /* ── ตัวหนังสือ: ไล่จากเข้มสุด (strong) ไปจางสุด (faint)
+     ทุกระดับผ่าน WCAG AA (≥4.5:1) บนพื้น surface-2 ซึ่งเป็นพื้นที่สว่างที่สุดที่มีตัวหนังสือวางอยู่ ── */
+  --text-primary: 18 19 26;    /* #12131a — 17:1 */
+  --text-body: 18 19 26;       /* สีตัวหนังสือพื้นฐานของ <body> — ดูคำอธิบายที่ .dark ว่าทำไมต้องแยกตัวแปร
+                                  ฝั่งสว่างเท่ากับ --text-primary พอดี จึงไม่มีอะไรต่างให้เห็น */
+  --text-strong: 55 65 81;     /* #374151 — 9.3:1 */
+  --text-secondary: 75 85 99;  /* #4b5563 — 6.8:1 */
+  --text-muted: 91 100 114;    /* #5b6472 — 5.4:1
+                                  เข้มกว่า #6b7280 ที่ตั้งใจไว้ตอนแรก เพราะบนพื้น surface-2
+                                  #6b7280 ได้แค่ 4.35:1 ตกเกณฑ์ AA */
+  --text-dim: 100 108 122;     /* #646c7a — 4.8:1 */
+  --text-faint: 107 114 128;   /* #6b7280 — 4.5:1 (ขั้นต่ำสุดที่ยังผ่าน) */
+
+  /* ── เส้นขอบ: บนพื้นสว่างต้องเป็นสีเข้มจาง ๆ ไม่ใช่ขาว (ขาวบนขาว = มองไม่เห็น) ──
+     --invert คือ "สีตรงข้ามกับพื้น" ใช้เป็นฐานของเส้นขอบและพื้น hover ทั้งระบบ */
+  --invert: 0 0 0;
+  --border-subtle: rgb(var(--invert) / 0.08);
+  --border-strong: rgb(var(--invert) / 0.14);
+  /* เส้นขอบการ์ดแยกตัวแปรจาก --border-subtle เพราะการ์ดกับเส้นคั่นทั่วไปคนละบทบาท
+     ดูเหตุผลเต็มที่ .dark — ฝั่งสว่างการ์ดพึ่งเงา (--card-shadow) เป็นหลัก
+     เส้นขอบแค่ช่วยตัดขอบการ์ดขาวออกจากพื้น #f7f8fa
+     ต้องต่ำกว่า 0.1 ด้วย เพราะ .card-hover ใช้ hover:border-white/10 = 0.1
+     ถ้าตั้งการ์ดไว้ 0.1 เท่ากัน เส้นขอบตอน hover จะไม่ขยับให้เห็นเลยบนธีมสว่าง */
+  --card-border: rgb(var(--invert) / 0.08);
+
+  /* ── สีเน้น ── */
+  --accent-glow: 14 116 144;   /* #0e7490 — cyan-700
+                                  เข้มกว่า #0891b2 ที่ตั้งใจไว้ตอนแรกเพราะ #0891b2 บนพื้นขาวได้ 3.7:1
+                                  ตกเกณฑ์ AA และคลาส text-accent-glow ถูกใช้เป็นตัวหนังสือ 33 จุด */
+  --accent-hot: 225 29 72;     /* #e11d48 — ใช้เป็นพื้น/ไล่เฉดเท่านั้น ไม่เคยใช้เป็นตัวหนังสือ */
+  --accent-gold: 161 98 7;     /* #a16207 — ทองบนพื้นขาวต้องเข้มขนาดนี้ถึงจะอ่านออก (4.9:1) */
+  --accent-purple: 109 40 217; /* #6d28d9 — 7.1:1 */
+
+  /* ── สีที่สื่อความหมาย: ห้ามสลับความหมาย เขียว = ขึ้น/กำไร/BUY, แดง = ลง/ขาดทุน/SELL ──
+     บนพื้นสว่างต้องใช้เฉดเข้ม ถ้าใช้เฉดอ่อนแบบธีมมืดจะจางจนอ่านตัวเลขกำไร/ขาดทุนผิด */
+  --up: 4 120 87;    /* #047857 — emerald-700, 5.5:1 บนพื้นขาว
+                        (#059669 ได้แค่ 3.8:1 ตกเกณฑ์ จึงต้องลงมาอีกขั้น) */
+  --down: 220 38 38; /* #dc2626 — red-600, 4.8:1 */
+
+  /* ── ค่าปรับความแรงของเอฟเฟกต์ตกแต่ง ──
+     พื้นสว่างขับ noise/glow ให้เด่นกว่าพื้นมืดมาก ถ้าใช้ค่าเดียวกันหน้าจะดูสกปรก */
+  --noise-opacity: 0.014;
+  --glow-alpha: 0.16;
+  --scrollbar-thumb: rgb(0 0 0 / 0.2);
+  --scrollbar-thumb-hover: rgb(0 0 0 / 0.32);
+
+  /* การ์ดบนพื้นสว่างแยกตัวออกจากพื้นหลังด้วยเงา ไม่ใช่ด้วยเส้นขอบเข้ม
+     (เส้นขอบเข้มพอให้เห็นชัดจะทำให้หน้าดูเป็นตาราง) — ธีมมืดไม่ต้องใช้เงาเพราะต่างระดับความสว่างอยู่แล้ว */
+  --card-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 8px 24px -8px rgb(16 24 40 / 0.1);
+  --glass-alpha: 0.92;
+
+  /* บอกเบราว์เซอร์ให้วาด control พื้นฐาน (scrollbar, select, autofill) ตามธีม */
+  color-scheme: light;
+}
+
+/* ธีมมืด — ทุกค่าตรงกับของเดิมก่อนมีระบบสลับธีม เพื่อให้สลับกลับมาแล้วหน้าตาไม่เพี้ยน */
+.dark {
+  --surface-0: 10 11 15;    /* #0a0b0f */
+  --surface-1: 18 19 26;    /* #12131a */
+  --surface-2: 26 27 36;    /* #1a1b24 */
+  --surface-3: 34 35 46;    /* #22232e */
+  --surface-4: 42 43 56;    /* #2a2b38 */
+
+  --text-primary: 255 255 255;   /* #ffffff — ค่านี้คือสีที่คลาส text-white ต้องได้ ห้ามลดเป็น zinc-200 */
+  --text-body: 228 228 231;      /* #e4e4e7 = zinc-200 — สีตัวหนังสือพื้นฐานของหน้าเดิมก่อนมีระบบธีม
+
+                                    ทำไมต้องมี 2 ตัวแปร: ของเดิม body ตั้ง text-zinc-200 ไว้เป็นสีพื้น
+                                    แล้วจุดที่อยากได้ขาวจริงค่อยแปะ text-white ทับ — คนละบทบาทกัน
+                                    ถ้าให้ body ใช้ --text-primary ร่วมกับ text-white ตัวใดตัวหนึ่งต้องเพี้ยน:
+                                    ตั้ง 255 → ตัวหนังสือทั้งหน้าสว่างขึ้นจากที่ผู้ใช้เคยเห็น
+                                    ตั้ง 228 → คลาส text-white ~90 จุดกลายเป็นเทาอ่อน ไม่ขาวจริง
+                                    แยกตัวแปรจึงได้ทั้งสองอย่างตรงของเดิมพร้อมกัน */
+  --text-strong: 209 213 219;    /* #d1d5db = gray-300 เดิม */
+  --text-secondary: 156 163 175; /* #9ca3af = gray-400 เดิม */
+  --text-muted: 107 114 128;     /* #6b7280 = gray-500 เดิม */
+  --text-dim: 75 85 99;          /* #4b5563 = gray-600 เดิม */
+  --text-faint: 55 65 81;        /* #374151 = gray-700 เดิม */
+
+  --invert: 255 255 255;
+  --border-subtle: rgb(var(--invert) / 0.05);
+  --border-strong: rgb(var(--invert) / 0.1);
+  /* ของเดิม .glass-card ใช้ rgba(255,255,255,0.06) ส่วนเส้นคั่นทั่วไปใช้ border-white/5 = 0.05
+     สองค่านี้ไม่เท่ากันมาแต่ไหนแต่ไร ถ้ามัดการ์ดไปใช้ --border-subtle ร่วมกัน ขอบการ์ดจะจางลงจากเดิม
+     จึงแยกตัวแปรของการ์ดออกมา เพื่อให้สลับกลับมาธีมมืดแล้วได้ 0.06 เท่าเดิมเป๊ะ */
+  --card-border: rgb(var(--invert) / 0.06);
+
+  --accent-glow: 37 244 238;   /* #25F4EE */
+  --accent-hot: 254 44 85;     /* #FE2C55 */
+  --accent-gold: 255 215 0;    /* #FFD700 */
+  --accent-purple: 123 97 255; /* #7B61FF */
+
+  --up: 52 211 153;   /* #34d399 = emerald-400 เดิม */
+  --down: 248 113 113; /* #f87171 = red-400 เดิม */
+
+  --noise-opacity: 0.03;
+  --glow-alpha: 0.3;
+  --scrollbar-thumb: rgb(255 255 255 / 0.1);
+  --scrollbar-thumb-hover: rgb(255 255 255 / 0.2);
+
+  --card-shadow: none;
+  --glass-alpha: 0.8;
+
+  color-scheme: dark;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* ทาสีที่ <html> ด้วย เพราะพื้นที่เลยขอบตอนดึงหน้าจอ (overscroll) อ่านสีจาก html ไม่ใช่ body */
+html {
+  background-color: rgb(var(--surface-0));
 }
 
 body {
   font-family: var(--font-body);
-  background-color: #0a0b0f;
-  color: #e4e4e7;
+  background-color: rgb(var(--surface-0));
+  /* ใช้ --text-body ไม่ใช่ --text-primary — ธีมมืดสีพื้นของหน้าคือ zinc-200 ไม่ใช่ขาวล้วน */
+  color: rgb(var(--text-body));
   -webkit-font-smoothing: antialiased;
   /* กันกรอบเทาแวบเวลากดปุ่ม/ลิงก์บน iOS */
   -webkit-tap-highlight-color: transparent;
@@ -33,7 +163,11 @@ body {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(37, 244, 238, 0.3), rgba(254, 44, 85, 0.3));
+  background: linear-gradient(
+    135deg,
+    rgb(var(--accent-glow) / var(--glow-alpha)),
+    rgb(var(--accent-hot) / var(--glow-alpha))
+  );
   z-index: -1;
   filter: blur(8px);
   opacity: 0;
@@ -45,15 +179,16 @@ body {
 
 /* Glass card */
 .glass-card {
-  background: rgba(18, 19, 26, 0.8);
+  background: rgb(var(--surface-1) / var(--glass-alpha));
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
+  box-shadow: var(--card-shadow);
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #25F4EE, #FE2C55);
+  background: linear-gradient(135deg, rgb(var(--accent-glow)), rgb(var(--accent-hot)));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -79,11 +214,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Chart tooltip */
@@ -96,7 +231,7 @@ body {
   content: '';
   position: fixed;
   inset: 0;
-  opacity: 0.03;
+  opacity: var(--noise-opacity);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 50;
@@ -107,25 +242,34 @@ body {
     @apply px-4 py-2 rounded-xl font-medium text-sm
       bg-gradient-to-r from-accent-glow/20 to-accent-hot/20
       border border-accent-glow/30
-      text-white
       hover:from-accent-glow/30 hover:to-accent-hot/30
       transition-all duration-200
       active:scale-[0.98];
+    /* พื้นปุ่มเป็นสีเน้นแบบโปร่ง 20% ทั้งสองธีม → ตัวหนังสือจึงต้องเป็นสีตัวอักษรหลักของธีมนั้น
+       ถ้าฮาร์ดโค้ดขาวไว้ ธีมสว่างจะได้ขาวบนฟ้าจาง = อ่านไม่ออก */
+    color: rgb(var(--text-primary));
   }
 
   .btn-ghost {
     @apply px-4 py-2 rounded-xl font-medium text-sm
-      text-gray-400 hover:text-white
-      hover:bg-white/5
       transition-all duration-200;
+    color: rgb(var(--text-secondary));
+  }
+  .btn-ghost:hover {
+    color: rgb(var(--text-primary));
+    background-color: rgb(var(--invert) / 0.05);
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 rounded-xl
-      bg-surface-2 border border-white/10
-      text-white placeholder:text-gray-500
+    @apply w-full px-4 py-2.5 rounded-xl border
       focus:outline-none focus:border-accent-glow/50 focus:ring-1 focus:ring-accent-glow/20
       transition-all duration-200;
+    background-color: rgb(var(--surface-2));
+    border-color: var(--border-strong);
+    color: rgb(var(--text-primary));
+  }
+  .input-field::placeholder {
+    color: rgb(var(--text-muted));
   }
 
   .card {
@@ -134,6 +278,24 @@ body {
 
   .card-hover {
     @apply card hover:border-white/10 hover:bg-surface-2/80 transition-all duration-200 cursor-pointer;
+  }
+}
+
+@layer utilities {
+  /* คู่กับการ remap backgroundColor.white → --invert ใน tailwind.config.js
+     ตรงนั้นทำให้ bg-white/5 · /10 · /[0.02] มองเห็นได้บนพื้นสว่าง (พลิกเป็นดำจาง)
+     แต่พลอยทำให้ bg-white แบบทึบกลายเป็นดำสนิทไปด้วย
+
+     จุดที่เขียน bg-white ทึบคือลูกบิดสวิตช์ ซึ่งต้องขาวจริงทั้งสองธีม
+     (ลูกบิดวางบนรางสีเขียว/ฟ้า ขาวคือสีเดียวที่ตัดกับรางได้ทั้งตอนเปิดและปิด)
+     จึงทับกลับเป็นขาวตรงนี้ — ทับได้เฉพาะคลาสทึบ เพราะ Tailwind สร้าง
+     .bg-white กับ .bg-white\/5 เป็นคนละ selector คลาสที่มี /opacity จึงไม่โดนกระทบ
+
+     ต้องอยู่ใน @layer utilities เพื่อให้ออกมาหลัง .bg-white ที่ Tailwind สร้าง
+     (specificity เท่ากัน ลำดับในไฟล์เป็นตัวตัดสิน) — ตรวจกับ output จริงของ
+     tailwindcss 3.4.19 แล้วว่ากฎนี้อยู่หลังจริง */
+  .bg-white {
+    background-color: #ffffff;
   }
 }
 

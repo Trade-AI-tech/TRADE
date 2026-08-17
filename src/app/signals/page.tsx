@@ -14,11 +14,19 @@ const MARKET_FILTERS = [
   { value: 'US_STOCK', label: 'หุ้น US' },
 ];
 
+/**
+ * สีของปุ่มที่ถูกเลือก — ปุ่มที่เลือกอยู่มีพื้น surface-3 (เทาอ่อนบนธีมสว่าง)
+ * text-up ยังผ่านเกณฑ์บนพื้นนั้น แต่ text-down (#dc2626) เหลือ ~4.0:1 ซึ่งตกเกณฑ์ AA
+ * ฝั่ง SELL/HOLD จึงระบุเฉดเข้มไว้เองสำหรับธีมสว่าง แล้วให้ dark: คืนสีเดิมของธีมมืด
+ * ความหมายของสีไม่เปลี่ยน: เขียว = BUY, แดง = SELL, เหลือง = HOLD
+ */
 const ACTION_FILTERS = [
-  { value: 'all', label: 'ทั้งหมด', color: 'text-white' },
-  { value: 'BUY', label: 'BUY', color: 'text-emerald-400' },
-  { value: 'SELL', label: 'SELL', color: 'text-red-400' },
-  { value: 'HOLD', label: 'HOLD', color: 'text-amber-400' },
+  { value: 'all', label: 'ทั้งหมด', color: 'text-[rgb(var(--text-primary))]' },
+  { value: 'BUY', label: 'BUY', color: 'text-up' },
+  { value: 'SELL', label: 'SELL', color: 'text-red-700 dark:text-down' },
+  // ป้าย HOLD ตอนถูกเลือกจะอยู่บนพื้น surface-3 (เทาอ่อนในธีมสว่าง) — amber-700 คอนทราสต์ไม่พอ
+  // จึงใช้ amber-800 บนธีมสว่าง แล้วคืนสี amber-400 เดิมให้ธีมมืด
+  { value: 'HOLD', label: 'HOLD', color: 'text-amber-800 dark:text-amber-400' },
 ];
 
 const TIMEFRAME_FILTERS = [
@@ -68,23 +76,25 @@ export default function SignalsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display text-white flex items-center gap-2">
+          <h1 className="text-2xl font-display text-[rgb(var(--text-primary))] flex items-center gap-2">
             <Zap className="w-6 h-6 text-accent-glow" />
             สัญญาณ AI
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
             จุดเข้า/ออก ที่วิเคราะห์จากเทคนิค + ข่าว + Price Action
           </p>
         </div>
         {/* สรุปหัวหน้า: นับจากข้อมูลจริงที่โหลดมา — flex-wrap กันป้ายดันความกว้างเกินจอมือถือ */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300">
-            ใช้งานอยู่ <span className="font-mono font-semibold text-white">{summary.active}</span>
+          <span className="px-3 py-1.5 rounded-lg bg-surface-2 border border-[var(--border-subtle)] text-xs text-[rgb(var(--text-secondary))]">
+            ใช้งานอยู่ <span className="font-mono font-semibold text-[rgb(var(--text-primary))]">{summary.active}</span>
           </span>
-          <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400">
+          <span className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-up">
             BUY <span className="font-mono font-semibold">{summary.buy}</span>
           </span>
-          <span className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+          {/* ป้าย SELL วางบนพื้นแดงจาง 10% ซึ่งกินคอนทราสต์ของ text-down ไปจนเหลือ 4.0:1
+              จึงใช้ red-700 บนธีมสว่าง (5.4:1) แล้วคืนสีเดิมให้ธีมมืดด้วย dark: */}
+          <span className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-700 dark:text-down">
             SELL <span className="font-mono font-semibold">{summary.sell}</span>
           </span>
         </div>
@@ -94,8 +104,8 @@ export default function SignalsPage() {
           และปุ่มมี min-height 36px เฉพาะมือถือให้กดด้วยนิ้วง่าย (lg คืนความสูงเดิม เดสก์ท็อปไม่เปลี่ยน) */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <span className="text-xs text-gray-500 uppercase">ตลาด:</span>
+          <Filter className="w-4 h-4 text-[rgb(var(--text-muted))]" />
+          <span className="text-xs text-[rgb(var(--text-muted))] uppercase">ตลาด:</span>
           <div className="flex flex-wrap gap-1">
             {MARKET_FILTERS.map(f => (
               <button
@@ -103,9 +113,11 @@ export default function SignalsPage() {
                 onClick={() => setMarket(f.value)}
                 className={cn(
                   'px-3 py-1.5 min-h-[36px] lg:min-h-0 rounded-lg text-xs font-medium transition-colors border',
+                  // ปุ่มที่เลือกอยู่มีพื้นฟ้าจาง 10% ทับอีกชั้น ทำให้ text-accent-glow เหลือ 4.4:1
+                  // จึงลงเฉดเป็น cyan-800 เฉพาะธีมสว่าง (6.0:1) ส่วนธีมมืดคืนสีนีออนเดิม
                   market === f.value
-                    ? 'border-accent-glow/30 bg-accent-glow/10 text-accent-glow'
-                    : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'border-accent-glow/30 bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
+                    : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                 )}
               >
                 {f.label}
@@ -115,7 +127,7 @@ export default function SignalsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 uppercase">สัญญาณ:</span>
+          <span className="text-xs text-[rgb(var(--text-muted))] uppercase">สัญญาณ:</span>
           <div className="flex flex-wrap gap-1">
             {ACTION_FILTERS.map(f => (
               <button
@@ -123,9 +135,11 @@ export default function SignalsPage() {
                 onClick={() => setAction(f.value)}
                 className={cn(
                   'px-3 py-1.5 min-h-[36px] lg:min-h-0 rounded-lg text-xs font-medium transition-colors border',
+                  // ปุ่มที่เลือกอยู่ใช้พื้นเข้มขึ้นหนึ่งขั้น (surface-3) แทนการเน้นด้วยเส้นขอบขาว
+                  // เพราะเส้นขอบขาวจาง ๆ หายไปเลยบนธีมสว่าง — พื้นต่างขั้นเห็นชัดทั้งสองธีม
                   action === f.value
-                    ? 'border-white/20 bg-white/5 ' + f.color
-                    : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'border-[var(--border-subtle)] bg-surface-3 ' + f.color
+                    : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                 )}
               >
                 {f.label}
@@ -135,7 +149,7 @@ export default function SignalsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 uppercase">Timeframe:</span>
+          <span className="text-xs text-[rgb(var(--text-muted))] uppercase">Timeframe:</span>
           <div className="flex flex-wrap gap-1">
             {TIMEFRAME_FILTERS.map(f => (
               <button
@@ -144,8 +158,8 @@ export default function SignalsPage() {
                 className={cn(
                   'px-3 py-1.5 min-h-[36px] lg:min-h-0 rounded-lg text-xs font-medium transition-colors border',
                   timeframe === f.value
-                    ? 'border-accent-glow/30 bg-accent-glow/10 text-accent-glow'
-                    : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'border-accent-glow/30 bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
+                    : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                 )}
               >
                 {f.label}
@@ -155,7 +169,7 @@ export default function SignalsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500 uppercase">เรียง:</span>
+          <span className="text-xs text-[rgb(var(--text-muted))] uppercase">เรียง:</span>
           <div className="flex flex-wrap gap-1">
             {SORT_OPTIONS.map(f => (
               <button
@@ -164,8 +178,8 @@ export default function SignalsPage() {
                 className={cn(
                   'px-3 py-1.5 min-h-[36px] lg:min-h-0 rounded-lg text-xs font-medium transition-colors border',
                   sortBy === f.value
-                    ? 'border-white/20 bg-white/5 text-white'
-                    : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'border-[var(--border-subtle)] bg-surface-3 text-[rgb(var(--text-primary))]'
+                    : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                 )}
               >
                 {f.label}
@@ -177,8 +191,8 @@ export default function SignalsPage() {
 
       {filtered.length === 0 ? (
         <div className="card text-center py-16">
-          <Zap className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">
+          <Zap className="w-12 h-12 text-[rgb(var(--text-muted))] mx-auto mb-3" />
+          <p className="text-[rgb(var(--text-secondary))]">
             {signals.length === 0
               ? 'ยังไม่มีสัญญาณ — เพิ่ม symbol ที่หน้า "ตลาด" แล้วกด "สแกนตลาด"'
               : 'ไม่พบสัญญาณที่ตรงกับตัวกรอง'}

@@ -36,9 +36,16 @@ const bottomItems = [
 function Brand({ showText }: { showText: boolean }) {
   return (
     <div className="flex items-center gap-3 min-w-0">
+      {/* กระเบื้องโลโก้มีพื้นหลังไล่สีของแบรนด์เป็นของตัวเอง ไม่ขึ้นกับธีมของหน้า
+          ไอคอนข้างในจึงยังเป็นสีขาวเหมือนเดิมทั้งสองธีม (ห้ามเปลี่ยนเป็นสีตัวหนังสือ
+          ไม่งั้นธีมสว่างจะได้ไอคอนดำบนพื้นไล่สีสด อ่านยากกว่าเดิม)
+
+          ต้องเขียน text-[#ffffff] ไม่ใช่ text-white เพราะ tailwind.config.js remap
+          textColor.white ไปที่ --text-primary ซึ่งธีมสว่างคือ #12131a (เกือบดำ)
+          — text-white ตรงนี้จะกลายเป็นไอคอนดำบนพื้นไล่สีสดทันที */}
       <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-accent-glow to-accent-hot flex items-center justify-center flex-shrink-0">
-        <TrendingUp className="w-5 h-5 text-white" />
-        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-surface-1" />
+        <TrendingUp className="w-5 h-5 text-[#ffffff]" />
+        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-up rounded-full border-2 border-surface-1" />
       </div>
       {showText && (
         <div className="overflow-hidden">
@@ -88,13 +95,17 @@ function NavLinks({
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
                   ? 'bg-accent-glow/10 text-accent-glow border border-accent-glow/20'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  : 'text-gray-400 hover:text-white hover:bg-surface-2 border border-transparent'
               )}
             >
               <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'drop-shadow-[0_0_6px_rgba(37,244,238,0.5)]')} />
               {showLabels && <span className="flex-1">{item.label}</span>}
+              {/* ป้ายจำนวนสัญญาณใหม่: พื้นเป็นสีแดงทึบของแบรนด์ทั้งสองธีม ตัวเลขจึงต้องขาวจริง
+                  ใช้ #ffffff ตายตัวแทน text-white เพราะ config remap text-white → --text-primary
+                  ธีมสว่างจะได้ตัวเลขเกือบดำบนพื้นแดง เหลือคอนทราสต์แค่ ~3.9:1 (ตกเกณฑ์ AA)
+                  ส่วนขาวบนแดง #e11d48 ได้ 4.8:1 ผ่าน */}
               {showBadge && showLabels && (
-                <span className="px-1.5 py-0.5 bg-accent-hot text-white text-[10px] rounded-full font-bold">
+                <span className="px-1.5 py-0.5 bg-accent-hot text-[#ffffff] text-[10px] rounded-full font-bold">
                   {unreadSignals}
                 </span>
               )}
@@ -103,13 +114,13 @@ function NavLinks({
         })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-white/5 space-y-1">
+      <div className="px-3 py-4 border-t border-[var(--border-subtle)] space-y-1">
         {bottomItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-surface-2 transition-all"
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
             {showLabels && <span>{item.label}</span>}
@@ -170,12 +181,12 @@ export default function Sidebar() {
       <aside
         className={cn(
           'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col',
-          'bg-surface-1/95 backdrop-blur-xl border-r border-white/5',
+          'bg-surface-1/95 backdrop-blur-xl border-r border-[var(--border-subtle)]',
           'transition-all duration-300 ease-out',
           sidebarOpen ? 'w-64' : 'w-[72px]'
         )}
       >
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-white/5">
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-[var(--border-subtle)]">
           <Brand showText={sidebarOpen} />
         </div>
         <NavLinks
@@ -184,7 +195,7 @@ export default function Sidebar() {
             <button
               onClick={toggleSidebar}
               aria-label={sidebarOpen ? 'ย่อเมนู' : 'ขยายเมนู'}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:text-white hover:bg-white/5 transition-all w-full"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-surface-2 transition-all w-full"
             >
               <ChevronLeft
                 className={cn(
@@ -201,6 +212,8 @@ export default function Sidebar() {
       {/* ===== มือถือ: backdrop ดำโปร่ง กดแล้วปิด drawer ===== */}
       <div
         className={cn(
+          // ฉากหลังดำโปร่ง 60% ใช้ได้ทั้งสองธีม — บนธีมสว่างมันคือเงาที่หรี่หน้าเว็บลง
+          // ให้ drawer เด่นขึ้น ถ้าเปลี่ยนเป็นขาวโปร่งบนธีมสว่างจะแยกไม่ออกว่าอะไรถูกบัง
           'fixed inset-0 z-40 bg-black/60 lg:hidden transition-opacity duration-300',
           mobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
@@ -216,21 +229,21 @@ export default function Sidebar() {
         aria-label="เมนูหลัก"
         className={cn(
           'fixed left-0 top-0 z-50 h-full w-[280px] max-w-[85vw] flex flex-col lg:hidden',
-          'bg-surface-1/95 backdrop-blur-xl border-r border-white/5',
+          'bg-surface-1/95 backdrop-blur-xl border-r border-[var(--border-subtle)]',
           'transition-transform duration-300 ease-out',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* paddingTop กันหัว drawer มุดใต้ notch/status bar ของ iPhone */}
         <div
-          className="flex items-center justify-between gap-3 px-5 min-h-[4rem] border-b border-white/5 flex-shrink-0"
+          className="flex items-center justify-between gap-3 px-5 min-h-[4rem] border-b border-[var(--border-subtle)] flex-shrink-0"
           style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
           <Brand showText />
           <button
             onClick={closeMobileNav}
             aria-label="ปิดเมนู"
-            className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all flex-shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-surface-2 transition-all flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

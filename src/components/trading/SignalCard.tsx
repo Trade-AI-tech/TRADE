@@ -11,11 +11,25 @@ interface Props {
   signal: Signal;
 }
 
+/**
+ * สีประจำคำสั่ง
+ *
+ * ใช้ตัวแปรธีมแทนสีตายตัว เพราะเฉดเดียวกันอ่านไม่ออกทั้งสองธีม
+ * (emerald-400 บนพื้นขาวจางจนอ่านตัวเลขกำไรผิด ธีมสว่างจึงต้องใช้เฉดเข้มกว่า)
+ * ความหมายของสีห้ามสลับ: เขียว = ซื้อ/กำไร, แดง = ขาย/ขาดทุน
+ *
+ * `dot` คือคลาสพื้นหลังสีเดียวกับ `color` เขียนแยกไว้เต็ม ๆ
+ * แทนการทำ .replace('text-','bg-') ตอนรันไทม์แบบเดิม เพราะ Tailwind สแกนคลาส
+ * จากตัวอักษรในซอร์สโค้ด คลาสที่เพิ่งประกอบขึ้นตอนรันไทม์อาจไม่ถูกสร้างจริง
+ *
+ * เหลือง (ถือ) ไม่มีโทเคนของธีม จึงระบุสองเฉดตรง ๆ แบบเดียวกับหน้า Dashboard:
+ * amber-700 บนพื้นสว่าง (คอนทราสต์ ~5:1) และสลับเป็น amber-400 เมื่ออยู่ใต้ .dark
+ */
 const actionConfig = {
-  BUY: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: TrendingUp, label: 'ซื้อ' },
-  SELL: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: TrendingDown, label: 'ขาย' },
-  HOLD: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: Minus, label: 'ถือ' },
-  CLOSE: { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/30', icon: Minus, label: 'ปิด' },
+  BUY: { color: 'text-up', dot: 'bg-up', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: TrendingUp, label: 'ซื้อ' },
+  SELL: { color: 'text-down', dot: 'bg-down', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: TrendingDown, label: 'ขาย' },
+  HOLD: { color: 'text-amber-700 [.dark_&]:text-amber-400', dot: 'bg-amber-700 [.dark_&]:bg-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: Minus, label: 'ถือ' },
+  CLOSE: { color: 'text-gray-400', dot: 'bg-[rgb(var(--text-secondary))]', bg: 'bg-gray-500/10', border: 'border-gray-500/30', icon: Minus, label: 'ปิด' },
 };
 
 const strengthStars = {
@@ -104,7 +118,11 @@ export default function SignalCard({ signal }: Props) {
   // ระยะห่างของราคาล่าสุดจาก entry เป็น % (เครื่องหมายตามทิศราคา ไม่ใช่ทิศกำไร)
   const distPct = priceMoved && entry !== 0 ? ((cur - entry) / Math.abs(entry)) * 100 : null;
   const inProfit = distPct !== null && (signal.action === 'BUY' ? distPct > 0 : distPct < 0);
-  const distColor = !tradeable ? 'text-gray-400' : inProfit ? 'text-emerald-400' : 'text-red-400';
+  const distColor = !tradeable
+    ? 'text-gray-400'
+    : inProfit
+    ? 'text-up'
+    : 'text-down';
 
   const createdAgo = now !== null ? timeAgoTh(signal.created_at, now) : null;
   const expiry = now !== null ? expiresInTh(signal.expires_at, now) : null;
@@ -127,7 +145,7 @@ export default function SignalCard({ signal }: Props) {
       )}
     >
       {signal.telegram_sent && (
-        <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+        <div className="absolute top-3 right-3 flex items-center gap-1 text-[10px] text-up bg-emerald-500/10 px-2 py-0.5 rounded-full">
           <CheckCircle2 className="w-3 h-3" />
           <span>แจ้ง Telegram</span>
         </div>
@@ -147,16 +165,16 @@ export default function SignalCard({ signal }: Props) {
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent-glow/10 text-accent-glow border border-accent-glow/30">
                 {signal.timeframe}
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">
+              <span className="text-[10px] px-1.5 py-0.5 bg-surface-2 rounded text-gray-400">
                 {marketLabel[signal.market]}
               </span>
               {isStale && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 [.dark_&]:text-amber-400 border border-amber-500/30">
                   เริ่มเก่าแล้ว
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{signal.name}</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{signal.name}</p>
           </div>
         </div>
 
@@ -164,7 +182,9 @@ export default function SignalCard({ signal }: Props) {
           <div className={cn('text-xl font-bold font-mono', cfg.color)}>{cfg.label}</div>
           <div className="flex items-center gap-0.5 justify-end mt-1">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className={cn('w-1.5 h-1.5 rounded-full', i < stars ? cfg.color.replace('text-', 'bg-') : 'bg-white/10')} />
+              // จุดที่ยังไม่ติด ใช้เฉดเทากลาง ๆ ที่เห็นได้ทั้งพื้นขาวและพื้นดำ
+              // (ของเดิม bg-white/10 หายไปเลยบนพื้นสว่าง คนอ่านจะนับความแรงสัญญาณผิด)
+              <div key={i} className={cn('w-1.5 h-1.5 rounded-full', i < stars ? cfg.dot : 'bg-surface-3')} />
             ))}
           </div>
         </div>
@@ -173,10 +193,17 @@ export default function SignalCard({ signal }: Props) {
       {ladder ? (
         <div className="relative h-36 mb-4">
           {/* รางบันไดราคา */}
-          <div className="absolute left-2 top-0 bottom-0 w-1.5 rounded-full bg-white/5" />
-          {/* โซนกำไร entry→TP */}
+          <div className="absolute left-2 top-0 bottom-0 w-1.5 rounded-full bg-surface-2" />
+          {/* โซนกำไร entry→TP
+              ใช้โทเคน bg-up (= rgb(var(--up) / <alpha-value>)) แทน bg-[var(--up)]
+              ที่พังเงียบ ๆ เพราะ --up เก็บเป็นช่อง RGB "4 120 87" ไม่ใช่สีเต็ม
+              เบราว์เซอร์จึงทิ้งทั้งบรรทัดแล้วโซนกลายเป็นโปร่งใสทั้งแถบ
+
+              คงการหรี่ด้วย opacity-40 (ไม่ย้ายไป bg-up/40) เพราะสองแบบให้ผลเท่ากัน
+              บนกล่องเปล่าที่ไม่มีลูก และของเดิมฝั่งธีมมืดจางเท่านี้อยู่แล้ว
+              ผลลัพธ์: พื้นมืดจางเท่าเดิมเป๊ะ ส่วนพื้นสว่างได้เขียวเข้มพอจนเห็นโซนชัด */}
           <div
-            className="absolute left-2 w-1.5 rounded-full bg-emerald-500/40"
+            className="absolute left-2 w-1.5 rounded-full bg-up opacity-40"
             style={{
               top: `${Math.min(ladder.pct(tp), ladder.pct(entry))}%`,
               height: `${Math.abs(ladder.pct(tp) - ladder.pct(entry))}%`,
@@ -184,7 +211,7 @@ export default function SignalCard({ signal }: Props) {
           />
           {/* โซนเสี่ยง entry→SL */}
           <div
-            className="absolute left-2 w-1.5 rounded-full bg-red-500/40"
+            className="absolute left-2 w-1.5 rounded-full bg-down opacity-40"
             style={{
               top: `${Math.min(ladder.pct(sl), ladder.pct(entry))}%`,
               height: `${Math.abs(ladder.pct(sl) - ladder.pct(entry))}%`,
@@ -193,33 +220,37 @@ export default function SignalCard({ signal }: Props) {
 
           {/* TP */}
           <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(tp)}%` }}>
-            <div className="w-5 h-px bg-emerald-400/60 flex-shrink-0" />
-            <Target className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-            <span className="text-[10px] uppercase font-medium text-emerald-400/80">TP</span>
+            {/* เส้นชี้ใช้สีทึบเต็ม (เดิม /60) เพราะเส้นหนา 1px สีจาง ๆ หายไปเลยบนพื้นขาว
+                ต้องแยกออกให้ได้ว่าเส้นไหนคือ TP (เขียว) เส้นไหนคือ SL (แดง) */}
+            <div className="w-5 h-px bg-up flex-shrink-0" />
+            <Target className="w-3 h-3 text-up flex-shrink-0" />
+            <span className="text-[10px] uppercase font-medium text-up">TP</span>
             {/* tabular-nums + nowrap: ราคายาว (เช่น BTC 64986.47) ต้องเป็นก้อนเดียว ไม่หักบรรทัดกลางตัวเลข */}
-            <span className="text-xs font-mono tabular-nums font-semibold text-emerald-400 whitespace-nowrap">{tp}</span>
+            <span className="text-xs font-mono tabular-nums font-semibold text-up whitespace-nowrap">{tp}</span>
           </div>
 
           {/* Entry */}
           <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(entry)}%` }}>
-            <div className="w-5 h-px bg-white/40 flex-shrink-0" />
+            <div className="w-5 h-px bg-[rgb(var(--text-secondary))] flex-shrink-0" />
             <span className="text-[10px] uppercase font-medium text-gray-400">Entry</span>
             <span className="text-xs font-mono tabular-nums font-semibold text-white whitespace-nowrap">{entry}</span>
           </div>
 
           {/* SL */}
           <div className="absolute left-0 right-0 -translate-y-1/2 flex items-center gap-1.5" style={{ top: `${ladder.pct(sl)}%` }}>
-            <div className="w-5 h-px bg-red-400/60 flex-shrink-0" />
-            <Shield className="w-3 h-3 text-red-400 flex-shrink-0" />
-            <span className="text-[10px] uppercase font-medium text-red-400/80">SL</span>
-            <span className="text-xs font-mono tabular-nums font-semibold text-red-400 whitespace-nowrap">{sl}</span>
+            <div className="w-5 h-px bg-down flex-shrink-0" />
+            <Shield className="w-3 h-3 text-down flex-shrink-0" />
+            <span className="text-[10px] uppercase font-medium text-down">SL</span>
+            <span className="text-xs font-mono tabular-nums font-semibold text-down whitespace-nowrap">{sl}</span>
           </div>
 
           {/* ราคาล่าสุดจากตัวเฝ้าราคา — จุดบนราง + label ชิดขวา จะได้ไม่ทับ label ฝั่งซ้าย */}
           {priceMoved && (
             <>
+              {/* จุดราคาล่าสุด: ตัวจุดใช้สีตัวหนังสือหลัก (ขาวบนธีมมืด / เกือบดำบนธีมสว่าง)
+                  ส่วนวงแหวนใช้สีพื้นการ์ด เพื่อเจาะขอบให้จุดเด้งออกจากแถบสีใต้จุด */}
               <div
-                className="absolute w-2.5 h-2.5 rounded-full bg-white ring-2 ring-black/50 -translate-y-1/2"
+                className="absolute w-2.5 h-2.5 rounded-full bg-[rgb(var(--text-primary))] ring-2 ring-surface-1 -translate-y-1/2"
                 style={{ top: `${ladder.pct(cur)}%`, left: '5px' }}
               />
               {/* จำกัดแถว "ล่าสุด" ไว้ฝั่งขวาไม่เกิน 70% — บนการ์ดแคบ ถ้าปล่อย left-0 ถึงขวาสุด
@@ -243,21 +274,33 @@ export default function SignalCard({ signal }: Props) {
       ) : (
         /* วาดบันไดไม่ได้ (HOLD/CLOSE หรือราคาซ้อนกัน) — โชว์ตัวเลขแบบตารางเดิม */
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-white/5 rounded-lg p-2.5">
-            <div className="text-[10px] text-gray-500 uppercase font-medium">Entry</div>
+          <div className="bg-surface-2 rounded-lg p-2.5">
+            <div className="text-[10px] text-gray-400 uppercase font-medium">Entry</div>
             <div className="text-sm font-mono font-semibold text-white mt-0.5">{signal.entry_price}</div>
           </div>
-          <div className="bg-red-500/5 rounded-lg p-2.5">
-            <div className="text-[10px] text-red-400/70 uppercase font-medium flex items-center gap-1">
+          {/* พื้นกล่องขยับจาก /5 เป็น /10: บนพื้นขาวสีจาง 5% แทบกลืนไปกับการ์ด
+              จนแยกไม่ออกว่ากล่องไหนคือ SL กล่องไหนคือ TP (บนพื้นมืดต่างกันแทบไม่รู้สึก) */}
+          {/* กล่อง SL เป็นจุดเดียวที่ text-down ตกเกณฑ์ AA: วัดจริงบนพื้น bg-red-500/10
+              (ทับพื้นการ์ดขาวแล้วได้ rgb(253,236,236)) ได้แค่ 4.23:1 — พื้นแดงจาง ๆ
+              ดันพื้นให้เข้มขึ้นจนระยะห่างกับ #dc2626 ไม่พอ
+              จึงลงเฉดอีกขั้นเป็น red-700 เฉพาะธีมสว่าง → 5.67:1 ผ่านสบาย
+              ธีมมืดสลับกลับไปใช้โทเคน --down (#f87171) เหมือนเดิมเป๊ะ
+
+              ทำไมไม่ลดพื้นเป็น /5 แทน: จะได้แค่ 4.53:1 (เฉียดเส้นเกินไป)
+              และกล่อง SL/TP จะกลืนกับการ์ดขาวจนแยกไม่ออกอีก ตามที่หมายเหตุข้างบนอธิบายไว้
+              ทำไมกล่อง TP ไม่ต้องแก้: #047857 บนพื้น emerald จาง ได้ 5.06:1 ผ่านอยู่แล้ว
+              และสองกล่องนี้ไม่เคยแสดงพร้อมบันไดราคา จึงไม่มีแดงสองเฉดโผล่พร้อมกัน */}
+          <div className="bg-red-500/10 rounded-lg p-2.5">
+            <div className="text-[10px] text-red-700 [.dark_&]:text-down uppercase font-medium flex items-center gap-1">
               <Shield className="w-2.5 h-2.5" /> SL
             </div>
-            <div className="text-sm font-mono font-semibold text-red-400 mt-0.5">{signal.stop_loss}</div>
+            <div className="text-sm font-mono font-semibold text-red-700 [.dark_&]:text-down mt-0.5">{signal.stop_loss}</div>
           </div>
-          <div className="bg-emerald-500/5 rounded-lg p-2.5">
-            <div className="text-[10px] text-emerald-400/70 uppercase font-medium flex items-center gap-1">
+          <div className="bg-emerald-500/10 rounded-lg p-2.5">
+            <div className="text-[10px] text-up uppercase font-medium flex items-center gap-1">
               <Target className="w-2.5 h-2.5" /> TP
             </div>
-            <div className="text-sm font-mono font-semibold text-emerald-400 mt-0.5">{signal.take_profit}</div>
+            <div className="text-sm font-mono font-semibold text-up mt-0.5">{signal.take_profit}</div>
           </div>
         </div>
       )}
@@ -270,16 +313,18 @@ export default function SignalCard({ signal }: Props) {
           className="flex items-baseline gap-1.5 flex-shrink-0"
           title="กำไรเป้าหมายเทียบความเสี่ยง คิดจากราคา TP/SL ของสัญญาณนี้"
         >
-          <span className="text-[10px] text-gray-500 uppercase font-medium">R:R</span>
+          <span className="text-[10px] text-gray-400 uppercase font-medium">R:R</span>
           <span className={cn('text-lg font-mono font-bold', rrText === '—' ? 'text-gray-500' : 'text-white')}>
             {rrText}
           </span>
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[10px] text-gray-500 uppercase font-medium">Conf</span>
-          <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+          <span className="text-[10px] text-gray-400 uppercase font-medium">Conf</span>
+          {/* รางของแถบต้องมีสีจริง ไม่ใช่ขาวโปร่ง ไม่งั้นบนพื้นขาวจะเห็นแค่ส่วนที่เติม
+              จนอ่านไม่ออกว่าเต็มกี่เปอร์เซ็นต์ */}
+          <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
             <div
-              className={cn('h-full rounded-full', cfg.color.replace('text-', 'bg-'))}
+              className={cn('h-full rounded-full', cfg.dot)}
               style={{ width: `${conf}%` }}
             />
           </div>
@@ -287,19 +332,19 @@ export default function SignalCard({ signal }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-500 mb-3">
+      <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400 mb-3">
         <Clock className="w-3 h-3 flex-shrink-0" />
         {/* ก่อน mount ยังไม่รู้เวลา "ตอนนี้" — โชว์ — ไปก่อน ดีกว่าเดาเลขผิด */}
         <span>{createdAgo ?? '—'}</span>
         {expiry && (
           <>
-            <span className="text-gray-700">·</span>
-            <span className={cn(expiry.expired && 'text-amber-400')}>{expiry.text}</span>
+            <span className="text-gray-500">·</span>
+            <span className={cn(expiry.expired && 'text-amber-700 [.dark_&]:text-amber-400')}>{expiry.text}</span>
           </>
         )}
         {!ladder && distPct !== null && (
           <>
-            <span className="text-gray-700">·</span>
+            <span className="text-gray-500">·</span>
             <span className={cn('font-mono', distColor)}>
               {distPct > 0 ? '+' : ''}{distPct.toFixed(2)}% จาก entry
             </span>
@@ -318,8 +363,8 @@ export default function SignalCard({ signal }: Props) {
                 className={cn(
                   'px-2 py-1 rounded-lg text-[11px] border transition-colors',
                   openReason === i
-                    ? 'border-white/20 bg-white/10 text-white'
-                    : 'border-white/5 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                    ? 'border-[var(--border-subtle)] bg-surface-3 text-white'
+                    : 'border-[var(--border-subtle)] bg-surface-2 text-gray-400 hover:text-white hover:bg-surface-3'
                 )}
               >
                 {r.label}
@@ -327,7 +372,7 @@ export default function SignalCard({ signal }: Props) {
             ))}
           </div>
           {openReason !== null && signal.reasons[openReason] && (
-            <div className="mt-2 bg-white/5 rounded-lg p-2.5 text-xs leading-relaxed">
+            <div className="mt-2 bg-surface-2 rounded-lg p-2.5 text-xs leading-relaxed">
               <span className="text-white font-medium">{signal.reasons[openReason].label}</span>
               <span className="text-gray-400"> — {signal.reasons[openReason].detail}</span>
             </div>

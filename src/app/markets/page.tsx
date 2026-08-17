@@ -36,50 +36,50 @@ function WatchRow({
   const Icon = isUp ? TrendingUp : TrendingDown;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-white/5 bg-surface-1/50">
+    <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-[var(--border-subtle)] bg-surface-1/50">
       <div className="flex items-center gap-3 min-w-0">
         <div
           className={cn(
             'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
             price
               ? isUp
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-red-500/10 text-red-400'
-              : 'bg-white/5 text-gray-500'
+                ? 'bg-emerald-500/10 text-up'
+                : 'bg-red-500/10 text-down'
+              : 'bg-surface-2 text-[rgb(var(--text-muted))]'
           )}
         >
           <Icon className="w-4 h-4" />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white text-sm">{item.symbol}</span>
-            <span className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">
+            <span className="font-semibold text-[rgb(var(--text-primary))] text-sm">{item.symbol}</span>
+            <span className="text-[10px] px-1.5 py-0.5 bg-surface-2 rounded text-[rgb(var(--text-secondary))]">
               {MARKETS.find(m => m.value === item.market)?.label ?? item.market}
             </span>
           </div>
-          <div className="text-xs text-gray-500 mt-0.5 truncate">{item.name}</div>
+          <div className="text-xs text-[rgb(var(--text-muted))] mt-0.5 truncate">{item.name}</div>
         </div>
       </div>
 
       <div className="flex items-center gap-4 flex-shrink-0">
         {price ? (
           <div className="text-right">
-            <div className="font-mono font-semibold text-white">
+            <div className="font-mono font-semibold text-[rgb(var(--text-primary))]">
               {price.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
             </div>
-            <div className={cn('text-xs font-mono font-medium', isUp ? 'text-emerald-400' : 'text-red-400')}>
+            <div className={cn('text-xs font-mono font-medium', isUp ? 'text-up' : 'text-down')}>
               {isUp ? '+' : ''}{price.change.toFixed(4)} ({isUp ? '+' : ''}{price.change_percent.toFixed(2)}%)
             </div>
           </div>
         ) : (
-          <div className="text-xs text-gray-600">ยังไม่มีราคา — กด &ldquo;สแกนตลาด&rdquo;</div>
+          <div className="text-xs text-[rgb(var(--text-muted))]">ยังไม่มีราคา — กด &ldquo;สแกนตลาด&rdquo;</div>
         )}
 
         <button
           onClick={onRemove}
           disabled={removing}
           title="ลบออกจาก watchlist"
-          className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+          className="p-2 rounded-lg text-[rgb(var(--text-muted))] hover:text-down hover:bg-red-500/10 transition-colors disabled:opacity-40"
         >
           {removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
         </button>
@@ -147,25 +147,27 @@ function MarketsContent() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display text-white flex items-center gap-2">
+        <h1 className="text-2xl font-display text-[rgb(var(--text-primary))] flex items-center gap-2">
           <LineChart className="w-6 h-6 text-accent-glow" />
           ตลาดที่ติดตาม
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
           เพิ่ม symbol ที่นี่ ระบบจะสแกนหาสัญญาณให้ทุกวันและแจ้งเตือนเข้า Telegram
         </p>
       </div>
 
       {demo ? (
         <div className="card flex items-start gap-3 border-amber-500/20 bg-amber-500/5">
-          <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-300">
+          {/* เหลืองอ่อน (amber-400/300) จมหายไปกับพื้นสว่าง และ amber ไม่มีตัวแปรธีมรองรับเหมือน
+              accent/up/down จึงเขียนคู่เอง: เฉดเข้มเป็นค่าเริ่มต้น แล้ว dark: คืนสีเดิมให้ธีมมืด */}
+          <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300">
             ตอนนี้อยู่ในโหมด Demo — รายการด้านล่างเป็นข้อมูลตัวอย่าง เพิ่มหรือลบไม่ได้
           </p>
         </div>
       ) : (
         <form onSubmit={handleAdd} className="card space-y-3">
-          <h3 className="text-sm font-semibold text-white">เพิ่ม symbol</h3>
+          <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">เพิ่ม symbol</h3>
           <div className="flex flex-wrap gap-3">
             <input
               type="text"
@@ -192,12 +194,12 @@ function MarketsContent() {
               เพิ่ม
             </button>
           </div>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-[rgb(var(--text-muted))]">
             ตัวอย่างของ{MARKETS.find(m => m.value === market)?.label}: {activeHint} — ระบบจะตรวจกับ Yahoo Finance ก่อนบันทึก
           </p>
 
           {msg && (
-            <p className={cn('text-xs rounded-xl p-3', msg.ok ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10')}>
+            <p className={cn('text-xs rounded-xl p-3', msg.ok ? 'text-up bg-emerald-500/10' : 'text-red-700 dark:text-down bg-red-500/10')}>
               {msg.text}
             </p>
           )}
@@ -214,34 +216,34 @@ function MarketsContent() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border',
                 filter === m.value
-                  ? 'border-accent-glow/30 bg-accent-glow/10 text-accent-glow'
-                  : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'border-accent-glow/30 bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
+                  : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
               )}
             >
               <span>{m.icon}</span>
               <span>{m.label}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">{count}</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-surface-3 rounded">{count}</span>
             </button>
           );
         })}
       </div>
 
       {q && (
-        <p className="text-xs text-gray-500">
-          กรองด้วยคำค้น: <span className="text-white font-mono">{q}</span>
+        <p className="text-xs text-[rgb(var(--text-muted))]">
+          กรองด้วยคำค้น: <span className="text-[rgb(var(--text-primary))] font-mono">{q}</span>
         </p>
       )}
 
       {loading ? (
-        <div className="card text-center py-16 text-gray-500 flex items-center justify-center gap-2">
+        <div className="card text-center py-16 text-[rgb(var(--text-muted))] flex items-center justify-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" /> กำลังโหลด...
         </div>
       ) : error ? (
-        <div className="card text-center py-16 text-red-400 text-sm">{error}</div>
+        <div className="card text-center py-16 text-down text-sm">{error}</div>
       ) : filtered.length === 0 ? (
         <div className="card text-center py-16">
-          <LineChart className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">
+          <LineChart className="w-12 h-12 text-[rgb(var(--text-muted))] mx-auto mb-3" />
+          <p className="text-[rgb(var(--text-secondary))]">
             {watchlist.length === 0 ? 'ยังไม่มี symbol ที่ติดตาม — เพิ่มด้านบนได้เลย' : 'ไม่พบรายการที่ตรงกับตัวกรอง'}
           </p>
         </div>
@@ -264,7 +266,7 @@ function MarketsContent() {
 
 export default function MarketsPage() {
   return (
-    <Suspense fallback={<div className="card text-center py-16 text-gray-500">กำลังโหลด...</div>}>
+    <Suspense fallback={<div className="card text-center py-16 text-[rgb(var(--text-muted))]">กำลังโหลด...</div>}>
       <MarketsContent />
     </Suspense>
   );

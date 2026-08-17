@@ -73,13 +73,17 @@ function fmtTime(iso: string, tf: Timeframe): string {
  * สีตามความหมายของการออก: SL แดง / TP เขียว / หมดเวลา เทา / gap ส้ม
  * gap แยกสีของตัวเองเพราะราคา fill จริงต่างจากระดับที่ตั้ง (แย่กว่า SL / ดีเกิน TP)
  * — ผู้ใช้ควรเห็นชัดว่าไม้ไหนโดนธรรมชาติของ gap เล่นงาน
+ *
+ * ป้ายพวกนี้วางบนพื้นสีจาง 10% ซึ่งบนธีมสว่างจะดูดคอนทราสต์ของตัวหนังสือลง
+ * ฝั่งแดง/ส้มจึงระบุเฉดเข้มไว้เองสำหรับธีมสว่าง (text-down เหลือ 4.2:1 ตกเกณฑ์ AA)
+ * แล้วให้ dark: คืนสีเดิมของธีมมืด ส่วนฝั่งเขียวใช้ text-up ได้เลยเพราะยังผ่านเกณฑ์
  */
 const REASON_BADGE: Record<BacktestExitReason, { label: string; cls: string }> = {
-  stop_loss: { label: 'ชน SL', cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
-  take_profit: { label: 'ชน TP', cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
-  time_exit: { label: 'ครบเวลาถือ', cls: 'bg-white/5 text-gray-400 border-white/10' },
-  gap_stop: { label: 'Gap ทะลุ SL', cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
-  gap_target: { label: 'Gap ทะลุ TP', cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
+  stop_loss: { label: 'ชน SL', cls: 'bg-red-500/10 text-red-700 dark:text-down border-red-500/30' },
+  take_profit: { label: 'ชน TP', cls: 'bg-emerald-500/10 text-up border-emerald-500/30' },
+  time_exit: { label: 'ครบเวลาถือ', cls: 'bg-surface-2 text-[rgb(var(--text-secondary))] border-[var(--border-subtle)]' },
+  gap_stop: { label: 'Gap ทะลุ SL', cls: 'bg-orange-500/10 text-orange-800 dark:text-orange-400 border-orange-500/30' },
+  gap_target: { label: 'Gap ทะลุ TP', cls: 'bg-orange-500/10 text-orange-800 dark:text-orange-400 border-orange-500/30' },
 };
 
 function StatCard({
@@ -97,16 +101,16 @@ function StatCard({
 }) {
   return (
     <div className="card" title={title}>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-[rgb(var(--text-muted))]">{label}</div>
       <div
         className={cn(
           'text-xl font-mono font-bold mt-1',
-          tone === 'up' ? 'text-emerald-400' : tone === 'down' ? 'text-red-400' : 'text-white'
+          tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-[rgb(var(--text-primary))]'
         )}
       >
         {value}
       </div>
-      {sub && <div className="text-[11px] text-gray-500 mt-1">{sub}</div>}
+      {sub && <div className="text-[11px] text-[rgb(var(--text-muted))] mt-1">{sub}</div>}
     </div>
   );
 }
@@ -114,53 +118,62 @@ function StatCard({
 function EquityCurveR({ points }: { points: { n: number; cumR: number }[] }) {
   const final = points[points.length - 1]?.cumR ?? 0;
   const isUp = final >= 0;
-  const color = isUp ? '#34d399' : '#f87171';
 
   return (
     <div className="card">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-white">Equity Curve</h3>
-          <p className="text-xs text-gray-500 mt-0.5">ผลสะสมเป็น R ทีละไม้ (เริ่มจาก 0)</p>
+          <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">Equity Curve</h3>
+          <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">ผลสะสมเป็น R ทีละไม้ (เริ่มจาก 0)</p>
         </div>
-        <div className={cn('text-xl font-mono font-bold', isUp ? 'text-emerald-400' : 'text-red-400')}>
+        <div className={cn('text-xl font-mono font-bold', isUp ? 'text-up' : 'text-down')}>
           {fmtR(final)}
         </div>
       </div>
-      {/* มือถือลดความสูงกราฟ — จอเตี้ย ถ้าสูง 260px กราฟจะกินจอจนต้องเลื่อนหาสถิติ */}
-      <div className="h-[200px] sm:h-[260px]">
+      {/* มือถือลดความสูงกราฟ — จอเตี้ย ถ้าสูง 260px กราฟจะกินจอจนต้องเลื่อนหาสถิติ
+          สีเส้นกราฟผูกกับ color ของกล่องนี้ (--up/--down) แล้วให้ SVG ข้างในใช้ currentColor
+          เพราะ recharts รับสีเป็นสตริงคงที่ — ถ้าฮาร์ดโค้ดเขียวอ่อนไว้ พอเป็นธีมสว่างเส้นจะจางจนมองไม่เห็น */}
+      <div className={cn('h-[200px] sm:h-[260px]', isUp ? 'text-up' : 'text-down')}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={points} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
             <defs>
               <linearGradient id="bt-equity-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
+                <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="n" tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} width={50} />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
+            {/* เส้นตาราง/แกน: ต้องพลิกตามธีม ไม่ใช่ใช้เทากลางค่าเดียว
+                เทากลางทำให้ธีมมืดสว่างขึ้นราวเท่าตัวจากที่ผู้ใช้เคยเห็น (วัดได้ rgb(26,27,33) → rgb(49,54,64))
+                ใส่เป็น className ไม่ใช่ prop stroke เพราะ SVG presentation attribute ไม่รู้จัก var()
+                — CSS มีลำดับสูงกว่า attribute ค่าที่ recharts ใส่มาเองจึงถูกทับ
+                ค่าฝั่งมืดคือค่าเดิมก่อนมีระบบธีมเป๊ะ (0.04 / 0.15 ของขาว) */}
+            <CartesianGrid strokeDasharray="3 3" className="stroke-black/[0.08] dark:stroke-white/[0.04]" />
+            {/* ตัวเลขแกนฝั่งมืดคง #71717a ของเดิมไว้ ส่วนฝั่งสว่างต้องเข้มขึ้นถึงจะอ่านออกบนการ์ดขาว */}
+            <XAxis dataKey="n" tick={{ fontSize: 11, className: 'fill-gray-600 dark:fill-[#71717a]' }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 11, className: 'fill-gray-600 dark:fill-[#71717a]' }} tickLine={false} axisLine={false} width={50} />
+            <ReferenceLine y={0} className="stroke-black/[0.25] dark:stroke-white/[0.15]" strokeDasharray="4 4" />
+            {/* tooltip เป็น inline style ของ div จริง จึงใส่ var() ได้ตรง ๆ (ต่างจาก attribute ของ SVG)
+                ต้องสลับพื้นตามธีมด้วย ไม่งั้นธีมสว่างจะได้ตัวเลขเขียวเข้มบนพื้นดำ = คอนทราสต์ตก */}
             <Tooltip
               contentStyle={{
-                backgroundColor: '#1a1b24',
-                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgb(var(--surface-2))',
+                border: '1px solid var(--border-subtle)',
                 borderRadius: '12px',
                 padding: '12px',
                 fontSize: '12px',
               }}
-              labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+              labelStyle={{ color: 'rgb(var(--text-secondary))', marginBottom: '4px' }}
               labelFormatter={(n) => `หลังไม้ที่ ${n}`}
               formatter={(value) => [fmtR(Number(value)), 'R สะสม']}
             />
             <Area
               type="monotone"
               dataKey="cumR"
-              stroke={color}
+              stroke="currentColor"
               strokeWidth={2}
               fill="url(#bt-equity-grad)"
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: color, fill: '#0a0b0f' }}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: 'currentColor', fill: 'currentColor' }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -177,33 +190,33 @@ function SideStatsRow({ side, s }: { side: 'BUY' | 'SELL'; s: BacktestStats }) {
       <span
         className={cn(
           'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold w-[72px] justify-center',
-          isBuy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+          isBuy ? 'bg-emerald-500/10 text-up' : 'bg-red-500/10 text-red-700 dark:text-down'
         )}
       >
         {isBuy ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
         {side}
       </span>
-      <span className="text-sm text-gray-400">
+      <span className="text-sm text-[rgb(var(--text-secondary))]">
         {s.count} ไม้
       </span>
-      <span className="text-sm text-gray-400">
-        Win Rate <span className="font-mono text-white">{fmtPct(s.winRate)}</span>
+      <span className="text-sm text-[rgb(var(--text-secondary))]">
+        Win Rate <span className="font-mono text-[rgb(var(--text-primary))]">{fmtPct(s.winRate)}</span>
       </span>
-      <span className="text-sm text-gray-400">
+      <span className="text-sm text-[rgb(var(--text-secondary))]">
         เฉลี่ย{' '}
         <span
           className={cn(
             'font-mono',
-            s.avgR === null ? 'text-gray-500' : s.avgR >= 0 ? 'text-emerald-400' : 'text-red-400'
+            s.avgR === null ? 'text-[rgb(var(--text-muted))]' : s.avgR >= 0 ? 'text-up' : 'text-down'
           )}
         >
           {fmtR(s.avgR)}
         </span>
       </span>
-      <span className="text-sm text-gray-400">
+      <span className="text-sm text-[rgb(var(--text-secondary))]">
         PF{' '}
         <span
-          className="font-mono text-white"
+          className="font-mono text-[rgb(var(--text-primary))]"
           title={
             s.profitFactor === null && s.count > 0 && s.grossLossR === 0
               ? 'ยังไม่มีไม้แพ้ในฝั่งนี้ — อัตราส่วนหารไม่ได้'
@@ -305,9 +318,9 @@ export default function BacktestPage() {
     <div className="space-y-6 animate-fade-in">
       {/* แถบความซื่อสัตย์ — อยู่บนสุดเสมอ ตัวหนังสือขนาดอ่านจริง ไม่ใช่ disclaimer ตัวจิ๋ว */}
       <div className="card border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-amber-200/90 space-y-1">
-          <p className="font-semibold text-amber-300">ข้อจำกัดของผลทดสอบ — อ่านก่อนเชื่อตัวเลข</p>
+        <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <div className="text-sm text-amber-700 dark:text-amber-200/90 space-y-1">
+          <p className="font-semibold text-amber-800 dark:text-amber-300">ข้อจำกัดของผลทดสอบ — อ่านก่อนเชื่อตัวเลข</p>
           <ul className="list-disc list-inside space-y-0.5">
             <li>ผลทดสอบย้อนหลังไม่การันตีผลในอนาคต</li>
             <li>
@@ -324,11 +337,11 @@ export default function BacktestPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-display text-white flex items-center gap-2">
+        <h1 className="text-2xl font-display text-[rgb(var(--text-primary))] flex items-center gap-2">
           <FlaskConical className="w-6 h-6 text-accent-glow" />
           Backtest
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
           วัดผลจริงของ signal engine บนข้อมูลย้อนหลัง — เดินทีละแท่ง เข้าไม้ที่ราคาเปิดแท่งถัดไป
         </p>
       </div>
@@ -356,7 +369,7 @@ export default function BacktestPage() {
           </select>
 
           {/* Timeframe toggle 1D/1H */}
-          <div className="flex rounded-xl border border-white/10 overflow-hidden">
+          <div className="flex rounded-xl border border-[var(--border-subtle)] overflow-hidden">
             {(['1D', '1H'] as const).map((tf) => (
               <button
                 key={tf}
@@ -365,8 +378,8 @@ export default function BacktestPage() {
                 className={cn(
                   'px-4 py-2 text-sm font-mono font-medium transition-colors',
                   timeframe === tf
-                    ? 'bg-accent-glow/10 text-accent-glow'
-                    : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
+                    : 'bg-transparent text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                 )}
               >
                 {tf}
@@ -386,7 +399,7 @@ export default function BacktestPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-[rgb(var(--text-muted))]">
             ต้นทุนต่อไม้ (สัดส่วนของ R เช่น 0.05 = 5% ของระยะ SL)
           </label>
           <input
@@ -397,14 +410,14 @@ export default function BacktestPage() {
             step={0.01}
             className="input-field w-28 font-mono"
           />
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-[rgb(var(--text-muted))]">
             0 = ยังไม่รวมค่าธรรมเนียม — เราไม่เดาต้นทุนให้ เพราะแต่ละโบรกเกอร์ไม่เท่ากัน
           </span>
         </div>
 
         {watchlist.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs text-gray-500 uppercase">เลือกจาก watchlist:</div>
+            <div className="text-xs text-[rgb(var(--text-muted))] uppercase">เลือกจาก watchlist:</div>
             <div className="flex flex-wrap gap-1.5">
               {watchlist.map((w) => (
                 <button
@@ -417,8 +430,8 @@ export default function BacktestPage() {
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors border',
                     symbol.trim().toUpperCase() === w.symbol
-                      ? 'border-accent-glow/30 bg-accent-glow/10 text-accent-glow'
-                      : 'border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                      ? 'border-accent-glow/30 bg-accent-glow/10 text-cyan-800 dark:text-accent-glow'
+                      : 'border-[var(--border-subtle)] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text-primary))] hover:bg-surface-2'
                   )}
                 >
                   {w.symbol}
@@ -431,22 +444,22 @@ export default function BacktestPage() {
 
       {/* สถานะ: error → กำลังรัน → ผลลัพธ์ → ยังไม่เคยรัน */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm bg-red-500/10 border-red-500/30 text-red-400">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm bg-red-500/10 border-red-500/30 text-red-700 dark:text-down">
           <XCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
       {running ? (
-        <div className="card text-center py-16 text-gray-400 flex flex-col items-center gap-3">
+        <div className="card text-center py-16 text-[rgb(var(--text-secondary))] flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-accent-glow" />
           <p className="text-sm">กำลังดึงข้อมูลย้อนหลังและจำลองการเทรดทีละแท่ง...</p>
         </div>
       ) : run && stats ? (
         <>
           {/* บรรทัดบอกที่มาของตัวเลข: ทดสอบอะไร ช่วงไหน กี่แท่ง */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400">
-            <span className="font-semibold text-white font-mono">{run.symbol}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[rgb(var(--text-secondary))]">
+            <span className="font-semibold text-[rgb(var(--text-primary))] font-mono">{run.symbol}</span>
             <span>{marketLabel}</span>
             <span className="font-mono">TF {run.timeframe}</span>
             <span>{run.result.bars.toLocaleString()} แท่ง</span>
@@ -455,8 +468,9 @@ export default function BacktestPage() {
                 {fmtTime(run.period.from, run.timeframe)} → {fmtTime(run.period.to, run.timeframe)}
               </span>
             )}
+            {/* ตัวหนังสือ 11px บนพื้นเหลืองจาง — ธีมสว่างต้องใช้ amber-800 ถึงจะผ่านคอนทราสต์ */}
             {run.demo && (
-              <span className="px-2 py-0.5 rounded-lg text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/30">
+              <span className="px-2 py-0.5 rounded-lg text-[11px] bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/30">
                 Demo — ข้อมูลจำลอง ไม่ใช่ราคาจริง
               </span>
             )}
@@ -464,13 +478,13 @@ export default function BacktestPage() {
 
           {stats.count === 0 ? (
             <div className="card text-center py-16">
-              <FlaskConical className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">
+              <FlaskConical className="w-12 h-12 text-[rgb(var(--text-muted))] mx-auto mb-3" />
+              <p className="text-[rgb(var(--text-secondary))]">
                 ช่วงข้อมูลนี้ระบบไม่เปิดไม้เลย — ไม่มีสัญญาณ BUY/SELL ที่เข้าเงื่อนไข
                 จึงไม่มีตัวเลขให้วัด
               </p>
               {run.result.skipped > 0 && (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-[rgb(var(--text-muted))] mt-2">
                   (มีสัญญาณถูกทิ้ง {run.result.skipped} ครั้ง เพราะแท่งเข้าข้อมูลเสียหรือระยะ SL ใช้ไม่ได้)
                 </p>
               )}
@@ -540,8 +554,8 @@ export default function BacktestPage() {
 
               {/* แยกฝั่ง BUY/SELL — บอกได้ว่าเครื่องยนต์เก่งฝั่งไหน แพ้ฝั่งไหน */}
               <div className="card">
-                <h3 className="text-sm font-semibold text-white mb-1">แยกฝั่ง BUY / SELL</h3>
-                <div className="divide-y divide-white/5">
+                <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))] mb-1">แยกฝั่ง BUY / SELL</h3>
+                <div className="divide-y divide-[var(--border-subtle)]">
                   <SideStatsRow side="BUY" s={stats.byAction.BUY} />
                   <SideStatsRow side="SELL" s={stats.byAction.SELL} />
                 </div>
@@ -552,12 +566,12 @@ export default function BacktestPage() {
 
               {/* ตารางไม้ทั้งหมด */}
               <div className="card overflow-x-auto">
-                <h3 className="text-sm font-semibold text-white mb-3">
+                <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))] mb-3">
                   รายละเอียดทุกไม้ ({run.result.trades.length})
                 </h3>
                 <table className="w-full text-sm min-w-[680px]">
                   <thead>
-                    <tr className="text-left text-xs text-gray-500 border-b border-white/5">
+                    <tr className="text-left text-xs text-[rgb(var(--text-muted))] border-b border-[var(--border-subtle)]">
                       <th className="py-2 pr-3 font-medium">#</th>
                       <th className="py-2 pr-3 font-medium">เข้า</th>
                       <th className="py-2 pr-3 font-medium">ออก</th>
@@ -572,16 +586,16 @@ export default function BacktestPage() {
                     {run.result.trades.map((t, i) => {
                       const badge = REASON_BADGE[t.exitReason] ?? {
                         label: t.exitReason,
-                        cls: 'bg-white/5 text-gray-400 border-white/10',
+                        cls: 'bg-surface-2 text-[rgb(var(--text-secondary))] border-[var(--border-subtle)]',
                       };
                       const isBuy = t.action === 'BUY';
                       return (
-                        <tr key={i} className="border-b border-white/5 last:border-0">
-                          <td className="py-2.5 pr-3 text-gray-500 font-mono text-xs">{i + 1}</td>
-                          <td className="py-2.5 pr-3 text-gray-300 whitespace-nowrap">
+                        <tr key={i} className="border-b border-[var(--border-subtle)] last:border-0">
+                          <td className="py-2.5 pr-3 text-[rgb(var(--text-muted))] font-mono text-xs">{i + 1}</td>
+                          <td className="py-2.5 pr-3 text-[rgb(var(--text-secondary))] whitespace-nowrap">
                             {fmtTime(t.entryTime, run.timeframe)}
                           </td>
-                          <td className="py-2.5 pr-3 text-gray-300 whitespace-nowrap">
+                          <td className="py-2.5 pr-3 text-[rgb(var(--text-secondary))] whitespace-nowrap">
                             {fmtTime(t.exitTime, run.timeframe)}
                           </td>
                           <td className="py-2.5 pr-3">
@@ -589,8 +603,8 @@ export default function BacktestPage() {
                               className={cn(
                                 'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold',
                                 isBuy
-                                  ? 'bg-emerald-500/10 text-emerald-400'
-                                  : 'bg-red-500/10 text-red-400'
+                                  ? 'bg-emerald-500/10 text-up'
+                                  : 'bg-red-500/10 text-red-700 dark:text-down'
                               )}
                             >
                               {isBuy ? (
@@ -601,10 +615,10 @@ export default function BacktestPage() {
                               {t.action}
                             </span>
                           </td>
-                          <td className="py-2.5 pr-3 text-right font-mono text-gray-300">
+                          <td className="py-2.5 pr-3 text-right font-mono text-[rgb(var(--text-secondary))]">
                             {fmtPrice(t.entry)}
                           </td>
-                          <td className="py-2.5 pr-3 text-right font-mono text-gray-300">
+                          <td className="py-2.5 pr-3 text-right font-mono text-[rgb(var(--text-secondary))]">
                             {fmtPrice(t.exit)}
                           </td>
                           <td className="py-2.5 pr-3">
@@ -620,7 +634,7 @@ export default function BacktestPage() {
                           <td
                             className={cn(
                               'py-2.5 text-right font-mono font-semibold',
-                              t.r >= 0 ? 'text-emerald-400' : 'text-red-400'
+                              t.r >= 0 ? 'text-up' : 'text-down'
                             )}
                           >
                             {fmtR(t.r)}
@@ -636,9 +650,9 @@ export default function BacktestPage() {
         </>
       ) : !error ? (
         <div className="card text-center py-16">
-          <FlaskConical className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-300 font-medium mb-2">ยังไม่มีผลทดสอบ</p>
-          <p className="text-sm text-gray-500 max-w-xl mx-auto">
+          <FlaskConical className="w-12 h-12 text-[rgb(var(--text-muted))] mx-auto mb-3" />
+          <p className="text-[rgb(var(--text-secondary))] font-medium mb-2">ยังไม่มีผลทดสอบ</p>
+          <p className="text-sm text-[rgb(var(--text-muted))] max-w-xl mx-auto">
             หน้านี้จำลองการเทรดตามสัญญาณของระบบบนข้อมูลย้อนหลังจริงแบบ walk-forward:
             สัญญาณแต่ละจุดเห็นเฉพาะแท่งในอดีต เข้าไม้ที่ราคาเปิดแท่งถัดไป
             แล้วปล่อยให้ SL/TP ของสัญญาณทำงานเหมือนคำสั่งที่วางไว้กับโบรกเกอร์จริง

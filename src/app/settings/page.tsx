@@ -2,9 +2,10 @@
 
 import { cn } from '@/lib/utils';
 import {
-  Bell, BellRing, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2, Lock,
+  Bell, BellRing, User, Send, Bot, CheckCircle2, XCircle, Save, Key, Shield, Loader2, Lock, Palette,
 } from 'lucide-react';
 import { useCallback, useState, useEffect } from 'react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import {
   pushSupportStatus, getExistingSubscription, enablePush, disablePush,
 } from '@/lib/push-client';
@@ -43,12 +44,12 @@ const DEFAULT_PREFS: AlertPreferences = {
  * เพราะตัวส่งฝั่ง Supabase อ่าน alert_preferences ชุดเดียวกัน — ไม่มีสวิตช์แยกรายช่องทาง
  */
 const ALERT_ROWS: { key: keyof AlertPreferences; label: string; desc: string; color: string; live: boolean; allChannels?: boolean }[] = [
-  { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-emerald-400', live: true, allChannels: true },
-  { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-400', live: true, allChannels: true },
+  { key: 'buy_signals', label: 'สัญญาณ BUY', desc: 'แจ้งเมื่อมีสัญญาณซื้อใหม่', color: 'text-up', live: true, allChannels: true },
+  { key: 'sell_signals', label: 'สัญญาณ SELL', desc: 'แจ้งเมื่อมีสัญญาณขายใหม่', color: 'text-red-700 dark:text-down', live: true, allChannels: true },
   { key: 'strong_signals_only', label: 'เฉพาะสัญญาณแรง', desc: 'รับเฉพาะ strong / very_strong เท่านั้น', color: 'text-accent-glow', live: true, allChannels: true },
-  { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาแตะจุดตัดขาดทุนของออเดอร์ที่ถืออยู่', color: 'text-red-400', live: true },
-  { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาแตะเป้าทำกำไรของออเดอร์ที่ถืออยู่', color: 'text-emerald-400', live: true },
-  { key: 'news_alerts', label: 'ข่าวสำคัญ', desc: 'ต้องต่อแหล่งข่าวก่อน', color: 'text-blue-400', live: false },
+  { key: 'stop_loss_hit', label: 'Stop Loss ถูกตัด', desc: 'แจ้งเมื่อราคาแตะจุดตัดขาดทุนของออเดอร์ที่ถืออยู่', color: 'text-red-700 dark:text-down', live: true },
+  { key: 'take_profit_hit', label: 'Take Profit ถึง', desc: 'แจ้งเมื่อราคาแตะเป้าทำกำไรของออเดอร์ที่ถืออยู่', color: 'text-up', live: true },
+  { key: 'news_alerts', label: 'ข่าวสำคัญ', desc: 'ต้องต่อแหล่งข่าวก่อน', color: 'text-blue-700 dark:text-blue-400', live: false },
 ];
 
 export default function SettingsPage() {
@@ -147,6 +148,26 @@ export default function SettingsPage() {
       } else {
         flash(false, result.error ?? 'ปิดแจ้งเตือนไม่สำเร็จ');
       }
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  /**
+   * ยิงแจ้งเตือนทดสอบเข้าเครื่องนี้
+   *
+   * มีไว้แยกสองสถานะที่หน้าตาเหมือนกันเป๊ะแต่คนละเรื่อง:
+   * "ยังไม่มีสัญญาณเข้ามา" กับ "ระบบแจ้งเตือนพัง" — ถ้าไม่มีปุ่มนี้ ผู้ใช้ต้องรอ
+   * ตัวสแกนรอบถัดไปแล้วเดาเอาเองว่าเงียบเพราะอะไร
+   */
+  const handleTestPush = async () => {
+    setSavingKey('push-test');
+    try {
+      const res = await fetch('/api/push/test', { method: 'POST' });
+      const data = await res.json();
+      flash(Boolean(data.success), data.success ? (data.message ?? 'ส่งแจ้งเตือนทดสอบแล้ว') : (data.error ?? 'ส่งไม่สำเร็จ'));
+    } catch (err) {
+      flash(false, err instanceof Error ? err.message : 'ส่งไม่สำเร็จ');
     } finally {
       setSavingKey(null);
     }
@@ -253,7 +274,7 @@ export default function SettingsPage() {
       {toast && (
         <div className={cn(
           'fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm max-w-sm',
-          toast.ok ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-red-500/20 border-red-500/30 text-red-400'
+          toast.ok ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-800 dark:text-emerald-400' : 'bg-red-500/20 border-red-500/30 text-red-700 dark:text-red-400'
         )}>
           {toast.ok ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
           <span>{toast.msg}</span>
@@ -272,7 +293,7 @@ export default function SettingsPage() {
                 // whitespace-nowrap + flex-shrink-0 กันชื่อแท็บหักบรรทัด/ปุ่มหดจนกดยากตอนอยู่ในแถวเลื่อนแนวนอน
                 'flex items-center gap-2.5 flex-shrink-0 whitespace-nowrap lg:w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                 activeTab === tab.id
-                  ? 'bg-accent-glow/10 text-accent-glow border border-accent-glow/20'
+                  ? 'bg-accent-glow/10 text-cyan-800 dark:text-accent-glow border border-accent-glow/20'
                   : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
               )}
             >
@@ -311,13 +332,13 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   {/* โชว์ reason จาก pushSupportStatus ตรง ๆ — ข้อความอธิบายเงื่อนไข iOS ฝังมาในตัวแล้ว */}
                   <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                    <p className="text-xs text-amber-300 flex items-start gap-1.5">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
                       <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                       <span>{pushReason ?? '—'}</span>
                     </p>
                   </div>
                   <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-                    <p className="text-xs text-blue-300 font-medium mb-2">วิธีเปิดใช้บน iPhone (3 ขั้น):</p>
+                    <p className="text-xs text-blue-800 dark:text-blue-300 font-medium mb-2">วิธีเปิดใช้บน iPhone (3 ขั้น):</p>
                     <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
                       <li>เปิดเว็บนี้ใน Safari แล้วกดปุ่มแชร์ (สี่เหลี่ยมลูกศรชี้ขึ้น)</li>
                       <li>เลือก &ldquo;เพิ่มไปยังหน้าจอโฮม&rdquo; แล้วกดเพิ่ม</li>
@@ -341,25 +362,39 @@ export default function SettingsPage() {
               )}
 
               {pushStatus === 'on' && (
-                <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                  <p className="text-sm text-emerald-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> เปิดแจ้งเตือนบนเครื่องนี้อยู่
-                  </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                    <p className="text-sm text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> เปิดแจ้งเตือนบนเครื่องนี้อยู่
+                    </p>
+                    <button
+                      onClick={handleDisablePush}
+                      disabled={savingKey === 'push'}
+                      className="btn-ghost text-sm flex items-center gap-2 flex-shrink-0 disabled:opacity-40"
+                    >
+                      {savingKey === 'push' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      ปิดแจ้งเตือน
+                    </button>
+                  </div>
+
                   <button
-                    onClick={handleDisablePush}
-                    disabled={savingKey === 'push'}
-                    className="btn-ghost text-sm flex items-center gap-2 flex-shrink-0 disabled:opacity-40"
+                    onClick={handleTestPush}
+                    disabled={savingKey === 'push-test'}
+                    className="btn-ghost w-full py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-40"
                   >
-                    {savingKey === 'push' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    ปิดแจ้งเตือน
+                    {savingKey === 'push-test'
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <BellRing className="w-4 h-4" />}
+                    ทดสอบส่งแจ้งเตือนเข้าเครื่องนี้
                   </button>
                 </div>
               )}
 
-              {/* กำกับตรง ๆ ว่าตัวส่งยังไม่ได้ติดตั้ง — กันผู้ใช้เข้าใจผิดว่ากดปุ๊บแล้วจะมีแจ้งเตือนทันที */}
+              {/* บอกความถี่จริงของตัวสแกน — กันเข้าใจผิดว่ากดเปิดแล้วจะเด้งทันทีทุกความเคลื่อนไหว */}
               <p className="text-[11px] text-gray-500 mt-4">
-                การกดเปิดที่นี่เป็นการลงทะเบียนเครื่องนี้ไว้รับแจ้งเตือนเท่านั้น —
-                การแจ้งเตือนสัญญาณอัตโนมัติจะเริ่มทำงานเมื่อติดตั้งตัวสแกนบน Supabase แล้ว (ดูวิธีติดตั้งใน README)
+                ตัวสแกนทำงานอัตโนมัติทุกต้นชั่วโมง (จันทร์–ศุกร์ และคืนวันอาทิตย์ที่ตลาดเปิด)
+                เจอสัญญาณ BUY/SELL ใหม่เมื่อไหร่จะเด้งเข้าเครื่องที่เปิดไว้ทันที
+                · รอบที่ไม่เจอสัญญาณจะเงียบ ซึ่งเป็นเรื่องปกติ ไม่ใช่ระบบพัง — กดปุ่มทดสอบข้างบนเช็คได้ทุกเมื่อ
                 · การสมัครแยกรายเครื่อง ถ้าใช้หลายเครื่องต้องกดเปิดในแต่ละเครื่อง
               </p>
             </div>
@@ -369,7 +404,7 @@ export default function SettingsPage() {
             <div className="card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Send className="w-5 h-5 text-blue-400" />
+                  <Send className="w-5 h-5 text-blue-700 dark:text-blue-400" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-white">Telegram Bot</h3>
@@ -378,7 +413,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-4">
-                <p className="text-xs text-blue-300 font-medium mb-2">วิธีสร้าง Telegram Bot:</p>
+                <p className="text-xs text-blue-800 dark:text-blue-300 font-medium mb-2">วิธีสร้าง Telegram Bot:</p>
                 <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
                   <li>เปิด Telegram แล้วค้นหา <span className="text-accent-glow">@BotFather</span></li>
                   <li>พิมพ์ <span className="font-mono text-white">/newbot</span> แล้วตั้งชื่อ bot</li>
@@ -393,7 +428,7 @@ export default function SettingsPage() {
                   <label className="text-xs text-gray-400 mb-1.5 block">
                     Bot Token
                     {telegram.hasBotToken && (
-                      <span className="ml-2 text-emerald-400">• บันทึกไว้แล้ว (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</span>
+                      <span className="ml-2 text-emerald-800 dark:text-emerald-400">• บันทึกไว้แล้ว (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)</span>
                     )}
                   </label>
                   <input
@@ -454,7 +489,7 @@ export default function SettingsPage() {
             <div className="card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-amber-400" />
+                  <Bell className="w-5 h-5 text-amber-700 dark:text-amber-400" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-white">ประเภทการแจ้งเตือน</h3>
@@ -541,6 +576,24 @@ export default function SettingsPage() {
                   </button>
                 </div>
 
+                {/* ธีมของแอป — เก็บไว้ในเครื่องนี้ (localStorage) ไม่ผูกกับบัญชี
+                    เพราะเป็นความชอบระดับอุปกรณ์: จอมือถือกลางแดดกับจอคอมในห้องมืดต้องการคนละแบบ
+                    ผู้ใช้คนเดียวกันจึงเลือกไม่เหมือนกันได้ในแต่ละเครื่อง */}
+                <div className="border-t border-white/5 pt-5 mt-5">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Palette className="w-4 h-4 text-accent-glow" />
+                        ธีม
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        เลือกโหมดสว่างหรือมืด — ระบบจำไว้ในเครื่องนี้ เปิดครั้งหน้าได้ธีมเดิมทันที
+                      </p>
+                    </div>
+                    <ThemeToggle />
+                  </div>
+                </div>
+
                 {/* ตั้งรหัสผ่าน — ทางเข้าที่ไม่พึ่งอีเมลเลย
                     จำเป็นเพราะเข้าเครื่องใหม่ (มือถือ / PWA ที่เพิ่มไปหน้าจอโฮม ซึ่ง iOS นับเป็นแอปแยก
                     จาก Safari จึงไม่ได้ session มาด้วย) ต้องล็อกอินใหม่ทุกครั้ง
@@ -590,10 +643,10 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   {newPassword.length > 0 && newPassword.length < 6 && (
-                    <p className="text-[11px] text-amber-400">รหัสสั้นไป — ต้องอย่างน้อย 6 ตัวอักษร</p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">รหัสสั้นไป — ต้องอย่างน้อย 6 ตัวอักษร</p>
                   )}
                   {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                    <p className="text-[11px] text-red-400">รหัสสองช่องไม่ตรงกัน</p>
+                    <p className="text-[11px] text-red-700 dark:text-red-400">รหัสสองช่องไม่ตรงกัน</p>
                   )}
                 </div>
               </div>
@@ -604,7 +657,7 @@ export default function SettingsPage() {
             <div className="card">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                  <Key className="w-5 h-5 text-purple-400" />
+                  <Key className="w-5 h-5 text-purple-700 dark:text-purple-400" />
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-white">แหล่งข้อมูล</h3>
@@ -613,7 +666,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-4">
-                <p className="text-xs text-emerald-300 flex items-start gap-1.5">
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 flex items-start gap-1.5">
                   <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                   <span>
                     ราคาและแท่งเทียนทั้งหมดดึงจาก Yahoo Finance ซึ่งใช้ได้ฟรีโดยไม่ต้องมี API key

@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/hooks/useStore';
 
+/**
+ * ข้อความ "สแกนไม่สำเร็จ" วางบนพื้น bg-red-500/10 ซึ่งทับพื้นหน้าจนกลายเป็น rgb(253,236,236)
+ * โทเคน text-down (#dc2626) บนพื้นนั้นวัดได้ 4.23:1 ตกเกณฑ์ AA
+ * จึงลงเฉดเป็น red-700 (5.66:1) เฉพาะธีมสว่าง ส่วนธีมมืดกลับไปใช้ --down เหมือนเดิมเป๊ะ
+ * ฝั่งสำเร็จ (เขียว) ไม่ต้องแก้ เพราะ #047857 บนพื้น emerald จางได้ 5.06:1 ผ่านอยู่แล้ว
+ */
+const RED_ON_TINT = 'text-red-700 [.dark_&]:text-down';
+
 export default function Header() {
   const router = useRouter();
   const refresh = useAppStore((s) => s.refresh);
@@ -42,20 +50,20 @@ export default function Header() {
   return (
     // แถวหลักย้ายเข้า div ชั้นใน เพื่อให้มือถือมีแถวผลสแกนเต็มความกว้างต่อท้ายด้านล่างได้
     // โดยเดสก์ท็อปยังเห็น header สูง h-16 แถวเดียวเหมือนเดิมทุกอย่าง
-    <header className="sticky top-0 z-30 bg-surface-0/80 backdrop-blur-xl border-b border-white/5">
+    <header className="sticky top-0 z-30 bg-surface-0/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
       <div className="h-16 flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6">
         {/* hamburger เปิด drawer — มือถือเท่านั้น (เดสก์ท็อปมี rail อยู่แล้ว) */}
         <button
           onClick={toggleMobileNav}
           aria-label="เปิดเมนู"
-          className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all flex-shrink-0"
+          className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-surface-2 transition-all flex-shrink-0"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {/* min-w-0 ให้ input ยอมหดในจอแคบ ไม่ดัน header ล้นจอ */}
         <form onSubmit={submitSearch} className="relative flex-1 min-w-0 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={query}
@@ -71,9 +79,10 @@ export default function Header() {
             <div
               className={cn(
                 'hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border max-w-md',
+                // สำเร็จ/ล้มเหลว ยืมโทเคนสีเดียวกับขึ้น/ลง เพราะทั้งคู่ต้องเข้มขึ้นเองบนพื้นสว่าง
                 result.ok
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-up'
+                  : `bg-red-500/10 border-red-500/30 ${RED_ON_TINT}`
               )}
             >
               {result.ok ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> : <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}
@@ -104,8 +113,8 @@ export default function Header() {
           className={cn(
             'md:hidden flex items-center gap-1.5 px-4 py-2 text-xs border-t',
             result.ok
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-up'
+              : `bg-red-500/10 border-red-500/30 ${RED_ON_TINT}`
           )}
         >
           {result.ok ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> : <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}

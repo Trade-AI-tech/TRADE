@@ -1,6 +1,6 @@
 'use client';
 
-import { cn, formatCurrency, formatNumber, formatPercent, formatChange, formatAmount, getChangeColor } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, formatPercent, formatChange, formatAmount } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -20,6 +20,20 @@ interface MetricCardProps {
   iconColor?: string;
   inverseChange?: boolean;
   delay?: number;
+}
+
+/**
+ * สีของตัวเลขเปลี่ยนแปลง — ตรรกะเดียวกับ getChangeColor() ใน lib/utils.ts
+ * แต่คืนคลาสที่อ้างตัวแปรธีมแทนสีตายตัว เพราะ emerald-400/red-400 จางเกินไป
+ * จนอ่านผิดว่ากำไรหรือขาดทุนเมื่ออยู่บนพื้นสว่าง
+ *
+ * 0 = "วัดแล้วไม่เปลี่ยน" จึงต้องเป็นสีกลาง ห้ามให้เป็นเขียวหรือแดง
+ * (ค่า null คือ "ยังไม่เคยวัด" ถูกกรองทิ้งตั้งแต่ก่อนเรียกฟังก์ชันนี้)
+ */
+function changeColorClass(value: number, inverse: boolean): string {
+  if (value === 0) return 'text-gray-400';
+  const positive = inverse ? value < 0 : value > 0;
+  return positive ? 'text-up' : 'text-down';
 }
 
 export default function MetricCard({
@@ -47,15 +61,15 @@ export default function MetricCard({
 
   return (
     <div
-      className="card group hover:border-white/10 transition-all duration-300"
+      className="card group hover:border-[var(--border-strong,var(--border-subtle))] transition-all duration-300"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center bg-white/5', iconColor)}>
+        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2', iconColor)}>
           <Icon className="w-5 h-5" />
         </div>
         {change !== null && (
-          <div className={cn('flex items-center gap-1 text-xs font-medium', getChangeColor(change, inverseChange))}>
+          <div className={cn('flex items-center gap-1 text-xs font-medium', changeColorClass(change, inverseChange))}>
             <TrendIcon className="w-3.5 h-3.5" />
             <span>{formatChange(change)}</span>
           </div>
@@ -63,10 +77,11 @@ export default function MetricCard({
       </div>
 
       <div className="space-y-1">
+        {/* ตัวเลขใหญ่คือพระเอกของการ์ด ต้องเป็นสีตัวหนังสือหลักเสมอ (คอนทราสต์สูงสุด) */}
         <p className="text-2xl font-semibold tracking-tight text-white font-mono">
           {formatted}
         </p>
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
           {label}
         </p>
       </div>

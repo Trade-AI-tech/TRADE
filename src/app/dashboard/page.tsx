@@ -37,8 +37,8 @@ export default function DashboardPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-display text-[rgb(var(--text-primary))]">Dashboard</h1>
+          <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
             ภาพรวมสัญญาณ AI และตลาดวันนี้
           </p>
         </div>
@@ -46,10 +46,12 @@ export default function DashboardPage() {
 
       {needsSetup && (
         <div className="card border-accent-glow/20 bg-accent-glow/5 flex items-start gap-3">
+          {/* text-accent-glow ไม่ใช่ฟ้านีออนตายตัวแล้ว — tailwind.config ผูกไว้กับ --accent-glow
+              ซึ่งเป็นฟ้าเข้ม (cyan-700) บนธีมสว่างและฟ้านีออนเดิมบนธีมมืด จึงอ่านออกทั้งสองธีม */}
           <Compass className="w-5 h-5 text-accent-glow flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm text-white font-medium">เริ่มใช้งานใน 2 ขั้น</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm text-[rgb(var(--text-primary))] font-medium">เริ่มใช้งานใน 2 ขั้น</p>
+            <p className="text-xs text-[rgb(var(--text-secondary))] mt-1">
               1) เพิ่ม symbol ที่อยากติดตามในหน้า <Link href="/markets" className="text-accent-glow hover:underline">ตลาด</Link>
               {' '}2) กดปุ่ม &ldquo;สแกนตลาด&rdquo; มุมขวาบน — จากนั้นระบบจะสแกนให้เองทุกวัน 08:00 น. และแจ้งเข้า Telegram ถ้าตั้งค่าไว้
             </p>
@@ -63,9 +65,11 @@ export default function DashboardPage() {
       {/* โหลดสถิติจาก RPC ไม่ได้ต้องบอกให้รู้ — การ์ด "สัญญาณวันนี้" ใบเดียวที่พึ่ง RPC นี้
           จะค้างที่ 0 ซึ่งหน้าตาเหมือน "วันนี้ไม่มีสัญญาณ" ทั้งที่จริงคือโหลดไม่สำเร็จ */}
       {statsError && (
-        <div className="card border-red-500/20 bg-red-500/5 text-sm text-red-400">
+        <div className="card border-red-500/20 bg-red-500/5 text-sm text-red-700 dark:text-down">
           โหลดสถิติไม่สำเร็จ — ตัวเลข &ldquo;สัญญาณวันนี้&rdquo; ด้านล่างจึงยังไม่ใช่ของจริง
-          <span className="block text-xs text-red-400/70 mt-1 font-mono">{statsError}</span>
+          {/* ข้อความ error ดิบต้องอ่านออกจริง — เดิมเป็น text-red-400/70 ซึ่งบนพื้นสว่างเหลือ ~4.3:1
+              ตกเกณฑ์ AA จึงใช้เฉดเข้มทึบเต็มแล้วให้ขนาดตัวอักษร (text-xs) เป็นตัวลดความเด่นแทน */}
+          <span className="block text-xs text-red-700 dark:text-down mt-1 font-mono">{statsError}</span>
         </div>
       )}
 
@@ -97,7 +101,7 @@ export default function DashboardPage() {
           change={null}
           format="number"
           icon={TrendingUp}
-          iconColor="text-emerald-400"
+          iconColor="text-up"
           delay={100}
         />
         <MetricCard
@@ -106,7 +110,7 @@ export default function DashboardPage() {
           change={null}
           format="number"
           icon={TrendingDown}
-          iconColor="text-red-400"
+          iconColor="text-down"
           delay={150}
         />
       </div>
@@ -118,12 +122,12 @@ export default function DashboardPage() {
           <FlaskConical className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white">สัญญาณแม่นแค่ไหน? — วัดด้วย Backtest</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm font-medium text-[rgb(var(--text-primary))]">สัญญาณแม่นแค่ไหน? — วัดด้วย Backtest</p>
+          <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">
             ทดสอบสัญญาณกับข้อมูลย้อนหลังจริงก่อนเชื่อ ไม่ต้องเดาจากความรู้สึก
           </p>
         </div>
-        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+        <ArrowRight className="w-4 h-4 text-[rgb(var(--text-muted))] flex-shrink-0" />
       </Link>
 
       {/* ส่วนสัญญาณล่าสุดขยายเป็น 6 ใบ — กินพื้นที่ที่เคยเป็นกราฟพอร์ต (EquityChart)
@@ -131,18 +135,18 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-display text-white flex items-center gap-2">
+            <h2 className="text-lg font-display text-[rgb(var(--text-primary))] flex items-center gap-2">
               <Zap className="w-5 h-5 text-accent-glow" />
               สัญญาณ AI ล่าสุด
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">จุดเข้า/ออกจากการวิเคราะห์เทคนิค + ข่าว</p>
+            <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">จุดเข้า/ออกจากการวิเคราะห์เทคนิค + ข่าว</p>
           </div>
           <Link href="/signals" className="text-sm text-accent-glow hover:underline flex items-center gap-1">
             ดูทั้งหมด <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         {topSignals.length === 0 ? (
-          <div className="card text-center py-12 text-sm text-gray-500">
+          <div className="card text-center py-12 text-sm text-[rgb(var(--text-muted))]">
             ยังไม่มีสัญญาณที่ยังใช้งานอยู่
           </div>
         ) : (
@@ -156,14 +160,14 @@ export default function DashboardPage() {
 
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white">ตลาดที่เคลื่อนไหวมาก</h3>
+          <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">ตลาดที่เคลื่อนไหวมาก</h3>
           <Link href="/markets" className="text-xs text-accent-glow hover:underline flex items-center gap-1">
             ดูทั้งหมด <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         <div className="space-y-2">
           {topMovers.length === 0 ? (
-            <p className="text-xs text-gray-500 py-8 text-center">ยังไม่มีราคา — เพิ่ม symbol แล้วกด &ldquo;สแกนตลาด&rdquo;</p>
+            <p className="text-xs text-[rgb(var(--text-muted))] py-8 text-center">ยังไม่มีราคา — เพิ่ม symbol แล้วกด &ldquo;สแกนตลาด&rdquo;</p>
           ) : (
             topMovers.map((p) => <MarketRow key={p.symbol} price={p} />)
           )}
