@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Bot, Mail, Lock, ArrowRight, Wand2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bot, Mail, Lock, ArrowRight, Wand2, KeyRound } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -10,11 +10,24 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+  // โหมดกรอกรหัส 6 หลักจากอีเมล — ทางเข้าหลักที่ทนทุกสภาพ
+  // (ลิงก์ในเมลพังได้หลายทาง: Hotmail/Outlook สแกนลิงก์แล้ว "ใช้" ลิงก์แบบครั้งเดียวทิ้งก่อนผู้ใช้กด,
+  // ลิงก์ถูกเปิดคนละเบราว์เซอร์กับที่ขอ ทำให้ PKCE แลก session ไม่ได้ — เจอจริงกับผู้ใช้จริงมาแล้ว)
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+
+  // error จาก callback (ลิงก์เสีย/ถูกใช้แล้ว) ถูกส่งกลับมาทาง query — เดิมถูกกลืนเงียบ
+  // ผู้ใช้กดลิงก์แล้วเด้งกลับหน้า login โดยไม่รู้ว่าเกิดอะไรขึ้น
+  useEffect(() => {
+    const err = new URLSearchParams(window.location.search).get('error');
+    if (err) {
+      setError(`ลิงก์ในอีเมลใช้ไม่ได้ (${err}) — ขอรหัสใหม่แล้วกรอกรหัส 6 หลักแทน วิธีนี้ชัวร์กว่า`);
+    }
+  }, []);
 
   /**
-   * เข้าระบบแบบไม่ใช้รหัสผ่าน — ส่งลิงก์เข้าอีเมลแล้วกดจากกล่องจดหมาย
+   * เข้าระบบแบบไม่ใช้รหัสผ่าน — ส่งอีเมลที่มีทั้งลิงก์และรหัส 6 หลัก
    * ครั้งแรกระบบสร้างบัญชีให้เองจากอีเมลนั้น (ไม่ต้องสมัครแยก ไม่ต้องตั้งรหัส)
-   * ข้อจำกัดของ PKCE: ต้องกดลิงก์ในเบราว์เซอร์เดียวกับที่กดปุ่มนี้ ไม่งั้นแลก session ไม่ได้
    */
   const handleMagicLink = async () => {
     setError('');
@@ -36,9 +49,45 @@ export default function LoginPage() {
         options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
       });
       if (otpError) throw otpError;
-      setNotice('ส่งลิงก์ไปที่อีเมลแล้ว — เปิดอีเมลแล้วกดลิงก์ ระบบจะพาเข้า dashboard เอง (ต้องกดลิงก์ในเบราว์เซอร์เดียวกันนี้)');
+      setOtpSent(true);
+      setNotice('ส่งอีเมลแล้ว — เอา "รหัส 6 หลัก" ในอีเมลมากรอกช่องด้านล่างนี้ (แนะนำ) หรือจะกดลิงก์ในอีเมลก็ได้');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ส่งลิงก์ไม่สำเร็จ');
+      setError(err instanceof Error ? err.message : 'ส่งอีเมลไม่สำเร็จ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** ยืนยันรหัส 6 หลักจากอีเมล — สร้าง session ในเบราว์เซอร์นี้ตรง ๆ ไม่พึ่งลิงก์เลย */
+  const handleVerifyOtp = async () => {
+    setError('');
+    const code = otpCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setError('รหัสต้องเป็นตัวเลข 6 หลักตามที่อยู่ในอีเมล');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { createClient } = await import('@/lib/supabase');
+      const supabase = createClient();
+      if (!supabase) {
+        setError('ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล');
+        return;
+      }
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code,
+        type: 'email',
+      });
+      if (verifyError) throw verifyError;
+      window.location.href = '/dashboard';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(
+        msg.includes('expired') || msg.includes('invalid')
+          ? 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว — กดขอรหัสใหม่อีกครั้ง (รหัสเก่าจะใช้ไม่ได้ทันทีที่ขอใหม่)'
+          : msg
+      );
     } finally {
       setLoading(false);
     }
@@ -148,6 +197,40 @@ export default function LoginPage() {
             <p className="text-xs text-emerald-400 bg-emerald-500/10 rounded-xl p-3">
               {notice}
             </p>
+          )}
+
+          {/* ช่องกรอกรหัส 6 หลัก — โผล่หลังกดขออีเมลแล้วเท่านั้น
+              วางไว้ "เหนือ" ปุ่มเข้าสู่ระบบ ให้เป็นสิ่งแรกที่สายตาเจอหลังเปิดอีเมล */}
+          {otpSent && (
+            <div className="space-y-2 rounded-xl border border-accent-glow/30 bg-accent-glow/5 p-3">
+              <label className="text-xs text-accent-glow flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5" />
+                รหัส 6 หลักจากอีเมล
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  className="input-field font-mono text-center tracking-[0.5em]"
+                  placeholder="000000"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={loading || otpCode.length !== 6}
+                  className="btn-primary px-5 flex-shrink-0 disabled:opacity-40"
+                >
+                  ยืนยัน
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                ไม่เจออีเมล? เช็คโฟลเดอร์ Junk/สแปม หรือกดปุ่มด้านล่างขอรหัสใหม่
+              </p>
+            </div>
           )}
 
           <button
