@@ -24,6 +24,27 @@ import { generateSignal } from './signal-engine';
  *   "ราคาเปิดของแท่ง i+1" เพราะสัญญาณคำนวณจากราคาปิดแท่ง i จะเข้าที่ราคานั้นไม่ได้จริง
  *
  * ไฟล์นี้ pure ล้วน — ไม่แตะ network / DB / เวลาเครื่อง ผู้เรียกต้องหาแท่งมาป้อนเอง
+ *
+ * ═══════════════════ 1R คืออะไร — และทำไมนิยามเดิมใช้ไม่ได้ ═══════════════════
+ *
+ * R คือ "กำไร/ขาดทุน หารด้วยเงินที่ตั้งใจเสี่ยงกับไม้นั้น" ตัวหารจึงเป็นหน่วยวัด
+ * ไม่ใช่ผลลัพธ์ ถ้าตัวหารเปลี่ยนไปเรื่อย ๆ ตามเหตุบังเอิญ การเอา R มาเฉลี่ยกัน
+ * ก็เหมือนเอาราคาสินค้าจากหลายสกุลเงินมาบวกกันโดยไม่แปลงสกุล
+ *
+ * นิยามเดิม (riskModel = 'realized') ใช้ |ราคาเปิดแท่งถัดไป − SL| เป็นตัวหาร
+ * ปัญหา: ราคาเปิดแท่งถัดไปเป็น "ผลของ gap" ซึ่งเป็นตัวแปรสุ่มที่เกิดหลังตัดสินใจแล้ว
+ * ถ้าเปิดมากระโดดเกือบทับ SL ตัวหารจะเหลือเศษเสี้ยว แล้ว R ของไม้เดียวก็ใหญ่ได้ไม่จำกัด
+ * (วัดจริงในคลังวิจัย: ไม้เดียวเคยได้ R = 166.5 และไม้ 0.1% ที่สุดขั้วที่สุดคิดเป็น
+ *  105.7% ของกำไรรวมทั้งชุด — ค่าเฉลี่ยจึงไม่ได้วัดกฎ แต่วัดว่าบังเอิญมีไม้แบบนี้กี่ไม้)
+ *
+ * นิยามที่ใช้ตอนนี้ (riskModel = 'planned' — ค่าเริ่มต้น) ใช้ |ราคาที่สัญญาณคิดไว้ − SL|
+ * คือระยะที่ผู้เทรด "ตกลงจะเสี่ยง" ตอนกดสั่ง ซึ่งเป็นตัวเดียวกับที่ใช้คิดขนาดไม้จริง
+ * (ซื้อกี่หน่วย = เงินที่ยอมเสี่ยง ÷ ระยะนี้) ตัวหารจึงถูกล็อกก่อนรู้ผล และ gap
+ * กลับไปอยู่ใน "เศษ" ตามความเป็นจริง: เปิดกระโดดหนีจาก SL = ขาดทุนเกิน 1R ได้จริง
+ * และเปิดกระโดดเข้าหา SL = ขาดทุนน้อยกว่า 1R จริง เพราะไม้เล็กลงตามระยะที่เหลือไม่ได้
+ *
+ * รายละเอียดการวัดก่อน/หลัง อยู่ที่ scripts/research/report/metric-fix.md
+ * ทั้งสองนิยามถูกคำนวณและเก็บไว้ทุกไม้เสมอ (rPlanned / rRealized) เพื่อให้เทียบกันได้
  */
 
 export type BacktestExitReason =
@@ -32,6 +53,11 @@ export type BacktestExitReason =
   | 'time_exit'   // ถือครบ maxHoldBars โดยไม่ชนอะไร → ออกที่ราคาปิดแท่งสุดท้ายของช่วงถือ
   | 'gap_stop'    // แท่งเปิด "ทะลุ" SL ไปแล้ว → ออกที่ราคาเปิด (คำสั่ง stop จริงโดน fill ที่ราคาตลาด)
   | 'gap_target'; // แท่งเปิดทะลุ TP ไปแล้ว → ออกที่ราคาเปิดเช่นกัน
+
+/** ตัวหารของ R — ดูเหตุผลของค่าเริ่มต้นในหัวไฟล์ */
+export type RiskModel =
+  | 'planned'   // |ราคาที่สัญญาณคิดไว้ − SL| — ล็อกก่อนรู้ผล = หน่วยวัดที่ใช้คิดขนาดไม้จริง
+  | 'realized'; // |ราคาเปิดจริง − SL| — นิยามเดิม เก็บไว้เทียบย้อนหลังเท่านั้น
 
 export interface BacktestTrade {
   action: 'BUY' | 'SELL';
@@ -42,8 +68,20 @@ export interface BacktestTrade {
   stopLoss: number;
   takeProfit: number;
   exitReason: BacktestExitReason;
-  /** R multiple = (exit - entry) * dir / |entry - SL| หลังหัก feesR แล้ว */
+  /** R multiple ตาม riskModel ที่เลือก หลังหัก feesR แล้ว — เท่ากับ rPlanned หรือ rRealized ตัวใดตัวหนึ่งเป๊ะ */
   r: number;
+  /** ระยะเสี่ยงที่ "ตั้งใจไว้" ตอนออกสัญญาณ = |signal.entry_price − SL| (> 0 เสมอ) */
+  plannedRisk: number;
+  /** ระยะเสี่ยงที่ "เหลือจริง" หลังราคาเปิด = |ราคาเข้า − SL| (เป็น 0 ได้ถ้าเปิดทับ SL พอดี) */
+  realizedRisk: number;
+  /** R เมื่อหารด้วย plannedRisk (หัก feesR แล้ว) */
+  rPlanned: number;
+  /**
+   * R เมื่อหารด้วย realizedRisk (หัก feesR แล้ว) — นิยามเดิม เก็บไว้เทียบย้อนหลัง
+   * null = วัดด้วยนิยามเดิมไม่ได้ (ราคาเปิดทับ SL พอดี ตัวหารเป็นศูนย์)
+   * ตามกติกาเลขของไฟล์นี้: ไม่มีข้อมูลพอจะวัด = null ห้ามเดาเป็น 0
+   */
+  rRealized: number | null;
   /** จำนวนแท่งหลังจากแท่งที่เข้า (ออกภายในแท่งเดียวกับที่เข้า = 0) */
   holdBars: number;
   entryTime: string;
@@ -88,12 +126,17 @@ export interface BacktestStats {
 export interface BacktestResult {
   symbol: string;
   timeframe: string;
+  /**
+   * ตัวหารของ R ที่ใช้ในผลชุดนี้ — ผู้แสดงผลต้องบอกผู้ใช้เสมอว่า "1R" หมายถึงอะไร
+   * ไม่งั้นตัวเลขเดียวกันจะถูกอ่านผิดความหมายเมื่อเทียบกับผลเก่า
+   */
+  riskModel: RiskModel;
   /** จำนวนแท่งทั้งหมดที่ใช้ทดสอบ */
   bars: number;
   trades: BacktestTrade[];
   /**
    * สัญญาณ BUY/SELL ที่ต้องทิ้งเพราะเข้าไม้ไม่ได้จริง:
-   * แท่งเข้าข้อมูลเสีย หรือ |entry - SL| เป็น 0/ใช้ไม่ได้ (หาร R ไม่ได้)
+   * แท่งเข้าข้อมูลเสีย หรือระยะเสี่ยงตาม riskModel เป็น 0/ใช้ไม่ได้ (หาร R ไม่ได้)
    * ไม่รวมสัญญาณที่ถูกข้ามเพราะกำลังถือไม้อยู่ (อันนั้นคือกติกา ไม่ใช่ข้อมูลเสีย)
    */
   skipped: number;
@@ -120,6 +163,11 @@ export interface BacktestInput {
    * default 0 = ยังไม่รวมค่าธรรมเนียม/สลิปเพจใด ๆ — ผู้แสดงผลต้องบอกผู้ใช้ชัด ๆ
    */
   feesR?: number;
+  /**
+   * ตัวหารของ R — default 'planned' (เหตุผลอยู่ในหัวไฟล์)
+   * ใส่ 'realized' เมื่อต้องการ "ตัวเลขแบบเดิมเป๊ะ" เพื่อเทียบย้อนหลังเท่านั้น
+   */
+  riskModel?: RiskModel;
 }
 
 /** แท่งที่เชื่อถือได้พอจะใช้ตัดสินการชน SL/TP — ราคาทุกตัวเป็นบวกจริงและ low ไม่กลับหัว */
@@ -215,6 +263,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
   // ต่ำกว่า 50 สัญญาณไม่ยอมออกอยู่แล้ว (generateSignal ต้องการ 50 แท่ง) บังคับพื้นไว้กันหลงลืม
   const minHistory = Math.max(50, Math.floor(input.minHistory ?? 60));
   const feesR = Number.isFinite(input.feesR) ? (input.feesR as number) : 0;
+  const riskModel: RiskModel = input.riskModel === 'realized' ? 'realized' : 'planned';
 
   const trades: BacktestTrade[] = [];
   let skipped = 0;
@@ -247,10 +296,16 @@ export function runBacktest(input: BacktestInput): BacktestResult {
     const stopLoss = sig.stop_loss;
     const takeProfit = sig.take_profit;
 
-    // ตัวหารของ R — ระยะจากราคาเข้า "จริง" ถึง SL
-    // (สัญญาณการันตี SL อยู่ถูกฝั่งเทียบกับราคาปิดแท่ง i แต่ราคาเปิดแท่ง i+1
-    //  อาจ gap มาทับ SL พอดี → ระยะเป็น 0 หาร R ไม่ได้ → ทิ้งไม้นี้ตามสเปก)
-    const riskPerUnit = Math.abs(entry - stopLoss);
+    // ── ตัวหารของ R: คิดทั้งสองนิยามเสมอ เลือกใช้ตาม riskModel ──
+    //
+    // plannedRisk  ระยะที่ตกลงจะเสี่ยงตอนกดสั่ง (คิดจากราคาที่สัญญาณเห็น = ปิดแท่ง i)
+    //              signal-engine การันตีว่า SL อยู่ถูกฝั่งและไม่ยุบเท่า entry หลังปัดทศนิยม
+    //              (ถ้ายุบ มันคืน null ไปแล้ว) ค่านี้จึงเป็นบวกเสมอสำหรับสัญญาณที่ออกมาจริง
+    // realizedRisk ระยะที่เหลือหลังราคาเปิดแท่ง i+1 — เป็น 0 ได้เมื่อเปิดมาทับ SL พอดี
+    //              และ "เกือบ 0" ได้บ่อยกว่านั้นมาก ซึ่งคือต้นเหตุที่นิยามเดิมพัง
+    const plannedRisk = Math.abs(sig.entry_price - stopLoss);
+    const realizedRisk = Math.abs(entry - stopLoss);
+    const riskPerUnit = riskModel === 'realized' ? realizedRisk : plannedRisk;
     if (!Number.isFinite(riskPerUnit) || riskPerUnit <= 0) {
       skipped++;
       i++;
@@ -310,7 +365,15 @@ export function runBacktest(input: BacktestInput): BacktestResult {
       exitReason = 'time_exit';
     }
 
-    const r = ((exit - entry) * dir) / riskPerUnit - feesR;
+    // เศษของ R เหมือนกันทุกนิยาม — ต่างกันแค่ตัวหาร จึงคำนวณครั้งเดียวแล้วหารสองแบบ
+    const pnlPerUnit = (exit - entry) * dir;
+    const rPlanned = pnlPerUnit / plannedRisk - feesR;
+    // realizedRisk = 0 → null: "วัดด้วยนิยามเดิมไม่ได้" ไม่ใช่ "วัดได้เท่ากับ 0"
+    // (ไม้แบบนี้ยังนับได้ตามปกติภายใต้ riskModel = 'planned' และมันคือกรณีที่นิยามเดิมทิ้งทิ้งไป)
+    const rRealized = realizedRisk > 0 ? pnlPerUnit / realizedRisk - feesR : null;
+    // riskModel = 'realized' จะไม่มีทางมาถึงบรรทัดนี้พร้อม rRealized = null
+    // เพราะไม้ที่ realizedRisk = 0 ถูกนับเป็น skipped ไปแล้วข้างบน
+    const r = riskModel === 'realized' ? (rRealized as number) : rPlanned;
 
     trades.push({
       action: sig.action,
@@ -322,6 +385,10 @@ export function runBacktest(input: BacktestInput): BacktestResult {
       takeProfit,
       exitReason,
       r,
+      plannedRisk,
+      realizedRisk,
+      rPlanned,
+      rRealized,
       holdBars: exitIndex - entryIndex,
       entryTime: entryBar.timestamp,
       exitTime: candles[exitIndex].timestamp,
@@ -339,6 +406,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
   return {
     symbol,
     timeframe,
+    riskModel,
     bars: candles.length,
     trades,
     skipped,

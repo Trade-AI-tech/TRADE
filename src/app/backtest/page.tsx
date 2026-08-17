@@ -115,7 +115,25 @@ function StatCard({
   );
 }
 
-function EquityCurveR({ points }: { points: { n: number; cumR: number }[] }) {
+/**
+ * 1R หมายถึงอะไร — ต้องอ่านจาก riskModel ที่ API ส่งมา ห้ามพิมพ์ทับไว้
+ *
+ * ตั้งแต่ backtest.ts รองรับสองนิยาม ตัวเลข R บนหน้านี้เปลี่ยนความหมายไปแล้ว
+ * ที่สังเกตได้ชัดที่สุดคือ **ไม้ที่ชน SL ไม่ได้เป็น −1.00R เป๊ะทุกไม้อีกต่อไป**
+ * (เดิมเป็น −1.00 เสมอโดยโครงสร้าง ตอนนี้เห็นได้ตั้งแต่ราว −0.3R ถึง −2R)
+ * ถ้าไม่มีคำอธิบาย ผู้ใช้จะคิดว่าโค้ดพัง ทั้งที่นี่คือความเสี่ยงจาก gap ที่เดิมถูกซ่อนไว้
+ */
+function riskModelNote(riskModel?: string): string {
+  if (riskModel === 'realized') {
+    return '1R = ระยะจากราคาที่เข้าไม้จริงถึง SL · ไม้ที่ชน SL จะได้ −1.00R เป๊ะเสมอ ' +
+      'แต่ถ้าราคาเปิดกระโดดมาเกือบทับ SL ตัวหารจะเล็กมากจน R ของไม้เดียวใหญ่ผิดปกติได้';
+  }
+  // 'planned' คือค่าเริ่มต้น · เผื่อ API เวอร์ชันเก่าที่ยังไม่ส่งฟิลด์นี้มาด้วย
+  return '1R = ระยะที่ตั้งใจเสี่ยงตอนออกสัญญาณ (ราคาที่สัญญาณคิดไว้ ถึง SL) ' +
+    'ไม้ที่ชน SL จึงไม่ได้เป็น −1.00R เป๊ะทุกไม้ — ส่วนที่ต่างคือผลของ gap ตอนเปิดตลาด ซึ่งเป็นความเสี่ยงจริง';
+}
+
+function EquityCurveR({ points, riskModel }: { points: { n: number; cumR: number }[]; riskModel?: string }) {
   const final = points[points.length - 1]?.cumR ?? 0;
   const isUp = final >= 0;
 
@@ -125,6 +143,7 @@ function EquityCurveR({ points }: { points: { n: number; cumR: number }[] }) {
         <div>
           <h3 className="text-sm font-semibold text-[rgb(var(--text-primary))]">Equity Curve</h3>
           <p className="text-xs text-[rgb(var(--text-muted))] mt-0.5">ผลสะสมเป็น R ทีละไม้ (เริ่มจาก 0)</p>
+          <p className="text-[11px] text-[rgb(var(--text-muted))] mt-1 max-w-md">{riskModelNote(riskModel)}</p>
         </div>
         <div className={cn('text-xl font-mono font-bold', isUp ? 'text-up' : 'text-down')}>
           {fmtR(final)}
@@ -561,8 +580,8 @@ export default function BacktestPage() {
                 </div>
               </div>
 
-              {/* Equity curve สะสมเป็น R */}
-              {equityPoints && <EquityCurveR points={equityPoints} />}
+              {/* Equity curve สะสมเป็น R — ส่ง riskModel ไปด้วยเพื่อให้อธิบายได้ว่า 1R คืออะไร */}
+              {equityPoints && <EquityCurveR points={equityPoints} riskModel={run.result.riskModel} />}
 
               {/* ตารางไม้ทั้งหมด */}
               <div className="card overflow-x-auto">

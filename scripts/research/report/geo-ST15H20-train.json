@@ -1,0 +1,4559 @@
+{
+  "generatedAt": "2026-08-17T17:17:55.641Z",
+  "git": "0dfe913",
+  "tag": "geo-ST15H20",
+  "configDiff": {
+    "exits.tpAtrMult": 1.5
+  },
+  "splits": [
+    "train"
+  ],
+  "bounds": {
+    "schemaVersion": 1,
+    "computedAt": "2026-08-17T12:31:16.095Z",
+    "ratios": {
+      "train": 0.6,
+      "validation": 0.2,
+      "test": 0.2
+    },
+    "timeframes": {
+      "1D": {
+        "bars": 374476,
+        "first": "1970-01-02T14:30:00.000Z",
+        "last": "2026-08-17T03:00:00.000Z",
+        "trainEnd": "2016-02-17T00:00:00.000Z",
+        "validationEnd": "2021-08-06T13:30:00.000Z",
+        "barsTrain": 224685,
+        "barsValidation": 74895,
+        "barsTest": 74896
+      },
+      "1H": {
+        "bars": 603627,
+        "first": "2023-08-22T03:00:00.000Z",
+        "last": "2026-08-17T11:00:00.000Z",
+        "trainEnd": "2025-08-18T01:00:00.000Z",
+        "validationEnd": "2026-02-17T04:00:00.000Z",
+        "barsTrain": 362176,
+        "barsValidation": 120725,
+        "barsTest": 120726
+      }
+    },
+    "cleanTestFrom": "2026-02-17T04:00:00.000Z",
+    "overlaps": [
+      {
+        "testTimeframe": "1D",
+        "tunedTimeframe": "1H",
+        "note": "ช่วง train+validation ของ 1H ยืดถึง 2026-02-17 ซึ่งเลยจุดเริ่ม test ของ 1D (2021-08-06) ไปแล้ว"
+      }
+    ]
+  },
+  "datasetCount": 114,
+  "barsTotal": 978103,
+  "maxHoldBars": 20,
+  "minHistory": 60,
+  "riskModel": "planned",
+  "costScenario": "base",
+  "costTable": {
+    "byMarket": {
+      "GOLD": 5,
+      "FOREX": 1.5,
+      "TH_STOCK": 40,
+      "US_STOCK": 5,
+      "CRYPTO": 25
+    },
+    "bySymbol": {
+      "XAUUSD": 3,
+      "XAGUSD": 15,
+      "PL=F": 12,
+      "PA=F": 20,
+      "HG=F": 10,
+      "EURJPY": 2.5,
+      "GBPJPY": 2.5,
+      "USDMXN": 3,
+      "USDZAR": 5,
+      "USDTHB": 15
+    },
+    "pessimisticMultiplier": 2
+  },
+  "seed": 20260817,
+  "bootstrap": 10000,
+  "elapsedMs": 5657.3365,
+  "jobs": 14,
+  "testCleanFrom": null,
+  "tradeableRule": "costR(base) < 1",
+  "perDataset": [
+    {
+      "symbol": "ADA",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "ADA",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17472,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 852,
+          "skipped": 0,
+          "signals": 852,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "BCH",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "BCH",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17475,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 834,
+          "skipped": 0,
+          "signals": 834,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "BTC",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 4352,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 35,
+          "skipped": 0,
+          "signals": 35,
+          "bars": 518
+        }
+      }
+    },
+    {
+      "symbol": "BTC",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17475,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 687,
+          "skipped": 0,
+          "signals": 687,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "DOGE",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "DOGE",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17473,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 834,
+          "skipped": 0,
+          "signals": 834,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "DOT",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 2188,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "DOT",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17474,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 854,
+          "skipped": 0,
+          "signals": 854,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "ETH",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "ETH",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17472,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 747,
+          "skipped": 0,
+          "signals": 747,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "LINK",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "LINK",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17472,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 895,
+          "skipped": 0,
+          "signals": 895,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "LTC",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 4352,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 30,
+          "skipped": 0,
+          "signals": 30,
+          "bars": 518
+        }
+      }
+    },
+    {
+      "symbol": "LTC",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17474,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 829,
+          "skipped": 0,
+          "signals": 829,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "SOL",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 2320,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "SOL",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17474,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 849,
+          "skipped": 0,
+          "signals": 849,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "XRP",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 3203,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "XRP",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17475,
+      "costFraction": 0.0025,
+      "splits": {
+        "train": {
+          "trades": 826,
+          "skipped": 0,
+          "signals": 826,
+          "bars": 8760
+        }
+      }
+    },
+    {
+      "symbol": "AUDUSD",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 5254,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 200,
+          "skipped": 0,
+          "signals": 200,
+          "bars": 2524
+        }
+      }
+    },
+    {
+      "symbol": "AUDUSD",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17144,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 702,
+          "skipped": 0,
+          "signals": 702,
+          "bars": 11060
+        }
+      }
+    },
+    {
+      "symbol": "EURJPY",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6104,
+      "costFraction": 0.00025,
+      "splits": {
+        "train": {
+          "trades": 294,
+          "skipped": 0,
+          "signals": 294,
+          "bars": 3373
+        }
+      }
+    },
+    {
+      "symbol": "EURJPY",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17142,
+      "costFraction": 0.00025,
+      "splits": {
+        "train": {
+          "trades": 677,
+          "skipped": 0,
+          "signals": 677,
+          "bars": 11050
+        }
+      }
+    },
+    {
+      "symbol": "EURUSD",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5877,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 265,
+          "skipped": 0,
+          "signals": 265,
+          "bars": 3147
+        }
+      }
+    },
+    {
+      "symbol": "EURUSD",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17102,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 679,
+          "skipped": 0,
+          "signals": 679,
+          "bars": 11020
+        }
+      }
+    },
+    {
+      "symbol": "GBPJPY",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 5894,
+      "costFraction": 0.00025,
+      "splits": {
+        "train": {
+          "trades": 242,
+          "skipped": 0,
+          "signals": 242,
+          "bars": 3163
+        }
+      }
+    },
+    {
+      "symbol": "GBPJPY",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17117,
+      "costFraction": 0.00025,
+      "splits": {
+        "train": {
+          "trades": 685,
+          "skipped": 0,
+          "signals": 685,
+          "bars": 11030
+        }
+      }
+    },
+    {
+      "symbol": "GBPUSD",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5886,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 233,
+          "skipped": 0,
+          "signals": 233,
+          "bars": 3156
+        }
+      }
+    },
+    {
+      "symbol": "GBPUSD",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17093,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 690,
+          "skipped": 0,
+          "signals": 690,
+          "bars": 11014
+        }
+      }
+    },
+    {
+      "symbol": "NZDUSD",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5088,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 185,
+          "skipped": 0,
+          "signals": 185,
+          "bars": 2358
+        }
+      }
+    },
+    {
+      "symbol": "NZDUSD",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17095,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 713,
+          "skipped": 0,
+          "signals": 713,
+          "bars": 11007
+        }
+      }
+    },
+    {
+      "symbol": "USDCAD",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 5956,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 244,
+          "skipped": 0,
+          "signals": 244,
+          "bars": 3226
+        }
+      }
+    },
+    {
+      "symbol": "USDCAD",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17192,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 610,
+          "skipped": 0,
+          "signals": 610,
+          "bars": 11075
+        }
+      }
+    },
+    {
+      "symbol": "USDCHF",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 5943,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 276,
+          "skipped": 0,
+          "signals": 276,
+          "bars": 3213
+        }
+      }
+    },
+    {
+      "symbol": "USDCHF",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17120,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 655,
+          "skipped": 0,
+          "signals": 655,
+          "bars": 11039
+        }
+      }
+    },
+    {
+      "symbol": "USDJPY",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 7428,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 382,
+          "skipped": 0,
+          "signals": 382,
+          "bars": 4698
+        }
+      }
+    },
+    {
+      "symbol": "USDJPY",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17091,
+      "costFraction": 0.00015,
+      "splits": {
+        "train": {
+          "trades": 687,
+          "skipped": 0,
+          "signals": 687,
+          "bars": 11010
+        }
+      }
+    },
+    {
+      "symbol": "USDMXN",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 5910,
+      "costFraction": 0.0003,
+      "splits": {
+        "train": {
+          "trades": 255,
+          "skipped": 0,
+          "signals": 255,
+          "bars": 3178
+        }
+      }
+    },
+    {
+      "symbol": "USDMXN",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17188,
+      "costFraction": 0.0003,
+      "splits": {
+        "train": {
+          "trades": 650,
+          "skipped": 0,
+          "signals": 650,
+          "bars": 11077
+        }
+      }
+    },
+    {
+      "symbol": "USDTHB",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5878,
+      "costFraction": 0.0015,
+      "splits": {
+        "train": {
+          "trades": 278,
+          "skipped": 0,
+          "signals": 278,
+          "bars": 3148
+        }
+      }
+    },
+    {
+      "symbol": "USDTHB",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 16919,
+      "costFraction": 0.0015,
+      "splits": {
+        "train": {
+          "trades": 608,
+          "skipped": 0,
+          "signals": 608,
+          "bars": 10964
+        }
+      }
+    },
+    {
+      "symbol": "USDZAR",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5897,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 247,
+          "skipped": 0,
+          "signals": 247,
+          "bars": 3167
+        }
+      }
+    },
+    {
+      "symbol": "USDZAR",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 17199,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 661,
+          "skipped": 0,
+          "signals": 661,
+          "bars": 11073
+        }
+      }
+    },
+    {
+      "symbol": "HG=F",
+      "market": "GOLD",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 3675,
+      "costFraction": 0.001,
+      "splits": {
+        "train": {
+          "trades": 97,
+          "skipped": 0,
+          "signals": 97,
+          "bars": 1036
+        }
+      }
+    },
+    {
+      "symbol": "HG=F",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 13727,
+      "costFraction": 0.001,
+      "splits": {
+        "train": {
+          "trades": 605,
+          "skipped": 0,
+          "signals": 605,
+          "bars": 8050
+        }
+      }
+    },
+    {
+      "symbol": "PA=F",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 13695,
+      "costFraction": 0.002,
+      "splits": {
+        "train": {
+          "trades": 593,
+          "skipped": 0,
+          "signals": 593,
+          "bars": 8032
+        }
+      }
+    },
+    {
+      "symbol": "PL=F",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 13723,
+      "costFraction": 0.0012,
+      "splits": {
+        "train": {
+          "trades": 607,
+          "skipped": 0,
+          "signals": 607,
+          "bars": 8051
+        }
+      }
+    },
+    {
+      "symbol": "XAGUSD",
+      "market": "GOLD",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 644,
+      "costFraction": 0.0015,
+      "splits": {
+        "train": {
+          "trades": 0,
+          "skipped": 0,
+          "signals": 0,
+          "bars": 0
+        }
+      }
+    },
+    {
+      "symbol": "XAGUSD",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "verdict": "warn",
+      "bars": 13731,
+      "costFraction": 0.0015,
+      "splits": {
+        "train": {
+          "trades": 586,
+          "skipped": 0,
+          "signals": 586,
+          "bars": 8051
+        }
+      }
+    },
+    {
+      "symbol": "XAUUSD",
+      "market": "GOLD",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 3641,
+      "costFraction": 0.0003,
+      "splits": {
+        "train": {
+          "trades": 95,
+          "skipped": 0,
+          "signals": 95,
+          "bars": 1033
+        }
+      }
+    },
+    {
+      "symbol": "XAUUSD",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 13733,
+      "costFraction": 0.0003,
+      "splits": {
+        "train": {
+          "trades": 531,
+          "skipped": 0,
+          "signals": 531,
+          "bars": 8052
+        }
+      }
+    },
+    {
+      "symbol": "ADVANC",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6430,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 340,
+          "skipped": 0,
+          "signals": 340,
+          "bars": 3940
+        }
+      }
+    },
+    {
+      "symbol": "ADVANC",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4895,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 183,
+          "skipped": 0,
+          "signals": 183,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "AOT",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5401,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 197,
+          "skipped": 0,
+          "signals": 197,
+          "bars": 2915
+        }
+      }
+    },
+    {
+      "symbol": "AOT",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4896,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 175,
+          "skipped": 0,
+          "signals": 175,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "BBL",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6420,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 323,
+          "skipped": 0,
+          "signals": 323,
+          "bars": 3933
+        }
+      }
+    },
+    {
+      "symbol": "BBL",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4897,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 164,
+          "skipped": 0,
+          "signals": 164,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "BDMS",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5560,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 204,
+          "skipped": 0,
+          "signals": 204,
+          "bars": 3078
+        }
+      }
+    },
+    {
+      "symbol": "BDMS",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4894,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 205,
+          "skipped": 0,
+          "signals": 205,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "CPALL",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5510,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 228,
+          "skipped": 0,
+          "signals": 228,
+          "bars": 3015
+        }
+      }
+    },
+    {
+      "symbol": "CPALL",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4897,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 199,
+          "skipped": 0,
+          "signals": 199,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "CPF",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6442,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 265,
+          "skipped": 0,
+          "signals": 265,
+          "bars": 3945
+        }
+      }
+    },
+    {
+      "symbol": "CPF",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4896,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 220,
+          "skipped": 0,
+          "signals": 220,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "DELTA",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6437,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 311,
+          "skipped": 0,
+          "signals": 311,
+          "bars": 3938
+        }
+      }
+    },
+    {
+      "symbol": "DELTA",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "warn",
+      "bars": 4894,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 181,
+          "skipped": 0,
+          "signals": 181,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "EA",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 3257,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 45,
+          "skipped": 0,
+          "signals": 45,
+          "bars": 745
+        }
+      }
+    },
+    {
+      "symbol": "EA",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "warn",
+      "bars": 4887,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 194,
+          "skipped": 0,
+          "signals": 194,
+          "bars": 3210
+        }
+      }
+    },
+    {
+      "symbol": "IVL",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 3974,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 104,
+          "skipped": 0,
+          "signals": 104,
+          "bars": 1471
+        }
+      }
+    },
+    {
+      "symbol": "IVL",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4895,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 199,
+          "skipped": 0,
+          "signals": 199,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "KBANK",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6403,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 317,
+          "skipped": 0,
+          "signals": 317,
+          "bars": 3934
+        }
+      }
+    },
+    {
+      "symbol": "KBANK",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4897,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 183,
+          "skipped": 0,
+          "signals": 183,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "MINT",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6040,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 271,
+          "skipped": 0,
+          "signals": 271,
+          "bars": 3545
+        }
+      }
+    },
+    {
+      "symbol": "MINT",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4897,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 252,
+          "skipped": 0,
+          "signals": 252,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "PTT",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5949,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 270,
+          "skipped": 0,
+          "signals": 270,
+          "bars": 3462
+        }
+      }
+    },
+    {
+      "symbol": "PTT",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4894,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 208,
+          "skipped": 0,
+          "signals": 208,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "PTTEP",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 5940,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 284,
+          "skipped": 0,
+          "signals": 284,
+          "bars": 3451
+        }
+      }
+    },
+    {
+      "symbol": "PTTEP",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4897,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 190,
+          "skipped": 0,
+          "signals": 190,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "SCC",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6434,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 294,
+          "skipped": 0,
+          "signals": 294,
+          "bars": 3938
+        }
+      }
+    },
+    {
+      "symbol": "SCC",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 4895,
+      "costFraction": 0.004,
+      "splits": {
+        "train": {
+          "trades": 202,
+          "skipped": 0,
+          "signals": 202,
+          "bars": 3218
+        }
+      }
+    },
+    {
+      "symbol": "AAPL",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 11509,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 740,
+          "skipped": 0,
+          "signals": 740,
+          "bars": 8870
+        }
+      }
+    },
+    {
+      "symbol": "AAPL",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 238,
+          "skipped": 0,
+          "signals": 238,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "BA",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 14276,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 1008,
+          "skipped": 0,
+          "signals": 1008,
+          "bars": 11637
+        }
+      }
+    },
+    {
+      "symbol": "BA",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 267,
+          "skipped": 0,
+          "signals": 267,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "CVS",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 13264,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 950,
+          "skipped": 0,
+          "signals": 950,
+          "bars": 10625
+        }
+      }
+    },
+    {
+      "symbol": "CVS",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 229,
+          "skipped": 0,
+          "signals": 229,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "DIS",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 14276,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 1001,
+          "skipped": 0,
+          "signals": 1001,
+          "bars": 11637
+        }
+      }
+    },
+    {
+      "symbol": "DIS",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 256,
+          "skipped": 0,
+          "signals": 256,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "F",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 13664,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 950,
+          "skipped": 0,
+          "signals": 950,
+          "bars": 11025
+        }
+      }
+    },
+    {
+      "symbol": "F",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 264,
+          "skipped": 0,
+          "signals": 264,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "INTC",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 11697,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 814,
+          "skipped": 0,
+          "signals": 814,
+          "bars": 9058
+        }
+      }
+    },
+    {
+      "symbol": "INTC",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "warn",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 244,
+          "skipped": 0,
+          "signals": 244,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "IWM",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6593,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 382,
+          "skipped": 0,
+          "signals": 382,
+          "bars": 3954
+        }
+      }
+    },
+    {
+      "symbol": "IWM",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 264,
+          "skipped": 0,
+          "signals": 264,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "KO",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 14276,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 1036,
+          "skipped": 0,
+          "signals": 1036,
+          "bars": 11637
+        }
+      }
+    },
+    {
+      "symbol": "KO",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 242,
+          "skipped": 0,
+          "signals": 242,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 10184,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 641,
+          "skipped": 0,
+          "signals": 641,
+          "bars": 7545
+        }
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 263,
+          "skipped": 0,
+          "signals": 263,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "NKE",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 11517,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 732,
+          "skipped": 0,
+          "signals": 732,
+          "bars": 8878
+        }
+      }
+    },
+    {
+      "symbol": "NKE",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 245,
+          "skipped": 0,
+          "signals": 245,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 6933,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 367,
+          "skipped": 0,
+          "signals": 367,
+          "bars": 4294
+        }
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 279,
+          "skipped": 0,
+          "signals": 279,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "PFE",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 12255,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 871,
+          "skipped": 0,
+          "signals": 871,
+          "bars": 9616
+        }
+      }
+    },
+    {
+      "symbol": "PFE",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 251,
+          "skipped": 0,
+          "signals": 251,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "PYPL",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 2795,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 10,
+          "skipped": 0,
+          "signals": 10,
+          "bars": 156
+        }
+      }
+    },
+    {
+      "symbol": "PYPL",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 284,
+          "skipped": 0,
+          "signals": 284,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "SPY",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 8443,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 548,
+          "skipped": 0,
+          "signals": 548,
+          "bars": 5804
+        }
+      }
+    },
+    {
+      "symbol": "SPY",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 242,
+          "skipped": 0,
+          "signals": 242,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "T",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 10766,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 746,
+          "skipped": 0,
+          "signals": 746,
+          "bars": 8127
+        }
+      }
+    },
+    {
+      "symbol": "T",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 250,
+          "skipped": 0,
+          "signals": 250,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "TLT",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "clean",
+      "bars": 6050,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 309,
+          "skipped": 0,
+          "signals": 309,
+          "bars": 3411
+        }
+      }
+    },
+    {
+      "symbol": "TLT",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5080,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 262,
+          "skipped": 0,
+          "signals": 262,
+          "bars": 3345
+        }
+      }
+    },
+    {
+      "symbol": "XOM",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "verdict": "warn",
+      "bars": 14276,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 1085,
+          "skipped": 0,
+          "signals": 1085,
+          "bars": 11637
+        }
+      }
+    },
+    {
+      "symbol": "XOM",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "verdict": "clean",
+      "bars": 5079,
+      "costFraction": 0.0005,
+      "splits": {
+        "train": {
+          "trades": 270,
+          "skipped": 0,
+          "signals": 270,
+          "bars": 3345
+        }
+      }
+    }
+  ],
+  "results": {
+    "train": {
+      "tradeCountAll": 45252,
+      "tradeCountTradeable": 45252,
+      "rejectedCount": 0,
+      "rejectedShare": 0,
+      "rejectedSumRNet": 0,
+      "tradeableRule": "costR(base) < 1",
+      "cohortAll": {
+        "label": "ทุกไม้",
+        "tradeCount": 45252,
+        "avgCostR": 0.09198878776409249,
+        "medCostR": 0.03927146516084909,
+        "gross": {
+          "stats": {
+            "count": 45252,
+            "wins": 24041,
+            "losses": 20158,
+            "winRate": 0.5312693361619376,
+            "profitFactor": 0.9981950541038778,
+            "avgR": -0.0007295835172892349,
+            "expectancyR": -0.0007295835172892349,
+            "medianR": 0.09428105475607554,
+            "trimmedMeanR": -0.03200949937278669,
+            "maxDrawdownR": 307.9779566685735,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 18258.454672604817,
+            "grossLossR": 18291.469785928974,
+            "sumR": -33.01511332437246,
+            "minR": -46.663680262603386,
+            "maxR": 16.265060240963834
+          },
+          "ciTrade": {
+            "B": 10000,
+            "lo95": -0.010003333057594174,
+            "hi95": 0.008640842083290107,
+            "median": -0.0007314280348404997,
+            "pLE0": 0.5613
+          },
+          "ciCluster": {
+            "B": 10000,
+            "lo95": -0.009910096430852774,
+            "hi95": 0.007946635123013192,
+            "median": -0.0007722339368996391,
+            "pLE0": 0.5703
+          }
+        },
+        "net": {
+          "stats": {
+            "count": 45252,
+            "wins": 22899,
+            "losses": 22353,
+            "winRate": 0.5060328825245293,
+            "profitFactor": 0.7949155123219173,
+            "avgR": -0.09271837128138141,
+            "expectancyR": -0.09271837128138141,
+            "medianR": 0.019600609251930613,
+            "trimmedMeanR": -0.11850824990195687,
+            "maxDrawdownR": 4241.09594018374,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 16262.665619432515,
+            "grossLossR": 20458.35735665782,
+            "sumR": -4195.691737225072,
+            "minR": -46.763433431420694,
+            "maxR": 16.04626506024094
+          },
+          "ciTrade": {
+            "B": 10000,
+            "lo95": -0.10205437541605755,
+            "hi95": -0.08327887647499178,
+            "median": -0.09268735723261642,
+            "pLE0": 1
+          },
+          "ciCluster": {
+            "B": 10000,
+            "lo95": -0.1144799818699598,
+            "hi95": -0.07224938820092798,
+            "median": -0.09273472182834562,
+            "pLE0": 1
+          }
+        }
+      },
+      "cohortTradeable": {
+        "label": "เฉพาะไม้ที่เทรดได้จริง",
+        "tradeCount": 45252,
+        "avgCostR": 0.09198878776409249,
+        "medCostR": 0.03927146516084909,
+        "gross": {
+          "stats": {
+            "count": 45252,
+            "wins": 24041,
+            "losses": 20158,
+            "winRate": 0.5312693361619376,
+            "profitFactor": 0.9981950541038778,
+            "avgR": -0.0007295835172892349,
+            "expectancyR": -0.0007295835172892349,
+            "medianR": 0.09428105475607554,
+            "trimmedMeanR": -0.03200949937278669,
+            "maxDrawdownR": 307.9779566685735,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 18258.454672604817,
+            "grossLossR": 18291.469785928974,
+            "sumR": -33.01511332437246,
+            "minR": -46.663680262603386,
+            "maxR": 16.265060240963834
+          },
+          "ciTrade": {
+            "B": 10000,
+            "lo95": -0.010003333057594174,
+            "hi95": 0.008640842083290107,
+            "median": -0.0007314280348404997,
+            "pLE0": 0.5613
+          },
+          "ciCluster": {
+            "B": 10000,
+            "lo95": -0.009910096430852774,
+            "hi95": 0.007946635123013192,
+            "median": -0.0007722339368996391,
+            "pLE0": 0.5703
+          }
+        },
+        "net": {
+          "stats": {
+            "count": 45252,
+            "wins": 22899,
+            "losses": 22353,
+            "winRate": 0.5060328825245293,
+            "profitFactor": 0.7949155123219173,
+            "avgR": -0.09271837128138141,
+            "expectancyR": -0.09271837128138141,
+            "medianR": 0.019600609251930613,
+            "trimmedMeanR": -0.11850824990195687,
+            "maxDrawdownR": 4241.09594018374,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 16262.665619432515,
+            "grossLossR": 20458.35735665782,
+            "sumR": -4195.691737225072,
+            "minR": -46.763433431420694,
+            "maxR": 16.04626506024094
+          },
+          "ciTrade": {
+            "B": 10000,
+            "lo95": -0.10205437541605755,
+            "hi95": -0.08327887647499178,
+            "median": -0.09268735723261642,
+            "pLE0": 1
+          },
+          "ciCluster": {
+            "B": 10000,
+            "lo95": -0.1144799818699598,
+            "hi95": -0.07224938820092798,
+            "median": -0.09273472182834562,
+            "pLE0": 1
+          }
+        }
+      },
+      "stopDist": {
+        "count": 45252,
+        "min": 0.000698364018623442,
+        "p01": 0.005000894378949597,
+        "p10": 0.007185301363275003,
+        "p50": 0.015053076891915134,
+        "p90": 0.04219619754063646,
+        "max": 2.2321755470914546,
+        "shareBelow01pct": 0.00006629541235746487,
+        "shareCostROver025": 0.09424997790152921,
+        "shareCostROver05": 0.003889330858304605
+      },
+      "worstTrades": [
+        {
+          "symbol": "PTTEP",
+          "market": "TH_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 64,
+          "entryIndex": 903,
+          "exitIndex": 918,
+          "entry": 31.77387809753418,
+          "exit": 91.22807312011719,
+          "stopLoss": 32.853,
+          "takeProfit": 30.3049,
+          "exitReason": "gap_stop",
+          "rGross": -46.663680262603386,
+          "costR": 0.09975316881731155,
+          "costRBase": 0.09975316881731155,
+          "rNet": -46.763433431420694,
+          "rrPlanned": 0.9999215132250218,
+          "stopDistPct": 0.040098976778628656,
+          "plannedRisk": 1.2741000000000007,
+          "realizedRisk": 1.0791219024658218,
+          "rGrossRealized": -55.09497572677249,
+          "rGrossPlanned": -46.663680262603386,
+          "costMoney": 0.12709551239013672,
+          "costMoneyBase": 0.12709551239013672,
+          "riskKeepRatio": 0.8469679793311524,
+          "plannedStopDistPct": 0.0403465605198408,
+          "realizedStopDistPct": 0.03396254933544191,
+          "holdBars": 15,
+          "entryTime": "2003-09-10T03:00:00.000Z",
+          "exitTime": "2005-09-29T03:00:00.000Z",
+          "year": "2003"
+        },
+        {
+          "symbol": "NKE",
+          "market": "US_STOCK",
+          "timeframe": "1H",
+          "action": "BUY",
+          "strength": "strong",
+          "confidence": 76,
+          "entryIndex": 1368,
+          "exitIndex": 1369,
+          "entry": 94.3499984741211,
+          "exit": 77.12999725341797,
+          "stopLoss": 93.054,
+          "takeProfit": 95.2856,
+          "exitReason": "gap_stop",
+          "rGross": -13.39035864751408,
+          "costR": 0.036683514181229004,
+          "costRBase": 0.036683514181229004,
+          "rNet": -13.42704216169531,
+          "rrPlanned": 0.7353032659409003,
+          "stopDistPct": 0.01363010090935755,
+          "plannedRisk": 1.2860000000000014,
+          "realizedRisk": 1.2959984741210917,
+          "rGrossRealized": -13.287053622791667,
+          "rGrossPlanned": -13.39035864751408,
+          "costMoney": 0.04717499923706055,
+          "costMoneyBase": 0.04717499923706055,
+          "riskKeepRatio": 1.0077748632356844,
+          "plannedStopDistPct": 0.013631545473818119,
+          "realizedStopDistPct": 0.013736073079816384,
+          "holdBars": 1,
+          "entryTime": "2024-06-27T19:30:00.000Z",
+          "exitTime": "2024-06-28T13:30:00.000Z",
+          "year": "2024"
+        },
+        {
+          "symbol": "MSFT",
+          "market": "US_STOCK",
+          "timeframe": "1H",
+          "action": "SELL",
+          "strength": "strong",
+          "confidence": 70,
+          "entryIndex": 3252,
+          "exitIndex": 3261,
+          "entry": 511.5950012207031,
+          "exit": 546.7050170898438,
+          "stopLoss": 514.6304,
+          "takeProfit": 508.4412,
+          "exitReason": "gap_stop",
+          "rGross": -11.528868414375875,
+          "costR": 0.08399471353856607,
+          "costRBase": 0.08399471353856607,
+          "rNet": -11.61286312791444,
+          "rrPlanned": 1.0323110264661355,
+          "stopDistPct": 0.005952755583485925,
+          "plannedRisk": 3.045400000000029,
+          "realizedRisk": 3.0353987792968837,
+          "rGrossRealized": -11.566854447135762,
+          "rGrossPlanned": -11.528868414375875,
+          "costMoney": 0.25579750061035156,
+          "costMoneyBase": 0.25579750061035156,
+          "riskKeepRatio": 0.9967159582638914,
+          "plannedStopDistPct": 0.005952871956761886,
+          "realizedStopDistPct": 0.005933206485704903,
+          "holdBars": 9,
+          "entryTime": "2025-07-29T18:30:00.000Z",
+          "exitTime": "2025-07-31T13:30:00.000Z",
+          "year": "2025"
+        },
+        {
+          "symbol": "INTC",
+          "market": "US_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 58,
+          "entryIndex": 7083,
+          "exitIndex": 7085,
+          "entry": 21.1200008392334,
+          "exit": 22.43000030517578,
+          "stopLoss": 21.3864,
+          "takeProfit": 20.2564,
+          "exitReason": "gap_stop",
+          "rGross": -8.948083783759454,
+          "costR": 0.07213115040721796,
+          "costRBase": 0.07213115040721796,
+          "rNet": -9.020214934166672,
+          "rrPlanned": 6.718579234972678,
+          "stopDistPct": 0.0069318179063724795,
+          "plannedRisk": 0.14639999999999986,
+          "realizedRisk": 0.26639916076659986,
+          "rGrossRealized": -4.91743090395886,
+          "rGrossPlanned": -8.948083783759454,
+          "costMoney": 0.010560000419616699,
+          "costMoneyBase": 0.010560000419616699,
+          "riskKeepRatio": 1.8196663986789625,
+          "plannedStopDistPct": 0.006892655367231632,
+          "realizedStopDistPct": 0.012613596125987156,
+          "holdBars": 2,
+          "entryTime": "2008-04-14T13:30:00.000Z",
+          "exitTime": "2008-04-16T13:30:00.000Z",
+          "year": "2008"
+        },
+        {
+          "symbol": "NKE",
+          "market": "US_STOCK",
+          "timeframe": "1H",
+          "action": "BUY",
+          "strength": "moderate",
+          "confidence": 64,
+          "entryIndex": 472,
+          "exitIndex": 473,
+          "entry": 122.30000305175781,
+          "exit": 108.26000213623047,
+          "stopLoss": 120.6935,
+          "takeProfit": 122.7233,
+          "exitReason": "gap_stop",
+          "rGross": -8.685432054146196,
+          "costR": 0.03782864307199433,
+          "costRBase": 0.03782864307199433,
+          "rNet": -8.72326069721819,
+          "rrPlanned": 0.255675842870394,
+          "stopDistPct": 0.013217497626029438,
+          "plannedRisk": 1.616500000000002,
+          "realizedRisk": 1.6065030517578123,
+          "rGrossRealized": -8.73947976641873,
+          "rGrossPlanned": -8.685432054146196,
+          "costMoney": 0.061150001525878905,
+          "costMoneyBase": 0.061150001525878905,
+          "riskKeepRatio": 0.9938156831164926,
+          "plannedStopDistPct": 0.013216417300302527,
+          "realizedStopDistPct": 0.013135756432303065,
+          "holdBars": 1,
+          "entryTime": "2023-12-21T20:30:00.000Z",
+          "exitTime": "2023-12-22T14:30:00.000Z",
+          "year": "2023"
+        }
+      ],
+      "bestTrades": [
+        {
+          "symbol": "DELTA",
+          "market": "TH_STOCK",
+          "timeframe": "1H",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 58,
+          "entryIndex": 2390,
+          "exitIndex": 2395,
+          "entry": 113.5,
+          "exit": 79.75,
+          "stopLoss": 115.575,
+          "takeProfit": 111.0893,
+          "exitReason": "gap_target",
+          "rGross": 16.265060240963834,
+          "costR": 0.21879518072289128,
+          "costRBase": 0.21879518072289128,
+          "rNet": 16.04626506024094,
+          "rrPlanned": 1.1617831325301216,
+          "stopDistPct": 0.018281938325991214,
+          "plannedRisk": 2.075000000000003,
+          "realizedRisk": 2.075000000000003,
+          "rGrossRealized": 16.265060240963834,
+          "rGrossPlanned": 16.265060240963834,
+          "costMoney": 0.454,
+          "costMoneyBase": 0.454,
+          "riskKeepRatio": 1,
+          "plannedStopDistPct": 0.018281938325991214,
+          "realizedStopDistPct": 0.018281938325991214,
+          "holdBars": 5,
+          "entryTime": "2025-02-14T05:00:00.000Z",
+          "exitTime": "2025-02-17T03:00:00.000Z",
+          "year": "2025"
+        },
+        {
+          "symbol": "AAPL",
+          "market": "US_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 64,
+          "entryIndex": 5555,
+          "exitIndex": 5559,
+          "entry": 0.27035701274871826,
+          "exit": 0.256537,
+          "stopLoss": 0.272656,
+          "takeProfit": 0.256537,
+          "exitReason": "take_profit",
+          "rGross": 9.82931205456477,
+          "costR": 0.09614403013823425,
+          "costRBase": 0.09614403013823425,
+          "rNet": 9.733168024426536,
+          "rrPlanned": 10.464438122332705,
+          "stopDistPct": 0.0052005309043224885,
+          "plannedRisk": 0.0014060000000000183,
+          "realizedRisk": 0.0022989872512817477,
+          "rGrossRealized": 6.011348145150964,
+          "rGrossPlanned": 9.82931205456477,
+          "costMoney": 0.00013517850637435912,
+          "costMoneyBase": 0.00013517850637435912,
+          "riskKeepRatio": 1.6351260677679358,
+          "plannedStopDistPct": 0.005183410138248916,
+          "realizedStopDistPct": 0.008503523647890457,
+          "holdBars": 4,
+          "entryTime": "2002-12-13T14:30:00.000Z",
+          "exitTime": "2002-12-19T14:30:00.000Z",
+          "year": "2002"
+        },
+        {
+          "symbol": "NKE",
+          "market": "US_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 58,
+          "entryIndex": 4112,
+          "exitIndex": 4113,
+          "entry": 8.5625,
+          "exit": 7.875,
+          "stopLoss": 8.6368,
+          "takeProfit": 8.1507,
+          "exitReason": "gap_target",
+          "rGross": 9.25302826379553,
+          "costR": 0.057621130551817626,
+          "costRBase": 0.057621130551817626,
+          "rNet": 9.195407133243712,
+          "rrPlanned": 5.542395693135992,
+          "stopDistPct": 0.008677372262773623,
+          "plannedRisk": 0.07429999999999914,
+          "realizedRisk": 0.07429999999999914,
+          "rGrossRealized": 9.25302826379553,
+          "rGrossPlanned": 9.25302826379553,
+          "costMoney": 0.00428125,
+          "costMoneyBase": 0.00428125,
+          "riskKeepRatio": 1,
+          "plannedStopDistPct": 0.008677372262773623,
+          "realizedStopDistPct": 0.008677372262773623,
+          "holdBars": 1,
+          "entryTime": "1997-03-10T14:30:00.000Z",
+          "exitTime": "1997-03-11T14:30:00.000Z",
+          "year": "1997"
+        },
+        {
+          "symbol": "F",
+          "market": "US_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 58,
+          "entryIndex": 6982,
+          "exitIndex": 6983,
+          "entry": 29.400632858276367,
+          "exit": 27.817,
+          "stopLoss": 29.5476,
+          "takeProfit": 27.817,
+          "exitReason": "take_profit",
+          "rGross": 8.734875114596607,
+          "costR": 0.0810828264155442,
+          "costRBase": 0.0810828264155442,
+          "rNet": 8.653792288181062,
+          "rrPlanned": 8.545504688361813,
+          "stopDistPct": 0.006166533927141767,
+          "plannedRisk": 0.18130000000000024,
+          "realizedRisk": 0.146967141723632,
+          "rGrossRealized": 10.775421224795597,
+          "rGrossPlanned": 8.734875114596607,
+          "costMoney": 0.014700316429138183,
+          "costMoneyBase": 0.014700316429138183,
+          "riskKeepRatio": 0.8106295737652058,
+          "plannedStopDistPct": 0.006173743372505227,
+          "realizedStopDistPct": 0.004998774768967611,
+          "holdBars": 1,
+          "entryTime": "2000-01-20T14:30:00.000Z",
+          "exitTime": "2000-01-21T14:30:00.000Z",
+          "year": "2000"
+        },
+        {
+          "symbol": "CVS",
+          "market": "US_STOCK",
+          "timeframe": "1D",
+          "action": "SELL",
+          "strength": "moderate",
+          "confidence": 58,
+          "entryIndex": 7378,
+          "exitIndex": 7382,
+          "entry": 12.625,
+          "exit": 11.164999961853027,
+          "stopLoss": 12.869,
+          "takeProfit": 12.0623,
+          "exitReason": "gap_target",
+          "rGross": 8.39080481693665,
+          "costR": 0.03627873563218402,
+          "costRBase": 0.03627873563218402,
+          "rNet": 8.354526081304465,
+          "rrPlanned": 3.636206896551734,
+          "stopDistPct": 0.013782178217821742,
+          "plannedRisk": 0.1739999999999995,
+          "realizedRisk": 0.24399999999999977,
+          "rGrossRealized": 5.983606713717107,
+          "rGrossPlanned": 8.39080481693665,
+          "costMoney": 0.0063125,
+          "costMoneyBase": 0.0063125,
+          "riskKeepRatio": 1.4022988505747154,
+          "plannedStopDistPct": 0.013706183536825482,
+          "realizedStopDistPct": 0.01932673267326731,
+          "holdBars": 4,
+          "entryTime": "2003-03-25T14:30:00.000Z",
+          "exitTime": "2003-03-31T14:30:00.000Z",
+          "year": "2003"
+        }
+      ],
+      "breakdowns": {
+        "แยกตามตลาด (R หักต้นทุนแล้ว)": [
+          {
+            "key": "CRYPTO",
+            "count": 8272,
+            "wins": 3996,
+            "losses": 4276,
+            "winRate": 0.48307543520309476,
+            "profitFactor": 0.6397010101888247,
+            "avgR": -0.19593219425090197,
+            "expectancyR": -0.19593219425090197,
+            "medianR": -0.05512886572010371,
+            "trimmedMeanR": -0.23042889021315105,
+            "maxDrawdownR": 1625.8141776660611,
+            "maxConsecutiveLosses": 16,
+            "grossWinR": 2877.599305550596,
+            "grossLossR": 4498.350416394052,
+            "sumR": -1620.751110843461,
+            "minR": -2.0837502153953147,
+            "maxR": 5.822231577472194,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.21682022906022413,
+              "hi95": -0.1747718663772498,
+              "median": -0.19566236355425798,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "FOREX",
+            "count": 11118,
+            "wins": 6431,
+            "losses": 4687,
+            "winRate": 0.5784313725490197,
+            "profitFactor": 0.8765357035306758,
+            "avgR": -0.030845038756830295,
+            "expectancyR": -0.030845038756830295,
+            "medianR": 0.11164632347967113,
+            "trimmedMeanR": -0.0432815957351613,
+            "maxDrawdownR": 364.1344224745898,
+            "maxConsecutiveLosses": 14,
+            "grossWinR": 2434.6706180559036,
+            "grossLossR": 2777.605758954345,
+            "sumR": -342.9351408984392,
+            "minR": -5.98354024828887,
+            "maxR": 6.673132239702838,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.04197672625441153,
+              "hi95": -0.019262718457565862,
+              "median": -0.030901014590083924,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "GOLD",
+            "count": 3114,
+            "wins": 1686,
+            "losses": 1428,
+            "winRate": 0.5414258188824663,
+            "profitFactor": 0.6786965440868281,
+            "avgR": -0.13513069163327515,
+            "expectancyR": -0.13513069163327515,
+            "medianR": 0.10074725116317149,
+            "trimmedMeanR": -0.1451022267604198,
+            "maxDrawdownR": 421.11223922182324,
+            "maxConsecutiveLosses": 14,
+            "grossWinR": 888.8589480991997,
+            "grossLossR": 1309.6559218452196,
+            "sumR": -420.79697374601886,
+            "minR": -4.355869452218847,
+            "maxR": 3.278565020185207,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.16445128765385741,
+              "hi95": -0.10491748903810849,
+              "median": -0.13526137718959252,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "TH_STOCK",
+            "count": 6208,
+            "wins": 2735,
+            "losses": 3473,
+            "winRate": 0.44056056701030927,
+            "profitFactor": 0.6211749163572292,
+            "avgR": -0.22797680287696057,
+            "expectancyR": -0.22797680287696057,
+            "medianR": -0.2937104562104562,
+            "trimmedMeanR": -0.2400722385505965,
+            "maxDrawdownR": 1415.2799922601712,
+            "maxConsecutiveLosses": 15,
+            "grossWinR": 2320.692237062336,
+            "grossLossR": 3735.972229322502,
+            "sumR": -1415.2799922601712,
+            "minR": -46.763433431420694,
+            "maxR": 16.04626506024094,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.26191057825245884,
+              "hi95": -0.1974576411574307,
+              "median": -0.22803624770344288,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "US_STOCK",
+            "count": 16540,
+            "wins": 8051,
+            "losses": 8489,
+            "winRate": 0.48675937122128177,
+            "profitFactor": 0.9513408426153273,
+            "avgR": -0.02393763721142584,
+            "expectancyR": -0.02393763721142584,
+            "medianR": -0.018486935930069327,
+            "trimmedMeanR": -0.06459097265774942,
+            "maxDrawdownR": 443.4860097694789,
+            "maxConsecutiveLosses": 14,
+            "grossWinR": 7740.844510664523,
+            "grossLossR": 8136.773030141541,
+            "sumR": -395.9285194769834,
+            "minR": -13.42704216169531,
+            "maxR": 9.733168024426536,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.04107111373353695,
+              "hi95": -0.005501955655428975,
+              "median": -0.02356662943817289,
+              "pLE0": 0.9985
+            }
+          }
+        ],
+        "แยกตามกรอบเวลา": [
+          {
+            "key": "1D",
+            "count": 19001,
+            "wins": 8833,
+            "losses": 10168,
+            "winRate": 0.46487026998579023,
+            "profitFactor": 0.9062833224591135,
+            "avgR": -0.047320872565466514,
+            "expectancyR": -0.047320872565466514,
+            "medianR": -0.07466658888897001,
+            "trimmedMeanR": -0.08609817950616405,
+            "maxDrawdownR": 944.5481025750971,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 8695.134549107184,
+            "grossLossR": 9594.2784487237,
+            "sumR": -899.1438996164292,
+            "minR": -46.763433431420694,
+            "maxR": 9.733168024426536,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.06426349319850114,
+              "hi95": -0.030903929925213326,
+              "median": -0.04724449492710302,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "1H",
+            "count": 26251,
+            "wins": 14066,
+            "losses": 12185,
+            "winRate": 0.5358272065826064,
+            "profitFactor": 0.6965644427341914,
+            "avgR": -0.12557799084258314,
+            "expectancyR": -0.12557799084258314,
+            "medianR": 0.08233191955637945,
+            "trimmedMeanR": -0.13716243691328708,
+            "maxDrawdownR": 3296.54783760865,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 7567.531070325342,
+            "grossLossR": 10864.078907934017,
+            "sumR": -3296.54783760865,
+            "minR": -13.42704216169531,
+            "maxR": 16.04626506024094,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.1360638033904351,
+              "hi95": -0.11470316123435093,
+              "median": -0.1255241556929269,
+              "pLE0": 1
+            }
+          }
+        ],
+        "แยกตามทิศทาง": [
+          {
+            "key": "BUY",
+            "count": 24297,
+            "wins": 12558,
+            "losses": 11739,
+            "winRate": 0.5168539325842697,
+            "profitFactor": 0.8288427356278779,
+            "avgR": -0.0756251455582252,
+            "expectancyR": -0.0756251455582252,
+            "medianR": 0.05185880897700585,
+            "trimmedMeanR": -0.09717136590041806,
+            "maxDrawdownR": 2075.7409961516482,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 8898.067095948321,
+            "grossLossR": 10735.531257576527,
+            "sumR": -1837.4641616281979,
+            "minR": -13.42704216169531,
+            "maxR": 7.37476625730771,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.08777448330861684,
+              "hi95": -0.06373342350549657,
+              "median": -0.0755638086168057,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "SELL",
+            "count": 20955,
+            "wins": 10341,
+            "losses": 10614,
+            "winRate": 0.49348604151753755,
+            "profitFactor": 0.7574545146066369,
+            "avgR": -0.11253770344055723,
+            "expectancyR": -0.11253770344055723,
+            "medianR": -0.012034889675501446,
+            "trimmedMeanR": -0.14320477270261903,
+            "maxDrawdownR": 2387.6933200405692,
+            "maxConsecutiveLosses": 20,
+            "grossWinR": 7364.598523484243,
+            "grossLossR": 9722.826099081136,
+            "sumR": -2358.2275755968767,
+            "minR": -46.763433431420694,
+            "maxR": 16.04626506024094,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.12648024547387812,
+              "hi95": -0.09796301319672976,
+              "median": -0.11264485547690452,
+              "pLE0": 1
+            }
+          }
+        ],
+        "แยกตามความแรงสัญญาณ": [
+          {
+            "key": "moderate",
+            "count": 31321,
+            "wins": 15684,
+            "losses": 15637,
+            "winRate": 0.5007502953290125,
+            "profitFactor": 0.8059322683217378,
+            "avgR": -0.09096241865893433,
+            "expectancyR": -0.09096241865893433,
+            "medianR": 0.002945947806584387,
+            "trimmedMeanR": -0.1217618927819574,
+            "maxDrawdownR": 2887.9325623606874,
+            "maxConsecutiveLosses": 17,
+            "grossWinR": 11831.58243587015,
+            "grossLossR": 14680.61635068673,
+            "sumR": -2849.033914816482,
+            "minR": -46.763433431420694,
+            "maxR": 16.04626506024094,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10283906297059568,
+              "hi95": -0.07965874062004805,
+              "median": -0.09076674810961849,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "strong",
+            "count": 13754,
+            "wins": 7118,
+            "losses": 6636,
+            "winRate": 0.5175221753671659,
+            "profitFactor": 0.7684750232681685,
+            "avgR": -0.09634967608782752,
+            "expectancyR": -0.09634967608782752,
+            "medianR": 0.03824420974260542,
+            "trimmedMeanR": -0.10988189690775248,
+            "maxDrawdownR": 1365.2365582818577,
+            "maxConsecutiveLosses": 11,
+            "grossWinR": 4398.566745535636,
+            "grossLossR": 5723.7601904476,
+            "sumR": -1325.1934449119797,
+            "minR": -13.42704216169531,
+            "maxR": 6.395977505614998,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.11226205137075979,
+              "hi95": -0.08065324692662172,
+              "median": -0.09657656552669985,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "very_strong",
+            "count": 177,
+            "wins": 97,
+            "losses": 80,
+            "winRate": 0.5480225988700564,
+            "profitFactor": 0.6023702626853079,
+            "avgR": -0.1212676694723923,
+            "expectancyR": -0.1212676694723923,
+            "medianR": 0.05088958337981601,
+            "trimmedMeanR": -0.12795466574878994,
+            "maxDrawdownR": 22.72789825626826,
+            "maxConsecutiveLosses": 5,
+            "grossWinR": 32.51643802681434,
+            "grossLossR": 53.980815523427786,
+            "sumR": -21.464377496613437,
+            "minR": -1.6163626152735446,
+            "maxR": 2.3159864453611414,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.21282571047381826,
+              "hi95": -0.026459241983772818,
+              "median": -0.12082334125947941,
+              "pLE0": 0.9925
+            }
+          }
+        ],
+        "แยกตามปีที่เข้าไม้": [
+          {
+            "key": "1970",
+            "count": 61,
+            "wins": 34,
+            "losses": 27,
+            "winRate": 0.5573770491803278,
+            "profitFactor": 1.2463389052286042,
+            "avgR": 0.10783076035598008,
+            "expectancyR": 0.10783076035598008,
+            "medianR": 0.6709318342186658,
+            "trimmedMeanR": 0.08450249483927191,
+            "maxDrawdownR": 4.351486343574107,
+            "maxConsecutiveLosses": 4,
+            "grossWinR": 33.27941225088515,
+            "grossLossR": 26.70173586917037,
+            "sumR": 6.5776763817147845,
+            "minR": -1.3729200470313738,
+            "maxR": 2.7722315436241916,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.1475856692360974,
+              "hi95": 0.36261179381571834,
+              "median": 0.1018000894237797,
+              "pLE0": 0.205
+            }
+          },
+          {
+            "key": "1971",
+            "count": 91,
+            "wins": 56,
+            "losses": 35,
+            "winRate": 0.6153846153846154,
+            "profitFactor": 1.492356888340996,
+            "avgR": 0.18337534343009695,
+            "expectancyR": 0.18337534343009695,
+            "medianR": 0.31948341836734945,
+            "trimmedMeanR": 0.1300307308932136,
+            "maxDrawdownR": 6.5547228452549735,
+            "maxConsecutiveLosses": 5,
+            "grossWinR": 50.57955554072493,
+            "grossLossR": 33.8923992885861,
+            "sumR": 16.687156252138823,
+            "minR": -1.5549746078994662,
+            "maxR": 4.273476654566183,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.028086021591261785,
+              "hi95": 0.39872682626546063,
+              "median": 0.17999582257337088,
+              "pLE0": 0.0445
+            }
+          },
+          {
+            "key": "1972",
+            "count": 99,
+            "wins": 53,
+            "losses": 46,
+            "winRate": 0.5353535353535354,
+            "profitFactor": 1.433689119499857,
+            "avgR": 0.17608773890943766,
+            "expectancyR": 0.17608773890943766,
+            "medianR": 0.3733269553508457,
+            "trimmedMeanR": 0.10335646605437555,
+            "maxDrawdownR": 5.879291546040367,
+            "maxConsecutiveLosses": 6,
+            "grossWinR": 57.62895893872125,
+            "grossLossR": 40.19627278668693,
+            "sumR": 17.43268615203433,
+            "minR": -1.2655918987173735,
+            "maxR": 6.834341346301612,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.051489458182797807,
+              "hi95": 0.42340602127780697,
+              "median": 0.17412338993122295,
+              "pLE0": 0.065
+            }
+          },
+          {
+            "key": "1973",
+            "count": 124,
+            "wins": 56,
+            "losses": 68,
+            "winRate": 0.45161290322580644,
+            "profitFactor": 0.8248097772602461,
+            "avgR": -0.09312654523497142,
+            "expectancyR": -0.09312654523497142,
+            "medianR": -0.240529579527026,
+            "trimmedMeanR": -0.15196167689311363,
+            "maxDrawdownR": 23.33258303536652,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 54.367468658058414,
+            "grossLossR": 65.91516026719486,
+            "sumR": -11.547691609136457,
+            "minR": -2.3799969292191503,
+            "maxR": 4.78617340359606,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.2935523477114067,
+              "hi95": 0.10732970749438811,
+              "median": -0.09606549348680654,
+              "pLE0": 0.818
+            }
+          },
+          {
+            "key": "1974",
+            "count": 134,
+            "wins": 66,
+            "losses": 68,
+            "winRate": 0.4925373134328358,
+            "profitFactor": 0.9649582986012184,
+            "avgR": -0.017716234761385546,
+            "expectancyR": -0.017716234761385546,
+            "medianR": -0.3546437706532026,
+            "trimmedMeanR": -0.05927121249453938,
+            "maxDrawdownR": 17.280922395496482,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 65.37317617166693,
+            "grossLossR": 67.7471516296926,
+            "sumR": -2.3739754580256633,
+            "minR": -1.3302969212772822,
+            "maxR": 3.7056367037125666,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.19614244386821428,
+              "hi95": 0.1705683308863772,
+              "median": -0.013404863743351429,
+              "pLE0": 0.5605
+            }
+          },
+          {
+            "key": "1975",
+            "count": 118,
+            "wins": 59,
+            "losses": 59,
+            "winRate": 0.5,
+            "profitFactor": 1.1853500769859338,
+            "avgR": 0.09172288690538058,
+            "expectancyR": 0.09172288690538058,
+            "medianR": 0.10530517879094708,
+            "trimmedMeanR": -0.007809692471663531,
+            "maxDrawdownR": 17.091472142239365,
+            "maxConsecutiveLosses": 7,
+            "grossWinR": 69.21712940763479,
+            "grossLossR": 58.39382875279989,
+            "sumR": 10.823300654834908,
+            "minR": -1.3167108652012687,
+            "maxR": 5.9813188831011495,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.13105351003699967,
+              "hi95": 0.3234617034401163,
+              "median": 0.0919808684998489,
+              "pLE0": 0.211
+            }
+          },
+          {
+            "key": "1976",
+            "count": 142,
+            "wins": 66,
+            "losses": 76,
+            "winRate": 0.4647887323943662,
+            "profitFactor": 0.8095520572690815,
+            "avgR": -0.10122712782588643,
+            "expectancyR": -0.10122712782588643,
+            "medianR": -0.8771386825473964,
+            "trimmedMeanR": -0.1558847730571072,
+            "maxDrawdownR": 22.305881101364196,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 61.101764786250605,
+            "grossLossR": 75.47601693752648,
+            "sumR": -14.374252151275874,
+            "minR": -1.577997145587437,
+            "maxR": 4.020704071223726,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.2669501616808611,
+              "hi95": 0.07795600423094147,
+              "median": -0.10133572870238751,
+              "pLE0": 0.871
+            }
+          },
+          {
+            "key": "1977",
+            "count": 129,
+            "wins": 57,
+            "losses": 72,
+            "winRate": 0.4418604651162791,
+            "profitFactor": 1.024239773135097,
+            "avgR": 0.012496411625920285,
+            "expectancyR": 0.012496411625920285,
+            "medianR": -0.32251776695251494,
+            "trimmedMeanR": -0.07995826196682361,
+            "maxDrawdownR": 11.120511947790193,
+            "maxConsecutiveLosses": 6,
+            "grossWinR": 68.11584019885952,
+            "grossLossR": 66.50380309911579,
+            "sumR": 1.6120370997437168,
+            "minR": -1.4322371208562394,
+            "maxR": 5.0614297945204765,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.19773341110680176,
+              "hi95": 0.21778467547699842,
+              "median": 0.004557017627544398,
+              "pLE0": 0.4805
+            }
+          },
+          {
+            "key": "1978",
+            "count": 128,
+            "wins": 51,
+            "losses": 77,
+            "winRate": 0.3984375,
+            "profitFactor": 0.7245795156752628,
+            "avgR": -0.15662562634192165,
+            "expectancyR": -0.15662562634192165,
+            "medianR": -0.9542985770287566,
+            "trimmedMeanR": -0.22160957239158038,
+            "maxDrawdownR": 23.78753710391269,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 52.742729926905206,
+            "grossLossR": 72.7908100986712,
+            "sumR": -20.04808017176597,
+            "minR": -1.9162440154285212,
+            "maxR": 2.6802414442222005,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.3345799344513473,
+              "hi95": 0.022103682182667322,
+              "median": -0.15809552573724517,
+              "pLE0": 0.958
+            }
+          },
+          {
+            "key": "1979",
+            "count": 156,
+            "wins": 79,
+            "losses": 77,
+            "winRate": 0.5064102564102564,
+            "profitFactor": 1.1204363617937019,
+            "avgR": 0.0585927833281203,
+            "expectancyR": 0.0585927833281203,
+            "medianR": 0.07645393934031203,
+            "trimmedMeanR": -0.011827292095458004,
+            "maxDrawdownR": 16.197901438487342,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 85.03511318573848,
+            "grossLossR": 75.89463898655174,
+            "sumR": 9.140474199186766,
+            "minR": -2.1394137534774993,
+            "maxR": 4.139371141975299,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.115649226517751,
+              "hi95": 0.24044895423448046,
+              "median": 0.0544222063252215,
+              "pLE0": 0.273
+            }
+          },
+          {
+            "key": "1980",
+            "count": 156,
+            "wins": 63,
+            "losses": 93,
+            "winRate": 0.40384615384615385,
+            "profitFactor": 0.7991678809608782,
+            "avgR": -0.11432599256109839,
+            "expectancyR": -0.11432599256109839,
+            "medianR": -0.9406672772996993,
+            "trimmedMeanR": -0.2069157528987024,
+            "maxDrawdownR": 34.27214576030129,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 70.9699385613546,
+            "grossLossR": 88.80479340088594,
+            "sumR": -17.83485483953135,
+            "minR": -2.184268154881216,
+            "maxR": 7.359374999999853,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.2960463053447823,
+              "hi95": 0.08271405702049806,
+              "median": -0.11986550252722863,
+              "pLE0": 0.878
+            }
+          },
+          {
+            "key": "1981",
+            "count": 201,
+            "wins": 94,
+            "losses": 107,
+            "winRate": 0.46766169154228854,
+            "profitFactor": 1.0308016821625976,
+            "avgR": 0.015344260123121583,
+            "expectancyR": 0.015344260123121583,
+            "medianR": -0.04148756535483644,
+            "trimmedMeanR": -0.030737289202350315,
+            "maxDrawdownR": 18.06288927708704,
+            "maxConsecutiveLosses": 5,
+            "grossWinR": 103.21497058682553,
+            "grossLossR": 100.13077430207812,
+            "sumR": 3.084196284747438,
+            "minR": -2.3496376537270467,
+            "maxR": 5.311395202020184,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.13568324905966114,
+              "hi95": 0.16640148303427565,
+              "median": 0.016268464212691233,
+              "pLE0": 0.429
+            }
+          },
+          {
+            "key": "1982",
+            "count": 214,
+            "wins": 104,
+            "losses": 110,
+            "winRate": 0.48598130841121495,
+            "profitFactor": 1.2598466082969013,
+            "avgR": 0.11436499330508482,
+            "expectancyR": 0.11436499330508482,
+            "medianR": -0.011009854203323018,
+            "trimmedMeanR": 0.013684391665570401,
+            "maxDrawdownR": 12.785714740280579,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 118.66086254378789,
+            "grossLossR": 94.18675397649974,
+            "sumR": 24.47410856728815,
+            "minR": -2.2674607769135404,
+            "maxR": 7.583948863636297,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.05393572825896727,
+              "hi95": 0.2906610759033572,
+              "median": 0.11161365005257042,
+              "pLE0": 0.0915
+            }
+          },
+          {
+            "key": "1983",
+            "count": 205,
+            "wins": 87,
+            "losses": 118,
+            "winRate": 0.424390243902439,
+            "profitFactor": 0.7192197909376881,
+            "avgR": -0.15372239505563656,
+            "expectancyR": -0.15372239505563656,
+            "medianR": -0.7307757452574518,
+            "trimmedMeanR": -0.2033653100358424,
+            "maxDrawdownR": 38.37863623913049,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 80.72092683004252,
+            "grossLossR": 112.23401781644804,
+            "sumR": -31.513090986405494,
+            "minR": -2.435697115384635,
+            "maxR": 6.539051685693317,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.29984174946526404,
+              "hi95": 0.0026422433092328215,
+              "median": -0.15289235278084018,
+              "pLE0": 0.9715
+            }
+          },
+          {
+            "key": "1984",
+            "count": 230,
+            "wins": 107,
+            "losses": 123,
+            "winRate": 0.4652173913043478,
+            "profitFactor": 1.0109235043675693,
+            "avgR": 0.005412280514726831,
+            "expectancyR": 0.005412280514726831,
+            "medianR": -0.4032076755885866,
+            "trimmedMeanR": -0.07873845112547125,
+            "maxDrawdownR": 27.47250222213362,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 115.20317309404395,
+            "grossLossR": 113.95834857565677,
+            "sumR": 1.2448245183871711,
+            "minR": -1.6620179528281809,
+            "maxR": 5.719863891601582,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.13720366271960857,
+              "hi95": 0.15329138664942327,
+              "median": 0.004570012485594131,
+              "pLE0": 0.481
+            }
+          },
+          {
+            "key": "1985",
+            "count": 261,
+            "wins": 118,
+            "losses": 143,
+            "winRate": 0.4521072796934866,
+            "profitFactor": 0.9164996853416295,
+            "avgR": -0.04382807996911675,
+            "expectancyR": -0.04382807996911675,
+            "medianR": -0.15842975279606575,
+            "trimmedMeanR": -0.08812984533170588,
+            "maxDrawdownR": 39.39598891163918,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 125.55591023349443,
+            "grossLossR": 136.99503910543393,
+            "sumR": -11.439128871939472,
+            "minR": -5.2132547411070345,
+            "maxR": 7.366218662332275,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.18412244292969032,
+              "hi95": 0.0960895593358761,
+              "median": -0.04653620823952764,
+              "pLE0": 0.737
+            }
+          },
+          {
+            "key": "1986",
+            "count": 254,
+            "wins": 129,
+            "losses": 125,
+            "winRate": 0.5078740157480315,
+            "profitFactor": 1.0786817591329263,
+            "avgR": 0.037535934445544185,
+            "expectancyR": 0.037535934445544185,
+            "medianR": 0.054485198044591905,
+            "trimmedMeanR": -0.007809579524925598,
+            "maxDrawdownR": 12.522976627105031,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 130.70741394360147,
+            "grossLossR": 121.17328659443322,
+            "sumR": 9.534127349168223,
+            "minR": -2.035293339335978,
+            "maxR": 4.177374057411817,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10336981116866102,
+              "hi95": 0.17955258307602678,
+              "median": 0.036576679655044755,
+              "pLE0": 0.298
+            }
+          },
+          {
+            "key": "1987",
+            "count": 249,
+            "wins": 129,
+            "losses": 120,
+            "winRate": 0.5180722891566265,
+            "profitFactor": 1.0820381761918954,
+            "avgR": 0.03829608532241371,
+            "expectancyR": 0.03829608532241371,
+            "medianR": 0.11724308403587186,
+            "trimmedMeanR": 0.021192935950488614,
+            "maxDrawdownR": 19.780777996033166,
+            "maxConsecutiveLosses": 12,
+            "grossWinR": 125.7709426515784,
+            "grossLossR": 116.23521740629731,
+            "sumR": 9.535725245281013,
+            "minR": -3.097266987363562,
+            "maxR": 3.2420944285311353,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.09767311415388082,
+              "hi95": 0.17476378791520364,
+              "median": 0.03890431331521374,
+              "pLE0": 0.2755
+            }
+          },
+          {
+            "key": "1988",
+            "count": 278,
+            "wins": 116,
+            "losses": 162,
+            "winRate": 0.4172661870503597,
+            "profitFactor": 0.8358584214521002,
+            "avgR": -0.08590864217751314,
+            "expectancyR": -0.08590864217751314,
+            "medianR": -0.5981052757032281,
+            "trimmedMeanR": -0.14364191125255493,
+            "maxDrawdownR": 30.409167769131024,
+            "maxConsecutiveLosses": 11,
+            "grossWinR": 121.61741481717507,
+            "grossLossR": 145.5000173425237,
+            "sumR": -23.882602525348652,
+            "minR": -1.6361268939393825,
+            "maxR": 3.8174155131550784,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.20798411265091826,
+              "hi95": 0.039825927385621844,
+              "median": -0.08796619845029297,
+              "pLE0": 0.916
+            }
+          },
+          {
+            "key": "1989",
+            "count": 271,
+            "wins": 143,
+            "losses": 128,
+            "winRate": 0.5276752767527675,
+            "profitFactor": 1.281991708509924,
+            "avgR": 0.1229176563334107,
+            "expectancyR": 0.1229176563334107,
+            "medianR": 0.17089651161511774,
+            "trimmedMeanR": 0.06797642801124408,
+            "maxDrawdownR": 21.280502777881516,
+            "maxConsecutiveLosses": 7,
+            "grossWinR": 151.43715405359285,
+            "grossLossR": 118.12646918723856,
+            "sumR": 33.3106848663543,
+            "minR": -3.3293426144993483,
+            "maxR": 6.48821715349706,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.007134319188864953,
+              "hi95": 0.2673309137997254,
+              "median": 0.12283359396638532,
+              "pLE0": 0.037
+            }
+          },
+          {
+            "key": "1990",
+            "count": 262,
+            "wins": 122,
+            "losses": 140,
+            "winRate": 0.46564885496183206,
+            "profitFactor": 0.9352994532113014,
+            "avgR": -0.032656463633373566,
+            "expectancyR": -0.032656463633373566,
+            "medianR": -0.11631503767244947,
+            "trimmedMeanR": -0.0723125691068099,
+            "maxDrawdownR": 23.57503387725057,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 123.68390088144236,
+            "grossLossR": 132.23989435338618,
+            "sumR": -8.555993471943875,
+            "minR": -2.0236258564690437,
+            "maxR": 5.6809089023668955,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.1662944168286257,
+              "hi95": 0.10651695630446294,
+              "median": -0.030243707644794,
+              "pLE0": 0.6765
+            }
+          },
+          {
+            "key": "1991",
+            "count": 258,
+            "wins": 121,
+            "losses": 137,
+            "winRate": 0.4689922480620155,
+            "profitFactor": 0.9267082902499618,
+            "avgR": -0.037127338734139675,
+            "expectancyR": -0.037127338734139675,
+            "medianR": -0.40383118680750874,
+            "trimmedMeanR": -0.08992844646029277,
+            "maxDrawdownR": 27.981232231922988,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 121.11605638665752,
+            "grossLossR": 130.6949097800655,
+            "sumR": -9.578853393408036,
+            "minR": -2.5377903100684827,
+            "maxR": 5.559862568218788,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.1694910375129886,
+              "hi95": 0.09983586559057639,
+              "median": -0.03440772940924114,
+              "pLE0": 0.701
+            }
+          },
+          {
+            "key": "1992",
+            "count": 251,
+            "wins": 102,
+            "losses": 149,
+            "winRate": 0.4063745019920319,
+            "profitFactor": 0.7376349771064953,
+            "avgR": -0.14913470979832807,
+            "expectancyR": -0.14913470979832807,
+            "medianR": -0.742812642889803,
+            "trimmedMeanR": -0.20885294033578458,
+            "maxDrawdownR": 37.4898374385136,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 105.24174006008386,
+            "grossLossR": 142.6745522194641,
+            "sumR": -37.43281215938035,
+            "minR": -2.265330349526754,
+            "maxR": 4.783971774193589,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.28438166848858826,
+              "hi95": -0.01615974452616043,
+              "median": -0.14844860964290285,
+              "pLE0": 0.988
+            }
+          },
+          {
+            "key": "1993",
+            "count": 300,
+            "wins": 138,
+            "losses": 162,
+            "winRate": 0.46,
+            "profitFactor": 0.8821014244672571,
+            "avgR": -0.06205093618570212,
+            "expectancyR": -0.06205093618570212,
+            "medianR": -0.45674823315177904,
+            "trimmedMeanR": -0.1263815161327967,
+            "maxDrawdownR": 24.30824767787161,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 139.27704966308193,
+            "grossLossR": 157.8923305187926,
+            "sumR": -18.615280855710637,
+            "minR": -3.4684078945978056,
+            "maxR": 7.905724789916105,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.19851656039543653,
+              "hi95": 0.06573641384409123,
+              "median": -0.06257434093085434,
+              "pLE0": 0.822
+            }
+          },
+          {
+            "key": "1994",
+            "count": 303,
+            "wins": 140,
+            "losses": 163,
+            "winRate": 0.46204620462046203,
+            "profitFactor": 0.9327374151225122,
+            "avgR": -0.0354372340974279,
+            "expectancyR": -0.0354372340974279,
+            "medianR": -0.08862788689568868,
+            "trimmedMeanR": -0.08522052511617867,
+            "maxDrawdownR": 26.856748395016062,
+            "maxConsecutiveLosses": 6,
+            "grossWinR": 148.89780343668141,
+            "grossLossR": 159.6352853682021,
+            "sumR": -10.737481931520653,
+            "minR": -2.7985397631708957,
+            "maxR": 4.71661895513533,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.16778490486173586,
+              "hi95": 0.08692264553233156,
+              "median": -0.03608745487721509,
+              "pLE0": 0.6995
+            }
+          },
+          {
+            "key": "1995",
+            "count": 280,
+            "wins": 159,
+            "losses": 121,
+            "winRate": 0.5678571428571428,
+            "profitFactor": 1.4260695973518953,
+            "avgR": 0.1743042106153885,
+            "expectancyR": 0.1743042106153885,
+            "medianR": 0.3965093958671948,
+            "trimmedMeanR": 0.11949334160213974,
+            "maxDrawdownR": 11.47572317304667,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 163.35261271468926,
+            "grossLossR": 114.54743374238035,
+            "sumR": 48.80517897230878,
+            "minR": -1.4452166338220451,
+            "maxR": 5.437058567286919,
+            "ci": {
+              "B": 2000,
+              "lo95": 0.03632979622921565,
+              "hi95": 0.3137641487848788,
+              "median": 0.17501718087138354,
+              "pLE0": 0.005
+            }
+          },
+          {
+            "key": "1996",
+            "count": 305,
+            "wins": 148,
+            "losses": 157,
+            "winRate": 0.4852459016393443,
+            "profitFactor": 0.9865031761195073,
+            "avgR": -0.00660393391997729,
+            "expectancyR": -0.00660393391997729,
+            "medianR": -0.018980934705584592,
+            "trimmedMeanR": -0.037038777924930426,
+            "maxDrawdownR": 23.2326187135402,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 147.22089897674581,
+            "grossLossR": 149.23509882233884,
+            "sumR": -2.0141998455930734,
+            "minR": -2.0704476166179537,
+            "maxR": 5.540057809773149,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.12206217121277624,
+              "hi95": 0.11292825697595503,
+              "median": -0.007076884298713131,
+              "pLE0": 0.553
+            }
+          },
+          {
+            "key": "1997",
+            "count": 295,
+            "wins": 146,
+            "losses": 149,
+            "winRate": 0.49491525423728816,
+            "profitFactor": 1.0866950622082496,
+            "avgR": 0.04197558714789281,
+            "expectancyR": 0.04197558714789281,
+            "medianR": -0.013365876336587658,
+            "trimmedMeanR": -0.02313459516541165,
+            "maxDrawdownR": 14.7678636859021,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 155.21444159431144,
+            "grossLossR": 142.83164338568312,
+            "sumR": 12.38279820862838,
+            "minR": -2.798922769823785,
+            "maxR": 9.195407133243712,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.09158205753477335,
+              "hi95": 0.18744980905565603,
+              "median": 0.04284296010006125,
+              "pLE0": 0.2675
+            }
+          },
+          {
+            "key": "1998",
+            "count": 301,
+            "wins": 134,
+            "losses": 167,
+            "winRate": 0.44518272425249167,
+            "profitFactor": 0.8769063035468192,
+            "avgR": -0.0656663413653944,
+            "expectancyR": -0.0656663413653944,
+            "medianR": -0.4227064127446243,
+            "trimmedMeanR": -0.10091181194360459,
+            "maxDrawdownR": 30.894566957328614,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 140.80779382166105,
+            "grossLossR": 160.57336257264473,
+            "sumR": -19.765568750983714,
+            "minR": -2.82194579868081,
+            "maxR": 4.700731169010781,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.18470394246450944,
+              "hi95": 0.062325470860483616,
+              "median": -0.06383094116939783,
+              "pLE0": 0.833
+            }
+          },
+          {
+            "key": "1999",
+            "count": 362,
+            "wins": 166,
+            "losses": 196,
+            "winRate": 0.4585635359116022,
+            "profitFactor": 1.0608205533726243,
+            "avgR": 0.03034586327409851,
+            "expectancyR": 0.03034586327409851,
+            "medianR": -0.29417847590871044,
+            "trimmedMeanR": -0.07829611869340712,
+            "maxDrawdownR": 30.01278594161157,
+            "maxConsecutiveLosses": 11,
+            "grossWinR": 191.6018180417753,
+            "grossLossR": 180.6166155365517,
+            "sumR": 10.98520250522366,
+            "minR": -2.5482650956572597,
+            "maxR": 8.053704810838902,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10167114204335528,
+              "hi95": 0.16325846738317004,
+              "median": 0.025561570995653937,
+              "pLE0": 0.35
+            }
+          },
+          {
+            "key": "2000",
+            "count": 452,
+            "wins": 213,
+            "losses": 239,
+            "winRate": 0.47123893805309736,
+            "profitFactor": 0.8994603960041094,
+            "avgR": -0.05553045149570713,
+            "expectancyR": -0.05553045149570713,
+            "medianR": -0.3437304441377037,
+            "trimmedMeanR": -0.07620202926214593,
+            "maxDrawdownR": 29.58638670848292,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 224.55075252121765,
+            "grossLossR": 249.65051659727743,
+            "sumR": -25.09976407605962,
+            "minR": -7.336960543562146,
+            "maxR": 8.653792288181062,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.17991908123526668,
+              "hi95": 0.06533100522493722,
+              "median": -0.05628087051030884,
+              "pLE0": 0.812
+            }
+          },
+          {
+            "key": "2001",
+            "count": 475,
+            "wins": 220,
+            "losses": 255,
+            "winRate": 0.4631578947368421,
+            "profitFactor": 0.9783340471105612,
+            "avgR": -0.011446593784444292,
+            "expectancyR": -0.011446593784444292,
+            "medianR": -0.15096043836936157,
+            "trimmedMeanR": -0.082809080858844,
+            "maxDrawdownR": 30.73118728455258,
+            "maxConsecutiveLosses": 11,
+            "grossWinR": 245.51569127646212,
+            "grossLossR": 250.95282332407317,
+            "sumR": -5.437132047611039,
+            "minR": -4.8657944829840645,
+            "maxR": 7.37476625730771,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.12965515246063783,
+              "hi95": 0.10988056692352377,
+              "median": -0.01349935533008446,
+              "pLE0": 0.5935
+            }
+          },
+          {
+            "key": "2002",
+            "count": 528,
+            "wins": 217,
+            "losses": 311,
+            "winRate": 0.4109848484848485,
+            "profitFactor": 0.7844666873571257,
+            "avgR": -0.12245765241241215,
+            "expectancyR": -0.12245765241241215,
+            "medianR": -0.5844986362177857,
+            "trimmedMeanR": -0.18036833857481324,
+            "maxDrawdownR": 72.30110487414753,
+            "maxConsecutiveLosses": 15,
+            "grossWinR": 235.33144093978757,
+            "grossLossR": 299.989081413541,
+            "sumR": -64.65764047375362,
+            "minR": -5.03955070581812,
+            "maxR": 9.733168024426536,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.22765587847187094,
+              "hi95": -0.00908454394425912,
+              "median": -0.12212272605985583,
+              "pLE0": 0.981
+            }
+          },
+          {
+            "key": "2003",
+            "count": 585,
+            "wins": 294,
+            "losses": 291,
+            "winRate": 0.5025641025641026,
+            "profitFactor": 0.8992369553047277,
+            "avgR": -0.0567756700168021,
+            "expectancyR": -0.0567756700168021,
+            "medianR": 0.011511017758401226,
+            "trimmedMeanR": -0.015445746113258711,
+            "maxDrawdownR": 46.763433431420694,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 296.40873561811617,
+            "grossLossR": 329.62250257794517,
+            "sumR": -33.21376695982923,
+            "minR": -46.763433431420694,
+            "maxR": 8.354526081304465,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.2657570988060574,
+              "hi95": 0.09487314488956382,
+              "median": -0.04237088416080794,
+              "pLE0": 0.683
+            }
+          },
+          {
+            "key": "2004",
+            "count": 759,
+            "wins": 350,
+            "losses": 409,
+            "winRate": 0.461133069828722,
+            "profitFactor": 0.864489401610844,
+            "avgR": -0.06979890452071434,
+            "expectancyR": -0.06979890452071434,
+            "medianR": -0.0765740919628797,
+            "trimmedMeanR": -0.10215271574856843,
+            "maxDrawdownR": 62.892257016343095,
+            "maxConsecutiveLosses": 8,
+            "grossWinR": 337.96894239187094,
+            "grossLossR": 390.9463109230922,
+            "sumR": -52.97736853122218,
+            "minR": -3.130622548485774,
+            "maxR": 6.018860854864706,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.14919653913822137,
+              "hi95": 0.008970882065489462,
+              "median": -0.06990686868336868,
+              "pLE0": 0.9565
+            }
+          },
+          {
+            "key": "2005",
+            "count": 781,
+            "wins": 369,
+            "losses": 412,
+            "winRate": 0.47247119078104993,
+            "profitFactor": 0.8220670169076816,
+            "avgR": -0.09247494417990836,
+            "expectancyR": -0.09247494417990836,
+            "medianR": -0.03592192796641672,
+            "trimmedMeanR": -0.11493755788128839,
+            "maxDrawdownR": 87.67177484962771,
+            "maxConsecutiveLosses": 7,
+            "grossWinR": 333.67669523771303,
+            "grossLossR": 405.89962664222185,
+            "sumR": -72.22293140450843,
+            "minR": -4.310000598430619,
+            "maxR": 4.245578174052432,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.16919514664535443,
+              "hi95": -0.02043276430606292,
+              "median": -0.09355454308614494,
+              "pLE0": 0.9945
+            }
+          },
+          {
+            "key": "2006",
+            "count": 798,
+            "wins": 367,
+            "losses": 431,
+            "winRate": 0.4598997493734336,
+            "profitFactor": 0.7462499935967064,
+            "avgR": -0.13730002671119615,
+            "expectancyR": -0.13730002671119615,
+            "medianR": -0.29087893956274313,
+            "trimmedMeanR": -0.18257393310782422,
+            "maxDrawdownR": 143.19644084287117,
+            "maxConsecutiveLosses": 17,
+            "grossWinR": 322.2194793768361,
+            "grossLossR": 431.7849006923706,
+            "sumR": -109.56542131553454,
+            "minR": -3.4862385321100953,
+            "maxR": 5.9920072649384135,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.20943958402567772,
+              "hi95": -0.066338526093732,
+              "median": -0.13867988624739833,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "2007",
+            "count": 833,
+            "wins": 369,
+            "losses": 464,
+            "winRate": 0.4429771908763505,
+            "profitFactor": 0.7638900449249525,
+            "avgR": -0.12503042272159284,
+            "expectancyR": -0.12503042272159284,
+            "medianR": -0.28866848121136307,
+            "trimmedMeanR": -0.16624623480971037,
+            "maxDrawdownR": 118.38181856382462,
+            "maxConsecutiveLosses": 10,
+            "grossWinR": 336.95914897413513,
+            "grossLossR": 441.10949110122164,
+            "sumR": -104.15034212708683,
+            "minR": -3.1762146366745463,
+            "maxR": 4.9585051183011615,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.19371429745561303,
+              "hi95": -0.05202523735762261,
+              "median": -0.12445662015876514,
+              "pLE0": 0.9995
+            }
+          },
+          {
+            "key": "2008",
+            "count": 824,
+            "wins": 412,
+            "losses": 412,
+            "winRate": 0.5,
+            "profitFactor": 0.9160812156648197,
+            "avgR": -0.041375363815617884,
+            "expectancyR": -0.041375363815617884,
+            "medianR": -0.0005736749964501552,
+            "trimmedMeanR": -0.03878205178807354,
+            "maxDrawdownR": 80.05975164803856,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 372.17211569069576,
+            "grossLossR": 406.265415474765,
+            "sumR": -34.09329978406914,
+            "minR": -9.020214934166672,
+            "maxR": 6.673132239702838,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.12229248118523323,
+              "hi95": 0.038870892269064566,
+              "median": -0.04060499696176323,
+              "pLE0": 0.8405
+            }
+          },
+          {
+            "key": "2009",
+            "count": 861,
+            "wins": 410,
+            "losses": 451,
+            "winRate": 0.47619047619047616,
+            "profitFactor": 0.9577805261312031,
+            "avgR": -0.021850887491369087,
+            "expectancyR": -0.021850887491369087,
+            "medianR": -0.057208660685441566,
+            "trimmedMeanR": -0.057132760721715026,
+            "maxDrawdownR": 33.99521291029885,
+            "maxConsecutiveLosses": 13,
+            "grossWinR": 426.8009898921168,
+            "grossLossR": 445.6146040221857,
+            "sumR": -18.813614130068785,
+            "minR": -6.956264129312802,
+            "maxR": 6.450033568275099,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10564125140726723,
+              "hi95": 0.06186783299442711,
+              "median": -0.021458267026667185,
+              "pLE0": 0.69
+            }
+          },
+          {
+            "key": "2010",
+            "count": 815,
+            "wins": 390,
+            "losses": 425,
+            "winRate": 0.4785276073619632,
+            "profitFactor": 0.9400007285250388,
+            "avgR": -0.028507379392766832,
+            "expectancyR": -0.028507379392766832,
+            "medianR": -0.025629957623405544,
+            "trimmedMeanR": -0.05460309194319988,
+            "maxDrawdownR": 69.80203989165315,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 363.9964243250639,
+            "grossLossR": 387.229938530168,
+            "sumR": -23.233514205104967,
+            "minR": -4.042024278455216,
+            "maxR": 5.176740845968602,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10647602063308464,
+              "hi95": 0.04276358286789999,
+              "median": -0.030824408203415803,
+              "pLE0": 0.7745
+            }
+          },
+          {
+            "key": "2011",
+            "count": 936,
+            "wins": 405,
+            "losses": 531,
+            "winRate": 0.4326923076923077,
+            "profitFactor": 0.8392714361930234,
+            "avgR": -0.08067769248842185,
+            "expectancyR": -0.08067769248842185,
+            "medianR": -0.10798668471593814,
+            "trimmedMeanR": -0.10206708320602995,
+            "maxDrawdownR": 88.32166197645371,
+            "maxConsecutiveLosses": 17,
+            "grossWinR": 394.31082092928256,
+            "grossLossR": 469.82514109844595,
+            "sumR": -75.51432016916286,
+            "minR": -6.654858237017126,
+            "maxR": 3.764568081991193,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.15477413641636414,
+              "hi95": -0.010637942199043559,
+              "median": -0.08080294068763044,
+              "pLE0": 0.9865
+            }
+          },
+          {
+            "key": "2012",
+            "count": 881,
+            "wins": 359,
+            "losses": 522,
+            "winRate": 0.40749148694665155,
+            "profitFactor": 0.709308313918597,
+            "avgR": -0.15007460767101619,
+            "expectancyR": -0.15007460767101619,
+            "medianR": -0.26203128647525886,
+            "trimmedMeanR": -0.1773689404334863,
+            "maxDrawdownR": 140.67792524230327,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 322.6157491077871,
+            "grossLossR": 454.83147846595205,
+            "sumR": -132.21572935816525,
+            "minR": -3.618271518130043,
+            "maxR": 4.424634099006635,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.21188174073454455,
+              "hi95": -0.08471707678689189,
+              "median": -0.1493789379828998,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "2013",
+            "count": 963,
+            "wins": 463,
+            "losses": 500,
+            "winRate": 0.48078920041536866,
+            "profitFactor": 1.0790691543746482,
+            "avgR": 0.033489868715204416,
+            "expectancyR": 0.033489868715204416,
+            "medianR": -0.018481792756384948,
+            "trimmedMeanR": -0.001070716987698799,
+            "maxDrawdownR": 20.088368495721166,
+            "maxConsecutiveLosses": 13,
+            "grossWinR": 440.1309571378221,
+            "grossLossR": 407.8802135650803,
+            "sumR": 32.250743572741854,
+            "minR": -2.895110681147989,
+            "maxR": 5.331199405455158,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.029262604628485255,
+              "hi95": 0.09484724916039487,
+              "median": 0.03318017811949083,
+              "pLE0": 0.1455
+            }
+          },
+          {
+            "key": "2014",
+            "count": 961,
+            "wins": 435,
+            "losses": 526,
+            "winRate": 0.45265348595213317,
+            "profitFactor": 0.7830944838165379,
+            "avgR": -0.1091950176542047,
+            "expectancyR": -0.1091950176542047,
+            "medianR": -0.10873876671128489,
+            "trimmedMeanR": -0.1349745491884675,
+            "maxDrawdownR": 109.97470883063325,
+            "maxConsecutiveLosses": 14,
+            "grossWinR": 378.8521694041526,
+            "grossLossR": 483.78858136984337,
+            "sumR": -104.93641196569071,
+            "minR": -4.846350488432958,
+            "maxR": 4.470047017977152,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.1733433011742584,
+              "hi95": -0.04249047149495799,
+              "median": -0.10998802500548588,
+              "pLE0": 0.9995
+            }
+          },
+          {
+            "key": "2015",
+            "count": 1007,
+            "wins": 462,
+            "losses": 545,
+            "winRate": 0.45878848063555117,
+            "profitFactor": 0.9148005168004301,
+            "avgR": -0.040224947027676324,
+            "expectancyR": -0.040224947027676324,
+            "medianR": -0.05597315074605796,
+            "trimmedMeanR": -0.07922633477046975,
+            "maxDrawdownR": 48.50165293804426,
+            "maxConsecutiveLosses": 13,
+            "grossWinR": 434.92502012828163,
+            "grossLossR": 475.43154178515124,
+            "sumR": -40.506521656870056,
+            "minR": -2.7295941930168506,
+            "maxR": 4.79540142041358,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.10665710067412781,
+              "hi95": 0.026137668374435156,
+              "median": -0.042453247035924055,
+              "pLE0": 0.893
+            }
+          },
+          {
+            "key": "2016",
+            "count": 124,
+            "wins": 55,
+            "losses": 69,
+            "winRate": 0.4435483870967742,
+            "profitFactor": 0.8268988939361895,
+            "avgR": -0.08607399370568293,
+            "expectancyR": -0.08607399370568293,
+            "medianR": -0.022738460820645064,
+            "trimmedMeanR": -0.11138292457803467,
+            "maxDrawdownR": 20.27430310593811,
+            "maxConsecutiveLosses": 12,
+            "grossWinR": 50.98544419780986,
+            "grossLossR": 61.658619417314554,
+            "sumR": -10.673175219504683,
+            "minR": -2.0820685440164137,
+            "maxR": 2.967520145894459,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.26649072381486266,
+              "hi95": 0.09795292401335577,
+              "median": -0.09056074867454855,
+              "pLE0": 0.838
+            }
+          },
+          {
+            "key": "2023",
+            "count": 1652,
+            "wins": 923,
+            "losses": 729,
+            "winRate": 0.5587167070217918,
+            "profitFactor": 0.7081242026086835,
+            "avgR": -0.1107460160982387,
+            "expectancyR": -0.1107460160982387,
+            "medianR": 0.11733392121839967,
+            "trimmedMeanR": -0.09733636672716796,
+            "maxDrawdownR": 182.95241859429032,
+            "maxConsecutiveLosses": 9,
+            "grossWinR": 443.8635772143883,
+            "grossLossR": 626.8159958086784,
+            "sumR": -182.95241859429032,
+            "minR": -8.72326069721819,
+            "maxR": 3.2992172508440127,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.15279131157283182,
+              "hi95": -0.07040558708811905,
+              "median": -0.11042755238601035,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "2024",
+            "count": 12886,
+            "wins": 7004,
+            "losses": 5882,
+            "winRate": 0.5435356200527705,
+            "profitFactor": 0.6932055670630367,
+            "avgR": -0.11833208428725898,
+            "expectancyR": -0.11833208428725898,
+            "medianR": 0.08935639643923682,
+            "trimmedMeanR": -0.12420844831668455,
+            "maxDrawdownR": 1530.52056188686,
+            "maxConsecutiveLosses": 19,
+            "grossWinR": 3445.3647680601857,
+            "grossLossR": 4970.19200618578,
+            "sumR": -1524.8272381256193,
+            "minR": -13.42704216169531,
+            "maxR": 6.890372251194697,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.13212082366366776,
+              "hi95": -0.10430522904512057,
+              "median": -0.11822925375471055,
+              "pLE0": 1
+            }
+          },
+          {
+            "key": "2025",
+            "count": 11713,
+            "wins": 6139,
+            "losses": 5574,
+            "winRate": 0.5241185008110646,
+            "profitFactor": 0.6983583078220739,
+            "avgR": -0.1356414395021554,
+            "expectancyR": -0.1356414395021554,
+            "medianR": 0.06432807826835828,
+            "trimmedMeanR": -0.15696297552863184,
+            "maxDrawdownR": 1588.7681808887462,
+            "maxConsecutiveLosses": 16,
+            "grossWinR": 3678.302725050824,
+            "grossLossR": 5267.070905939553,
+            "sumR": -1588.7681808887462,
+            "minR": -11.61286312791444,
+            "maxR": 16.04626506024094,
+            "ci": {
+              "B": 2000,
+              "lo95": -0.15289870983864837,
+              "hi95": -0.11906403291516363,
+              "median": -0.13582485942472733,
+              "pLE0": 1
+            }
+          }
+        ]
+      },
+      "byExit": [
+        {
+          "key": "gap_stop",
+          "count": 1736,
+          "wins": 0,
+          "losses": 1736,
+          "winRate": 0,
+          "profitFactor": 0,
+          "avgR": -1.2078818463116534,
+          "expectancyR": -1.2078818463116534,
+          "medianR": -1.162367420385851,
+          "trimmedMeanR": -1.089243056162032,
+          "maxDrawdownR": 2096.88288519703,
+          "maxConsecutiveLosses": 1736,
+          "grossWinR": 0,
+          "grossLossR": 2096.88288519703,
+          "sumR": -2096.88288519703,
+          "minR": -46.763433431420694,
+          "maxR": -0.004026686579358826,
+          "ci": {
+            "B": 2000,
+            "lo95": -1.2844507536849423,
+            "hi95": -1.1485039027196031,
+            "median": -1.2052055886725368,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "gap_target",
+          "count": 2039,
+          "wins": 1465,
+          "losses": 574,
+          "winRate": 0.7184894556154978,
+          "profitFactor": 37.77714466199107,
+          "avgR": 0.8892679485501548,
+          "expectancyR": 0.8892679485501548,
+          "medianR": 0.8586740531101387,
+          "trimmedMeanR": 0.7784044560319061,
+          "maxDrawdownR": 0.9381865672762615,
+          "maxConsecutiveLosses": 5,
+          "grossWinR": 1862.5201780709544,
+          "grossLossR": 49.30283097718876,
+          "sumR": 1813.2173470937655,
+          "minR": -0.8448573275729429,
+          "maxR": 16.04626506024094,
+          "ci": {
+            "B": 2000,
+            "lo95": 0.8441688846854247,
+            "hi95": 0.9382079310482052,
+            "median": 0.8892337717601775,
+            "pLE0": 0
+          }
+        },
+        {
+          "key": "stop_loss",
+          "count": 15949,
+          "wins": 0,
+          "losses": 15949,
+          "winRate": 0,
+          "profitFactor": 0,
+          "avgR": -1.0738373214289034,
+          "expectancyR": -1.0738373214289034,
+          "medianR": -1.062232564068001,
+          "trimmedMeanR": -1.0729232806966615,
+          "maxDrawdownR": 17126.63143946958,
+          "maxConsecutiveLosses": 15949,
+          "grossWinR": 0,
+          "grossLossR": 17126.63143946958,
+          "sumR": -17126.63143946958,
+          "minR": -6.6648127400768855,
+          "maxR": -0.017965540335329617,
+          "ci": {
+            "B": 2000,
+            "lo95": -1.0781261259060604,
+            "hi95": -1.0694726377326773,
+            "median": -1.073809483241396,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "take_profit",
+          "count": 21539,
+          "wins": 20564,
+          "losses": 975,
+          "winRate": 0.9547332745252797,
+          "profitFactor": 180.04719734210212,
+          "avgR": 0.6548832118856975,
+          "expectancyR": 0.6548832118856975,
+          "medianR": 0.6471925506159272,
+          "trimmedMeanR": 0.6024974362332344,
+          "maxDrawdownR": 0.4786690065575385,
+          "maxConsecutiveLosses": 3,
+          "grossWinR": 14184.310569206988,
+          "grossLossR": 78.7810684009472,
+          "sumR": 14105.52950080604,
+          "minR": -0.4223129567215902,
+          "maxR": 9.733168024426536,
+          "ci": {
+            "B": 2000,
+            "lo95": 0.6466275557974255,
+            "hi95": 0.6625735321316856,
+            "median": 0.6548691070965744,
+            "pLE0": 0
+          }
+        },
+        {
+          "key": "time_exit",
+          "count": 3989,
+          "wins": 870,
+          "losses": 3119,
+          "winRate": 0.21809977437954375,
+          "profitFactor": 0.19501521676629097,
+          "avgR": -0.22334526459222598,
+          "expectancyR": -0.22334526459222598,
+          "medianR": -0.21575751964140139,
+          "trimmedMeanR": -0.2324475304891232,
+          "maxDrawdownR": 901.9060555550946,
+          "maxConsecutiveLosses": 32,
+          "grossWinR": 215.83487215459283,
+          "grossLossR": 1106.7591326129818,
+          "sumR": -890.9242604583894,
+          "minR": -1.6818940956872033,
+          "maxR": 1.8921975746508854,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.23387669784286505,
+            "hi95": -0.21234100201889763,
+            "median": -0.22332211838517202,
+            "pLE0": 1
+          }
+        }
+      ],
+      "byRRBucket": [
+        {
+          "key": "A: RR < 0.5",
+          "count": 13412,
+          "wins": 7936,
+          "losses": 5476,
+          "winRate": 0.5917089173874143,
+          "profitFactor": 0.6499629427370318,
+          "avgR": -0.06956681117670688,
+          "expectancyR": -0.06956681117670688,
+          "medianR": 0.0915683337109035,
+          "trimmedMeanR": -0.03857826022004576,
+          "maxDrawdownR": 935.4689084586007,
+          "maxConsecutiveLosses": 12,
+          "grossWinR": 1732.4879133582274,
+          "grossLossR": 2665.5179848602133,
+          "sumR": -933.0300715019926,
+          "minR": -8.72326069721819,
+          "maxR": 5.337091764852217,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.07727482458158412,
+            "hi95": -0.06171745662828279,
+            "median": -0.06957737855961049,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "B: 0.5–1",
+          "count": 10441,
+          "wins": 5342,
+          "losses": 5099,
+          "winRate": 0.5116368163968968,
+          "profitFactor": 0.7665966437282081,
+          "avgR": -0.11763577631248531,
+          "expectancyR": -0.11763577631248531,
+          "medianR": 0.18351893095768335,
+          "trimmedMeanR": -0.11245151881640061,
+          "maxDrawdownR": 1245.6120956679683,
+          "maxConsecutiveLosses": 13,
+          "grossWinR": 4034.0505442584763,
+          "grossLossR": 5262.285684737126,
+          "sumR": -1228.235140478659,
+          "minR": -46.763433431420694,
+          "maxR": 8.319061499781593,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.1376992035621258,
+            "hi95": -0.09767195304510802,
+            "median": -0.11712111995771685,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "C: 1–1.5",
+          "count": 17094,
+          "wins": 8369,
+          "losses": 8725,
+          "winRate": 0.4895869895869896,
+          "profitFactor": 0.8417643005891146,
+          "avgR": -0.08428085834689633,
+          "expectancyR": -0.08428085834689633,
+          "medianR": -0.0935526298900948,
+          "trimmedMeanR": -0.08898316528419137,
+          "maxDrawdownR": 1499.9765793058575,
+          "maxConsecutiveLosses": 15,
+          "grossWinR": 7664.056220160965,
+          "grossLossR": 9104.753212742833,
+          "sumR": -1440.696992581846,
+          "minR": -11.61286312791444,
+          "maxR": 16.04626506024094,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.09975520775447595,
+            "hi95": -0.06912654724646873,
+            "median": -0.08413739086653756,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "D: 1.5–2",
+          "count": 1383,
+          "wins": 506,
+          "losses": 877,
+          "winRate": 0.3658712942877802,
+          "profitFactor": 0.7897442228156837,
+          "avgR": -0.1485363062449914,
+          "expectancyR": -0.1485363062449914,
+          "medianR": -0.9325523012552266,
+          "trimmedMeanR": -0.17951669153317798,
+          "maxDrawdownR": 234.58646922520563,
+          "maxConsecutiveLosses": 16,
+          "grossWinR": 771.6019558491795,
+          "grossLossR": 977.0276673860034,
+          "sumR": -205.42571153682312,
+          "minR": -4.398395841892528,
+          "maxR": 7.055309744574899,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.2234784173093652,
+            "hi95": -0.07552594968574972,
+            "median": -0.1485388879903075,
+            "pLE0": 1
+          }
+        },
+        {
+          "key": "E: 2–3",
+          "count": 1472,
+          "wins": 451,
+          "losses": 1021,
+          "winRate": 0.3063858695652174,
+          "profitFactor": 0.8746524034195545,
+          "avgR": -0.09531930662765352,
+          "expectancyR": -0.09531930662765352,
+          "medianR": -0.9409208485664187,
+          "trimmedMeanR": -0.15676919679386,
+          "maxDrawdownR": 176.2918493822704,
+          "maxConsecutiveLosses": 21,
+          "grossWinR": 979.0574291125423,
+          "grossLossR": 1119.367448468448,
+          "sumR": -140.31001935590598,
+          "minR": -5.2132547411070345,
+          "maxR": 5.872760998240222,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.1731163693754619,
+            "hi95": -0.010694243155418426,
+            "median": -0.09663720112537566,
+            "pLE0": 0.986
+          }
+        },
+        {
+          "key": "F: RR >= 3",
+          "count": 1450,
+          "wins": 295,
+          "losses": 1155,
+          "winRate": 0.20344827586206896,
+          "profitFactor": 0.8134550908862269,
+          "avgR": -0.17103020811713723,
+          "expectancyR": -0.17103020811713723,
+          "medianR": -0.998947969313411,
+          "trimmedMeanR": -0.3051488778042623,
+          "maxDrawdownR": 284.37743682085375,
+          "maxConsecutiveLosses": 28,
+          "grossWinR": 1081.4115566931796,
+          "grossLossR": 1329.405358463028,
+          "sumR": -247.993801769849,
+          "minR": -9.020214934166672,
+          "maxR": 9.733168024426536,
+          "ci": {
+            "B": 2000,
+            "lo95": -0.28277251728898306,
+            "hi95": -0.05857041499730783,
+            "median": -0.1683095552069401,
+            "pLE0": 0.999
+          }
+        }
+      ],
+      "rr": {
+        "count": 45252,
+        "mean": 0.9531736813248439,
+        "p10": 0.18965804119569812,
+        "p25": 0.3892018625124181,
+        "p50": 0.9999999999999953,
+        "p75": 1.0000000000000038,
+        "p90": 1.4385769532688182,
+        "lt05": 0.2963846901794396,
+        "lt1": 0.5271148236542031,
+        "ge2": 0.06457173163617078
+      },
+      "metricAudit": [
+        {
+          "id": "A",
+          "label": "เดิม: หารด้วยระยะจริงหลัง gap",
+          "cap": null,
+          "droppedTrades": 0,
+          "gross": {
+            "n": 45249,
+            "nonFinite": 3,
+            "mean": 144.2678317104783,
+            "sum": 6527975.117067433,
+            "maxAbsR": 6527384.593920901,
+            "topKCount": 45,
+            "topKSum": 6528361.953232729,
+            "topKShareOfSum": 1.0000592582168832,
+            "top1ShareOfSum": 0.999909539614361,
+            "maxLeaveOneOutShift": 144.25478089836437,
+            "maxLeaveOneOutShiftR": 6527384.593920901
+          },
+          "net": {
+            "n": 45249,
+            "nonFinite": 3,
+            "mean": 134.78704684060628,
+            "sum": 6098979.082490593,
+            "maxAbsR": 6103759.894315433,
+            "topKCount": 45,
+            "topKSum": 6103933.228593935,
+            "topKShareOfSum": 1.0008122910468025,
+            "top1ShareOfSum": 1.0007838708348034,
+            "maxLeaveOneOutShift": 134.89270481056826,
+            "maxLeaveOneOutShiftR": 6103759.894315433
+          }
+        },
+        {
+          "id": "B",
+          "label": "ก: เดิม + ทิ้งไม้ที่ระยะเหลือ < 20%",
+          "cap": null,
+          "droppedTrades": 317,
+          "gross": {
+            "n": 44935,
+            "nonFinite": 0,
+            "mean": -0.000060147160087033614,
+            "sum": -2.7027126385108553,
+            "maxAbsR": -55.09497572677249,
+            "topKCount": 45,
+            "topKSum": 278.4726529147829,
+            "topKShareOfSum": -103.0345027979801,
+            "top1ShareOfSum": 20.3850660783267,
+            "maxLeaveOneOutShift": 0.0012261297810035254,
+            "maxLeaveOneOutShiftR": -55.09497572677249
+          },
+          "net": {
+            "n": 44935,
+            "nonFinite": 0,
+            "mean": -0.09648177543821108,
+            "sum": -4335.408579316015,
+            "maxAbsR": -55.2127525155669,
+            "topKCount": 45,
+            "topKSum": 240.35659786147176,
+            "topKShareOfSum": -0.055440356650166556,
+            "top1ShareOfSum": 0.012735305451713079,
+            "maxLeaveOneOutShift": 0.0012266050371684846,
+            "maxLeaveOneOutShiftR": -55.2127525155669
+          }
+        },
+        {
+          "id": "C",
+          "label": "ข: เดิม + ตัดค่าที่ ±5",
+          "cap": 5,
+          "droppedTrades": 0,
+          "gross": {
+            "n": 45249,
+            "nonFinite": 3,
+            "mean": -0.00609957655299284,
+            "sum": -275.999739446373,
+            "maxAbsR": 5,
+            "topKCount": 45,
+            "topKSum": 195,
+            "topKShareOfSum": -0.70652240611223,
+            "top1ShareOfSum": -0.01811595913108282,
+            "maxLeaveOneOutShift": 0.00011063692487077867,
+            "maxLeaveOneOutShiftR": 5
+          },
+          "net": {
+            "n": 45249,
+            "nonFinite": 3,
+            "mean": -0.10999596278134181,
+            "sum": -4977.207319892936,
+            "maxAbsR": 5,
+            "topKCount": 45,
+            "topKSum": 145,
+            "topKShareOfSum": -0.029132802931568277,
+            "top1ShareOfSum": -0.001004579411433389,
+            "maxLeaveOneOutShift": 0.00011293307909258622,
+            "maxLeaveOneOutShiftR": 5
+          }
+        },
+        {
+          "id": "D",
+          "label": "ค: หารด้วยระยะที่ตั้งใจไว้",
+          "cap": null,
+          "droppedTrades": 0,
+          "gross": {
+            "n": 45252,
+            "nonFinite": 0,
+            "mean": -0.0007295835172892349,
+            "sum": -33.01511332437246,
+            "maxAbsR": -46.663680262603386,
+            "topKCount": 45,
+            "topKSum": 80.65680825587594,
+            "topKShareOfSum": -2.4430268484443873,
+            "top1ShareOfSum": 1.4134036071339264,
+            "maxLeaveOneOutShift": 0.0010312026403634415,
+            "maxLeaveOneOutShiftR": -46.663680262603386
+          },
+          "net": {
+            "n": 45252,
+            "nonFinite": 0,
+            "mean": -0.09271837128138141,
+            "sum": -4195.691737225072,
+            "maxAbsR": -46.763433431420694,
+            "topKCount": 45,
+            "topKSum": 51.54967988043979,
+            "topKShareOfSum": -0.012286336344274304,
+            "top1ShareOfSum": 0.011145583698755927,
+            "maxLeaveOneOutShift": 0.0010313742251030764,
+            "maxLeaveOneOutShiftR": -46.763433431420694
+          }
+        },
+        {
+          "id": "E",
+          "label": "ค+ข: ระยะที่ตั้งใจ + ตัดที่ ±10",
+          "cap": 10,
+          "droppedTrades": 0,
+          "gross": {
+            "n": 45252,
+            "nonFinite": 0,
+            "mean": 0.00005088689470425829,
+            "sum": 2.302733759157096,
+            "maxAbsR": -10,
+            "topKCount": 45,
+            "topKSum": 115.97465533940544,
+            "topKShareOfSum": 50.363901114585374,
+            "top1ShareOfSum": -4.342664435362448,
+            "maxLeaveOneOutShift": 0.00022099071593765233,
+            "maxLeaveOneOutShiftR": -10
+          },
+          "net": {
+            "n": 45252,
+            "nonFinite": 0,
+            "mean": -0.09192819463370212,
+            "sum": -4159.934663564289,
+            "maxAbsR": -10,
+            "topKCount": 45,
+            "topKSum": 87.30675354122928,
+            "topKShareOfSum": -0.02098752999798888,
+            "top1ShareOfSum": 0.002403883908943864,
+            "maxLeaveOneOutShift": 0.00022302110880718,
+            "maxLeaveOneOutShiftR": 10
+          }
+        }
+      ],
+      "fairness": {
+        "total": 45252,
+        "gapAte": {
+          "count": 21333,
+          "shareOfAll": 0.47142667727393267,
+          "sumR": 6101088.33149758,
+          "positive": 10167,
+          "sharePositive": 0.4766526019690577
+        },
+        "gapWidened": {
+          "count": 21264,
+          "shareOfAll": 0.46990188278971096,
+          "sumR": -1524.4995481200217,
+          "positive": 11536,
+          "sharePositive": 0.5425131677953349
+        },
+        "droppedByKeep20": {
+          "count": 317,
+          "shareOfAll": 0.007005215239105454,
+          "sumR": 6103314.491069858,
+          "positive": 16,
+          "sharePositive": 0.050955414012738856,
+          "sumRUnderNew": -18.2113274510657,
+          "sharePositiveUnderNew": 0.050473186119873815
+        },
+        "clippedOld5": {
+          "above": 109,
+          "below": 54
+        },
+        "clippedNew10": {
+          "above": 1,
+          "below": 3
+        },
+        "movedByModel": {
+          "count": 10374,
+          "shareOfAll": 0.2292495359321135,
+          "better": 6286,
+          "worse": 4088,
+          "shareBetter": 0.6059379217273954
+        },
+        "meanOld": 134.78704684060733,
+        "meanNew": -0.09271837128138147
+      },
+      "avgHold": 5.451935826040838,
+      "medHold": 3,
+      "maxHold": 19,
+      "verdictText": "ช่วงความเชื่อมั่นราย-สัญลักษณ์อยู่ใต้ศูนย์ทั้งช่วง — มีหลักฐานว่า \"เสียเงินอย่างเป็นระบบ\" ไม่ใช่แค่ไม่มี edge"
+    }
+  }
+}

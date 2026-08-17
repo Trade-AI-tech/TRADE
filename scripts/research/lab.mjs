@@ -64,6 +64,21 @@
  * ที่เอาผลของลูปนี้ไปเทียบกับ runBacktest ตัวจริงใน src/lib/backtest.ts แบบไม้ต่อไม้
  * ทุกฟิลด์ ต้องตรงเป๊ะ 100% ไม่ใช่ "ใกล้เคียง"
  *
+ * ─────────────────────────── ตัวหารของ R (riskModel) ───────────────────────────
+ *
+ * R = กำไร/ขาดทุน ÷ เงินที่เสี่ยงต่อไม้ ตัวหารคือ "หน่วยวัด" ถ้ามันเปลี่ยนไปตามเหตุบังเอิญ
+ * การเอา R มาเฉลี่ยกันก็เหมือนบวกราคาหลายสกุลเงินโดยไม่แปลงสกุล
+ *
+ *   planned (ค่าเริ่มต้น) = |ราคาที่สัญญาณเห็น − SL| — ล็อกตั้งแต่ตอนกดสั่ง เป็นตัวเดียว
+ *                           กับที่ใช้คิดขนาดไม้จริง gap จึงไปโผล่ใน "เศษ" ตามความจริง
+ *   realized (ของเดิม)    = |ราคาเปิดจริง − SL| — เป็นผลของ gap ที่รู้หลังตัดสินใจแล้ว
+ *                           และเล็กได้ไม่จำกัด → ไม้เดียวเคยย้าย avgR ของ 45,550 ไม้ได้ 9.3 R
+ *
+ * เก็บ realized ไว้เพื่อ "เทียบก่อน/หลัง" เท่านั้น ห้ามใช้ตัดสินอะไร
+ * หลักฐานตัวเลขทั้งหมด + เหตุผลที่ไม่เลือกทางอื่น: scripts/research/report/metric-fix.md
+ * ทุกรายงานที่ออกจากไฟล์นี้มีหัวข้อ "ตรวจเครื่องวัด" ติดมาด้วยเสมอ ซึ่งวัดซ้ำทุกทางให้ดู
+ * ว่าไม้เดียวย้ายค่าเฉลี่ยได้แค่ไหน — จะได้ไม่ต้องเชื่อคำอธิบายข้างบนนี้ลอย ๆ
+ *
  * ──────────────────────────────── วิธีใช้ ────────────────────────────────
  *
  *   node scripts/research/lab.mjs --verify-engine --all     ตรวจว่าลูปเร็วให้ผลเท่าของจริง
@@ -480,7 +495,7 @@ function isUsableBar(c) {
  * ตรรกะการชน SL/TP · ลำดับ gap · การนับ SL ก่อน TP · การกลับไปหาสัญญาณที่แท่งปิดไม้
  * ลอกมาตรงทุกบรรทัด และถูกพิสูจน์ด้วย --verify-engine ว่าให้ไม้เหมือนกันเป๊ะ
  */
-function walkForward({ ds, engine, entryFrom, entryTo, maxHoldBars, minHistory, costFraction, costFractionBase = 0 }) {
+function walkForward({ ds, engine, entryFrom, entryTo, maxHoldBars, minHistory, costFraction, costFractionBase = 0, riskModel = 'planned' }) {
   const { candles, symbol, name, market, timeframe } = ds;
   const trades = [];
   let skipped = 0;
@@ -509,7 +524,15 @@ function walkForward({ ds, engine, entryFrom, entryTo, maxHoldBars, minHistory, 
     const stopLoss = sig.stop_loss;
     const takeProfit = sig.take_profit;
 
-    const riskPerUnit = Math.abs(entry - stopLoss);
+    // ── ตัวหารของ R: สองนิยาม วัดไว้ทั้งคู่เสมอ ──────────────────────────────
+    // realizedRisk = ระยะจาก "ราคาเปิดแท่งถัดไป" ถึง SL — นิยามเดิม พังเพราะ gap กินระยะ
+    //                จนตัวหารเกือบศูนย์ได้ (ดู report/metric-fix.md)
+    // plannedRisk  = ระยะจาก "ราคาที่สัญญาณคิดไว้" (ปิดแท่ง i) ถึง SL — คือความเสี่ยงที่
+    //                ผู้เทรดยอมรับตอนกดสั่ง และเป็นตัวที่ใช้คิดขนาดไม้จริง
+    // ทั้งสองค่าถูกบันทึกลงทุกไม้ เพื่อให้เทียบผลของการเปลี่ยนนิยามได้โดยไม่ต้องรันซ้ำ
+    const realizedRisk = Math.abs(entry - stopLoss);
+    const plannedRisk = Math.abs(sig.entry_price - sig.stop_loss);
+    const riskPerUnit = riskModel === 'realized' ? realizedRisk : plannedRisk;
     if (!Number.isFinite(riskPerUnit) || riskPerUnit <= 0) { skipped++; i++; continue; }
 
     const lastHoldIndex = Math.min(entryIndex + maxHoldBars - 1, candles.length - 1);
@@ -541,7 +564,13 @@ function walkForward({ ds, engine, entryFrom, entryTo, maxHoldBars, minHistory, 
       exitReason = 'time_exit';
     }
 
-    const rGross = ((exit - entry) * dir) / riskPerUnit;
+    const pnlPerUnit = (exit - entry) * dir;
+    const rGross = pnlPerUnit / riskPerUnit;
+    // เก็บ R ของ "อีกนิยามหนึ่ง" ไว้ด้วยเสมอ — ตัวเลขเดียวกันทั้งเศษ ต่างกันแค่ตัวหาร
+    // (ไม้ที่ realizedRisk = 0 จะได้ Infinity/NaN ตรงนี้ ซึ่งคือหลักฐานของปัญหา ไม่ใช่บั๊ก
+    //  ตัวตรวจเครื่องวัดจะนับมันแยกเป็น "วัดด้วยนิยามเดิมไม่ได้")
+    const rGrossRealized = realizedRisk > 0 ? pnlPerUnit / realizedRisk : NaN;
+    const rGrossPlanned = plannedRisk > 0 ? pnlPerUnit / plannedRisk : NaN;
     // ต้นทุนคิดจากราคาเข้าจริง แล้วแปลงเป็นหน่วย R ของไม้นั้นเอง
     const costR = costFraction > 0 ? (costFraction * entry) / riskPerUnit : 0;
     // ต้นทุนที่สถานการณ์ base เสมอ — ใช้ตัดสินว่าไม้นี้ "เทรดได้จริงไหม" ซึ่งต้องเป็นนิยาม
@@ -569,6 +598,18 @@ function walkForward({ ds, engine, entryFrom, entryTo, maxHoldBars, minHistory, 
       rrPlanned,
       /** ระยะ SL คิดเป็นสัดส่วนของราคาเข้า — ตัวชี้ว่าไม้นี้มีตัวหารของ R ที่ใช้ได้จริงไหม */
       stopDistPct: riskPerUnit / entry,
+      // ── วัตถุดิบสำหรับตรวจ/เทียบเครื่องวัด (ไม่ขึ้นกับ riskModel ที่เลือก) ──
+      plannedRisk,
+      realizedRisk,
+      rGrossRealized,
+      rGrossPlanned,
+      /** ต้นทุนเป็น "เงินต่อหนึ่งหน่วยสินทรัพย์" — หารด้วยตัวหารไหนก็ได้ R ของนิยามนั้น */
+      costMoney: costFraction * entry,
+      costMoneyBase: costFractionBase * entry,
+      /** ระยะเสี่ยงที่ "เหลือรอด" หลังราคาเปิดกระโดด = realized/planned (1 = ไม่มี gap) */
+      riskKeepRatio: plannedRisk > 0 ? realizedRisk / plannedRisk : NaN,
+      plannedStopDistPct: plannedRisk / sig.entry_price,
+      realizedStopDistPct: realizedRisk / entry,
       holdBars: exitIndex - entryIndex,
       entryTime: entryBar.timestamp,
       exitTime: candles[exitIndex].timestamp,
@@ -629,6 +670,142 @@ function baseStats(rs) {
     maxConsecutiveLosses: maxStreak,
     grossWinR, grossLossR, sumR,
     minR: sorted[0], maxR: sorted[count - 1],
+  };
+}
+
+// ═══════════════════════ ตรวจเครื่องวัด (metric audit) ═══════════════════════
+//
+// คำถามเดียวที่หัวข้อนี้ตอบ: "ไม้เดียวย้ายค่าเฉลี่ยของทั้งชุดได้แค่ไหน"
+// ถ้าไม้เดียวย้ายได้มากกว่าขนาดของผลที่เรากำลังตามหา (ระดับ 0.03 R/ไม้)
+// การเปรียบเทียบ config ทุกครั้งหลังจากนั้นคือการเปรียบเทียบ "ว่าบังเอิญมีไม้พิเศษกี่ไม้"
+// ไม่ใช่การเปรียบเทียบกฎ — และไม่มีทางรู้ได้เลยจากการดู avgR เฉย ๆ
+
+/**
+ * สถิติอิทธิพลของไม้เดียวต่อค่าเฉลี่ยของทั้งชุด
+ *
+ * maxLeaveOneOutShift = max |mean − mean_ที่ถอดไม้นั้นออก| = max |r_i − mean| / (n−1)
+ * นี่คือ "เพดานของการที่ไม้เดียวจะเปลี่ยนข้อสรุป" ตรง ๆ ไม่ต้องตีความ
+ */
+function influenceAudit(values) {
+  const finite = values.filter((v) => Number.isFinite(v));
+  const n = finite.length;
+  if (!n) return null;
+  const sum = finite.reduce((a, b) => a + b, 0);
+  const mean = sum / n;
+  const byAbs = [...finite].sort((a, b) => Math.abs(b) - Math.abs(a));
+  const k = Math.max(1, Math.round(n * 0.001)); // ไม้ 0.1% ที่สุดขั้วที่สุด
+  const topKSum = byAbs.slice(0, k).reduce((a, b) => a + b, 0);
+  let maxShift = 0;
+  let shiftR = null;
+  if (n > 1) {
+    for (const v of finite) {
+      const s = Math.abs((mean - v) / (n - 1));
+      if (s > maxShift) { maxShift = s; shiftR = v; }
+    }
+  }
+  return {
+    n,
+    nonFinite: values.length - n,
+    mean,
+    sum,
+    maxAbsR: byAbs[0],
+    topKCount: k,
+    topKSum,
+    // "กำไรรวมทั้งชุดมาจากไม้ไม่กี่ไม้แค่ไหน" — เกิน 100% แปลว่าที่เหลือรวมกันติดลบ
+    topKShareOfSum: sum !== 0 ? topKSum / sum : null,
+    top1ShareOfSum: sum !== 0 ? byAbs[0] / sum : null,
+    maxLeaveOneOutShift: maxShift,
+    maxLeaveOneOutShiftR: shiftR,
+  };
+}
+
+/**
+ * ผู้เข้าแข่งขันทุกทางที่พิจารณา — ต้องรายงานทุกตัว ไม่ใช่เฉพาะตัวที่ชนะ
+ * ทุกตัวคิดจากไม้ชุดเดียวกันเป๊ะ (เศษของ R เหมือนกันหมด ต่างกันแค่ตัวหาร/การทิ้ง/การตัด)
+ * จึงเทียบกันได้ตรง ๆ ไม่มีปัญหา "คนละกลุ่มตัวอย่าง" ยกเว้นทางที่ตั้งใจทิ้งไม้ (ทาง ก)
+ *
+ *   denom = ตัวหารของ R · ต้นทุนต้องหารด้วยตัวหารเดียวกันเสมอ ไม่งั้นหน่วยไม่ตรงกัน
+ *   keep  = เงื่อนไขที่ไม้ต้องผ่านถึงจะถูกนับ (null = นับทุกไม้)
+ *   cap   = ตัดค่าสุดท้ายที่ ±cap (winsorize — ไม่ทิ้งไม้ แต่จำกัดน้ำหนักของมัน)
+ */
+const METRIC_CANDIDATES = [
+  { id: 'A', label: 'เดิม: หารด้วยระยะจริงหลัง gap', denom: (t) => t.realizedRisk, keep: null, cap: null },
+  { id: 'B', label: 'ก: เดิม + ทิ้งไม้ที่ระยะเหลือ < 20%', denom: (t) => t.realizedRisk, keep: (t) => t.riskKeepRatio >= 0.2, cap: null },
+  { id: 'C', label: 'ข: เดิม + ตัดค่าที่ ±5', denom: (t) => t.realizedRisk, keep: null, cap: 5 },
+  { id: 'D', label: 'ค: หารด้วยระยะที่ตั้งใจไว้', denom: (t) => t.plannedRisk, keep: null, cap: null },
+  { id: 'E', label: 'ค+ข: ระยะที่ตั้งใจ + ตัดที่ ±10', denom: (t) => t.plannedRisk, keep: null, cap: 10 },
+];
+
+/**
+ * คิดค่าของผู้เข้าแข่งขันหนึ่งรายจากไม้ทั้งชุด
+ * net = true → หักต้นทุนก่อนตัด (ตัดทีหลังเสมอ เพราะ cap คือเพดานของ "ตัวเลขที่รายงาน")
+ */
+function candidateValues(trades, cand, { net }) {
+  const out = [];
+  for (const t of trades) {
+    if (cand.keep && !cand.keep(t)) continue;
+    const d = cand.denom(t);
+    if (!(d > 0) || !Number.isFinite(d)) { out.push(NaN); continue; }
+    let v = ((t.exit - t.entry) * (t.action === 'BUY' ? 1 : -1)) / d;
+    if (net) v -= t.costMoney / d;
+    if (cand.cap !== null) v = Math.max(-cand.cap, Math.min(cand.cap, v));
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * ตรวจว่า "ทางที่เลือก" ไม่ได้ทำให้ผลดูดีขึ้นโดยการเขี่ยไม้ขาดทุนทิ้ง
+ *
+ * วิธีเดียวที่ตรวจได้คือดูองค์ประกอบบวก/ลบของไม้ที่ถูกกระทบ: ถ้าไม้ที่ถูกทิ้ง/ถูกตัด
+ * เป็นไม้ขาดทุนแทบทั้งหมด แปลว่ากติกาที่ตั้งขึ้นกำลังเลือกข้าง ไม่ใช่แก้เครื่องวัด
+ */
+function fairnessCheck(all) {
+  const dirOf = (t) => (t.action === 'BUY' ? 1 : -1);
+  const netOn = (t, d) => (d > 0 && Number.isFinite(d) ? ((t.exit - t.entry) * dirOf(t) - t.costMoney) / d : NaN);
+  const rOld = (t) => netOn(t, t.realizedRisk);
+  const rNew = (t) => netOn(t, t.plannedRisk);
+  const share = (a, b) => (b > 0 ? a / b : null);
+
+  const group = (pred, fn) => {
+    const g = all.filter(pred);
+    const vals = g.map(fn).filter(Number.isFinite);
+    const pos = vals.filter((v) => v > 0).length;
+    return { count: g.length, shareOfAll: share(g.length, all.length),
+      sumR: vals.reduce((a, b) => a + b, 0), positive: pos, sharePositive: share(pos, vals.length) };
+  };
+
+  const dropped = all.filter((t) => !(t.riskKeepRatio >= 0.2));
+  const clipHiOld = all.filter((t) => rOld(t) > 5).length;
+  const clipLoOld = all.filter((t) => rOld(t) < -5).length;
+  const clipHiNew = all.filter((t) => rNew(t) > 10).length;
+  const clipLoNew = all.filter((t) => rNew(t) < -10).length;
+
+  // ไม้ที่นิยามใหม่ให้ค่าต่างจากเดิมอย่างมีนัย — แยกว่า "ดีขึ้น" หรือ "แย่ลง"
+  const moved = all.filter((t) => Math.abs(rNew(t) - rOld(t)) >= 0.1 || !Number.isFinite(rOld(t)));
+  const better = moved.filter((t) => rNew(t) > rOld(t) || !Number.isFinite(rOld(t))).length;
+
+  return {
+    total: all.length,
+    // gap กินระยะเสี่ยง (ราคาเปิดวิ่งเข้าหา SL) vs gap ถ่างระยะ (เปิดหนีจาก SL)
+    gapAte: group((t) => t.riskKeepRatio < 1, rOld),
+    gapWidened: group((t) => t.riskKeepRatio > 1, rOld),
+    // ทาง ก: ไม้ที่จะถูกทิ้ง — ต้องดูว่าเป็นบวก/ลบสัดส่วนเท่าไรทั้งสองนิยาม
+    droppedByKeep20: {
+      ...group((t) => !(t.riskKeepRatio >= 0.2), rOld),
+      sumRUnderNew: dropped.map(rNew).filter(Number.isFinite).reduce((a, b) => a + b, 0),
+      sharePositiveUnderNew: share(dropped.map(rNew).filter((v) => v > 0).length,
+        dropped.map(rNew).filter(Number.isFinite).length),
+    },
+    // ทาง ข: ไม้ที่จะถูกตัดค่า — บนกับล่างต้องไม่เอียงข้างเดียว
+    clippedOld5: { above: clipHiOld, below: clipLoOld },
+    clippedNew10: { above: clipHiNew, below: clipLoNew },
+    // ทาง ค: ไม้ที่ค่าขยับ — ถ้าขยับแต่ "ดีขึ้น" ทั้งหมด แปลว่ากำลังโกงตัวเอง
+    movedByModel: { count: moved.length, shareOfAll: share(moved.length, all.length),
+      better, worse: moved.length - better, shareBetter: share(better, moved.length) },
+    // สรุปทิศทางรวม: นิยามใหม่ทำให้ค่าเฉลี่ยขยับไปทางไหน
+    meanOld: all.map(rOld).filter(Number.isFinite).reduce((a, b, _i, arr) => a + b / arr.length, 0),
+    meanNew: all.map(rNew).filter(Number.isFinite).reduce((a, b, _i, arr) => a + b / arr.length, 0),
   };
 }
 
@@ -798,7 +975,7 @@ function runOne(ds, real, wd) {
       ds, engine,
       entryFrom: win.from, entryTo: win.to,
       maxHoldBars: wd.maxHoldBars, minHistory: wd.minHistory,
-      costFraction, costFractionBase,
+      costFraction, costFractionBase, riskModel: wd.riskModel,
     });
     out.splits[split] = { ...r, bars: win.to - win.from + 1, ms: performance.now() - t0,
       from: ds.candles[win.from]?.timestamp ?? null, to: ds.candles[win.to]?.timestamp ?? null };
@@ -812,11 +989,13 @@ function verifyOne(ds, real, backtestMod, wd) {
   const naive = backtestMod.runBacktest({
     symbol: ds.symbol, name: ds.name, market: ds.market, timeframe: ds.timeframe,
     candles: ds.candles, maxHoldBars: wd.maxHoldBars, minHistory: wd.minHistory,
+    riskModel: wd.riskModel,
   });
   const engine = createLabEngine(buildMemoIndicators(real, ds.candles), {});
   const fast = walkForward({
     ds, engine, entryFrom: 0, entryTo: ds.candles.length - 1,
     maxHoldBars: wd.maxHoldBars, minHistory: wd.minHistory, costFraction: 0,
+    riskModel: wd.riskModel,
   });
 
   const diffs = [];
@@ -827,7 +1006,9 @@ function verifyOne(ds, real, backtestMod, wd) {
     diffs.push(`skipped ต่างกัน: ของจริง ${naive.skipped} · ลูปเร็ว ${fast.skipped}`);
   }
   const fields = ['action', 'entryIndex', 'exitIndex', 'entry', 'exit', 'stopLoss', 'takeProfit',
-    'exitReason', 'holdBars', 'entryTime', 'exitTime', 'confidence', 'strength'];
+    'exitReason', 'holdBars', 'entryTime', 'exitTime', 'confidence', 'strength',
+    // ตัวหารของ R ทั้งสองนิยาม ต้องตรงกันด้วย ไม่งั้นสำเนาอาจใช้ตัวหารคนละตัวโดยไม่มีใครรู้
+    'plannedRisk', 'realizedRisk'];
   const m = Math.min(naive.trades.length, fast.trades.length);
   for (let k = 0; k < m && diffs.length < 20; k++) {
     const a = naive.trades[k];
@@ -871,6 +1052,9 @@ function buildReport(ctx) {
   W(`split ที่วัด           : ${ctx.splits.join(', ')}`);
   W(`ชุดข้อมูล              : ${ctx.datasetCount} ชุด (${ctx.barsTotal.toLocaleString()} แท่งที่ใช้ได้หลังตัดตาม quality.usable.from)`);
   W(`maxHoldBars           : ${ctx.maxHoldBars} แท่ง · minHistory ${ctx.minHistory} แท่ง`);
+  W(`ตัวหารของ R (riskModel): ${ctx.riskModel === 'planned'
+    ? 'planned — ระยะจากราคาที่สัญญาณคิดไว้ (ปิดแท่งก่อนเข้า) ถึง SL = ความเสี่ยงที่ยอมรับตอนตัดสินใจ'
+    : 'realized — ระยะจากราคาเปิดจริง (หลัง gap) ถึง SL = นิยามเดิมที่พังจากไม้ตัวหารเกือบศูนย์'}`);
   W(`สถานการณ์ต้นทุน        : ${ctx.costScenario}`);
   W(`เวลารันจริง            : ${(ctx.elapsedMs / 1000).toFixed(1)} วินาที (worker ${ctx.jobs} ตัว)`);
   W('');
@@ -921,15 +1105,26 @@ function buildReport(ctx) {
 
     W('┌─ ตัวเลขที่สำคัญที่สุด ────────────────────────────────────────────────────────────┐');
     cohortBlock(s.cohortAll);
-    W(`│ ⚠ ในนั้นมี ${s.rejectedCount.toLocaleString()} ไม้ (${pct(s.rejectedShare, 2)}) ที่ระยะ SL แคบกว่าต้นทุนรอบเดียว = เทรดจริงไม่ได้`);
-    W(`│   ไม้พวกนี้มี R ที่ตัวหารเกือบศูนย์ จึงลากค่าเฉลี่ยของทั้งชุดไปได้ทั้งสองทาง`);
-    W(`│   (รวม R ของเฉพาะไม้กลุ่มนี้ = ${n2(s.rejectedSumRNet, 1)})  ← ดูตาราง "ไม้สุดขั้ว" ด้านล่างเป็นหลักฐาน`);
+    if (s.rejectedCount > 0) {
+      W(`│ ⚠ ในนั้นมี ${s.rejectedCount.toLocaleString()} ไม้ (${pct(s.rejectedShare, 2)}) ที่ระยะ SL แคบกว่าต้นทุนรอบเดียว = เทรดจริงไม่ได้`);
+      W(`│   ไม้พวกนี้มี R ที่ตัวหารเกือบศูนย์ จึงลากค่าเฉลี่ยของทั้งชุดไปได้ทั้งสองทาง`);
+      W(`│   (รวม R ของเฉพาะไม้กลุ่มนี้ = ${n2(s.rejectedSumRNet, 1)})  ← ดูตาราง "ไม้สุดขั้ว" ด้านล่างเป็นหลักฐาน`);
+    } else {
+      W(`│ ไม่มีไม้ที่ระยะ SL แคบกว่าต้นทุนรอบเดียวเลย (0 ไม้) → "ทุกไม้" กับ "ไม้ที่เทรดได้จริง" เป็นกลุ่มเดียวกัน`);
+      W(`│ ตัวเลขข้างบนจึงไม่ได้ผ่านการคัดกลุ่มใด ๆ — ไม่มีคำว่า "กลุ่มที่ใจดีกว่า" ให้ต้องอธิบายอีก`);
+      if (ctx.riskModel === 'planned') {
+        W(`│ (ตัวหาร planned วัดจากราคาที่สัญญาณเห็น ระยะ SL จึงถูกล็อกก่อนรู้ gap และมีพื้นเชิงโครงสร้าง`);
+        W(`│  จากกติกาของ signal-engine เอง: ระดับ × 0.995/1.005 หรือ 1.5×ATR — p01 ที่วัดได้คือ ${n2(s.stopDist.p01 * 100, 3)}% ของราคา)`);
+      }
+    }
     W('│');
     cohortBlock(s.cohortTradeable);
     W(`│ ต้นทุนเฉลี่ยที่หักในกลุ่มที่เทรดได้จริง = ${n2(s.cohortTradeable.avgCostR)} R ต่อไม้ (มัธยฐาน ${n2(s.cohortTradeable.medCostR)} R)`);
     W('└──────────────────────────────────────────────────────────────────────────────────┘');
     W('');
-    W(`  ตีความ (ยืนบนกลุ่มที่เทรดได้จริง ซึ่งเป็นกลุ่มที่ใจดีกว่า):`);
+    W(s.rejectedCount > 0
+      ? `  ตีความ (ยืนบนกลุ่มที่เทรดได้จริง ซึ่งเป็นกลุ่มที่ใจดีกว่า):`
+      : `  ตีความ (ยืนบนไม้ทุกไม้ ไม่มีการคัดกลุ่ม):`);
     W(`  ${s.verdictText}`);
     W('');
 
@@ -947,6 +1142,33 @@ function buildReport(ctx) {
     for (const t of s.bestTrades) {
       W(`${pad('ดีสุด', 6)} ${pad(t.symbol, 12)} ${pad(t.timeframe, 4)} ${pad(t.entryTime.slice(0, 10), 12)} ${padL(`${(t.stopDistPct * 100).toExponential(2)}%`, 12)} ${padL(n2(t.rGross, 2), 12)} ${padL(n2(t.costR, 2), 12)} ${padL(n2(t.rNet, 2), 12)}`);
     }
+    W('');
+
+    // ── ตรวจเครื่องวัด ──
+    W('── ตรวจเครื่องวัด: ไม้เดียวย้ายค่าเฉลี่ยทั้งชุดได้แค่ไหน (วัดบนไม้ชุดเดียวกันทุกทาง) ──');
+    W(`${pad('ทาง', 34)} ${padL('ไม้', 7)} ${padL('avgR', 9)} ${padL('|R| สูงสุด', 12)} ${padL('ไม้เดียวย้าย avgR ได้', 20)} ${padL('0.1% สุดขั้ว = กี่ % ของรวม', 26)}`);
+    for (const m of s.metricAudit) {
+      const a = m.net;
+      if (!a) { W(`${pad(m.label, 34)} ${padL('—', 7)}`); continue; }
+      W(`${pad(m.label, 34)} ${padL(a.n.toLocaleString(), 7)} ${padL(n2(a.mean), 9)} ${padL(n2(Math.abs(a.maxAbsR), 1), 12)} `
+        + `${padL(n2(a.maxLeaveOneOutShift, 5), 20)} ${padL(a.topKShareOfSum === null ? 'n/a' : pct(a.topKShareOfSum, 1), 26)}`);
+    }
+    W('  (ตัวเลขทุกช่องเป็น R หลังหักต้นทุน · "ไม้เดียวย้าย avgR ได้" = max |avgR − avgR ที่ถอดไม้นั้นออก|)');
+    W(`  ขนาดของผลที่งานวิจัยรอบนี้ตามหาอยู่ที่ระดับ 0.03 R/ไม้ — ทางไหนที่ "ไม้เดียวย้ายได้" ใกล้เคียงเลขนั้น`);
+    W('  แปลว่าการเทียบ config สองแบบด้วยเครื่องวัดนั้น คือการเทียบว่าบังเอิญมีไม้พิเศษกี่ไม้');
+    W('');
+
+    const f = s.fairness;
+    W('── ตรวจความเป็นธรรมของการแก้ (แก้แล้วต้องไม่ใช่แค่เขี่ยไม้ขาดทุนทิ้ง) ──');
+    W(`  ไม้ที่ราคาเปิดกระโดด "กิน" ระยะเสี่ยง  ${padL(f.gapAte.count.toLocaleString(), 7)} (${pct(f.gapAte.shareOfAll, 1)}) · เป็นไม้กำไร ${pct(f.gapAte.sharePositive, 1)}`);
+    W(`  ไม้ที่ราคาเปิดกระโดด "ถ่าง" ระยะเสี่ยง ${padL(f.gapWidened.count.toLocaleString(), 7)} (${pct(f.gapWidened.shareOfAll, 1)}) · เป็นไม้กำไร ${pct(f.gapWidened.sharePositive, 1)}`);
+    W(`  ทาง ก ทิ้งไม้ที่ระยะเหลือ < 20%:      ${padL(f.droppedByKeep20.count.toLocaleString(), 7)} (${pct(f.droppedByKeep20.shareOfAll, 2)}) · ในนั้นเป็นไม้กำไร ${pct(f.droppedByKeep20.sharePositive, 1)} (นิยามเดิม) / ${pct(f.droppedByKeep20.sharePositiveUnderNew, 1)} (นิยามใหม่)`);
+    W(`      รวม R ของไม้ที่จะถูกทิ้ง = ${n2(f.droppedByKeep20.sumR, 1)} (นิยามเดิม) / ${n2(f.droppedByKeep20.sumRUnderNew, 1)} (นิยามใหม่)`);
+    W(`  ทาง ข ตัดที่ ±5 บนนิยามเดิม:          ตัดจากข้างบน ${f.clippedOld5.above} ไม้ · จากข้างล่าง ${f.clippedOld5.below} ไม้`);
+    W(`  ตัดที่ ±10 บนนิยามใหม่:               ตัดจากข้างบน ${f.clippedNew10.above} ไม้ · จากข้างล่าง ${f.clippedNew10.below} ไม้`);
+    W(`  ทาง ค เปลี่ยนค่าไม้ไปอย่างมีนัย (>= 0.1R): ${f.movedByModel.count.toLocaleString()} ไม้ (${pct(f.movedByModel.shareOfAll, 1)})`);
+    W(`      ในนั้น "ดีขึ้น" ${f.movedByModel.better.toLocaleString()} ไม้ (${pct(f.movedByModel.shareBetter, 1)}) · "แย่ลง" ${f.movedByModel.worse.toLocaleString()} ไม้`);
+    W(`  ค่าเฉลี่ยทั้งชุดขยับจาก ${n2(f.meanOld)} (นิยามเดิม) เป็น ${n2(f.meanNew)} (นิยามใหม่) = ${n2(f.meanNew - f.meanOld)}`);
     W('');
 
     W(`  ตารางแยกกลุ่มทุกตารางต่อจากนี้คิดจาก "กลุ่มที่เทรดได้จริง" ${s.trades.length.toLocaleString()} ไม้ และเป็น R หลังหักต้นทุน`);
@@ -979,7 +1201,8 @@ function buildReport(ctx) {
   for (const [mk, bps] of Object.entries(COST_BPS.byMarket)) W(`  ${pad(mk, 10)} ${padL(bps, 5)} bps`);
   W(`  แทนที่รายตัว: ${Object.entries(COST_BPS.bySymbol).map(([k, v]) => `${k}=${v}`).join(' · ')}`);
   W(`  สถานการณ์ pessimistic = คูณ ${COST_BPS.pessimisticMultiplier} เท่า`);
-  W('  แปลงเป็น R ต่อไม้ = (bps/10000 × ราคาเข้า) / |ราคาเข้า - SL| — ไม้ที่ SL ชิดจะโดนต้นทุนหนักกว่ามาก');
+  W(`  แปลงเป็น R ต่อไม้ = (bps/10000 × ราคาเข้า) / ระยะเสี่ยงตาม riskModel (${ctx.riskModel}) — ไม้ที่ SL ชิดจะโดนต้นทุนหนักกว่ามาก`);
+  W('  ตัวหารต้องเป็นตัวเดียวกับที่ใช้คิด R เสมอ ไม่งั้นค่าธรรมเนียมกับกำไรจะอยู่คนละหน่วย');
   W('');
   W('━'.repeat(110));
   W('ข้อจำกัดที่ต้องรู้ก่อนเชื่อตัวเลขข้างบน');
@@ -1058,6 +1281,15 @@ function summariseSplit(all, ctx) {
   };
   out.worstTrades = [...all].sort((a, b) => a.rNet - b.rNet).slice(0, 5);
   out.bestTrades = [...all].sort((a, b) => b.rNet - a.rNet).slice(0, 5);
+
+  // ── ตรวจเครื่องวัด: ทุกทางที่พิจารณา วัดบนไม้ชุดเดียวกัน ──
+  out.metricAudit = METRIC_CANDIDATES.map((c) => {
+    const g = candidateValues(all, c, { net: false });
+    const nt = candidateValues(all, c, { net: true });
+    return { id: c.id, label: c.label, cap: c.cap, droppedTrades: all.length - g.length,
+      gross: influenceAudit(g), net: influenceAudit(nt) };
+  });
+  out.fairness = fairnessCheck(all);
 
   const trades = tradeable;
   const gs = (keyFn) => groupStats(trades, keyFn, 'rNet', { B: Math.min(B, 2000), seed: ctx.seed });
@@ -1154,6 +1386,8 @@ lab.mjs — เครื่องวัดรวมของงานวิจ�
   --markets=A,B / --timeframes=1D,1H / --symbols=X,Y     กรองชุดข้อมูล
   --include-bad                 รวมชุดที่ quality.verdict = bad (ค่าเริ่มต้นไม่รวม)
   --max-hold=10 --min-history=60
+  --risk-model=planned|realized ตัวหารของ R (ค่าเริ่มต้น planned = ระยะที่ตั้งใจไว้ตอนออกสัญญาณ)
+                                realized = นิยามเดิม เก็บไว้เทียบ "ก่อน/หลังซ่อมเครื่องวัด" เท่านั้น
   --bootstrap=10000 --seed=20260817
   --jobs=N                      จำนวน worker (ค่าเริ่มต้น = แกน CPU - 2)
   --dump-trades                 เขียนไม้ทั้งหมดเป็น CSV
@@ -1172,6 +1406,10 @@ async function main() {
   const jobs = Number(args.jobs ?? Math.max(1, os.cpus().length - 2));
   const maxHoldBars = Number(args['max-hold'] ?? 10);
   const minHistory = Number(args['min-history'] ?? 60);
+  // ค่าเริ่มต้นคือ planned — นิยามเดิม (realized) ถูกพิสูจน์แล้วว่าให้ค่าเฉลี่ยที่ไม้เดียว
+  // ยึดไปทั้งชุดได้ (ดู report/metric-fix.md) เก็บไว้เลือกได้เพื่อ "เทียบก่อน/หลัง" เท่านั้น
+  const riskModel = String(args['risk-model'] ?? 'planned');
+  if (!['planned', 'realized'].includes(riskModel)) throw new Error('--risk-model ต้องเป็น planned|realized');
 
   const filt = {
     markets: args.markets ? String(args.markets).split(',') : null,
@@ -1194,7 +1432,7 @@ async function main() {
     let bad = 0;
     let totalTrades = 0;
     const res = await runDatasetsInWorkers(jobs, use,
-      { mode: 'verify', maxHoldBars, minHistory },
+      { mode: 'verify', maxHoldBars, minHistory, riskModel },
       (done, total, r) => {
         totalTrades += r.trades;
         if (r.diffs.length) { bad++; console.log(`  ✗ ${r.symbol} ${r.timeframe}: ${r.diffs.slice(0, 5).join(' | ')}`); }
@@ -1276,7 +1514,7 @@ ${bounds.overlaps.map((o) => `   · ${o.note}`).join('\n')}
   console.log(`[lab] ${files.length} ชุดข้อมูล · split ${splits.join(',')} · ต้นทุน ${costScenario} · worker ${jobs} ตัว`);
   const t0 = performance.now();
   const results = await runDatasetsInWorkers(jobs, files,
-    { mode: 'run', bounds, splits, maxHoldBars, minHistory, configPatch, costScenario, costTable, testCleanFrom },
+    { mode: 'run', bounds, splits, maxHoldBars, minHistory, configPatch, costScenario, costTable, testCleanFrom, riskModel },
     (done, total) => { if (done % 20 === 0 || done === total) console.log(`  ...${done}/${total}`); });
   const elapsedMs = performance.now() - t0;
 
@@ -1312,6 +1550,7 @@ ${bounds.overlaps.map((o) => `   · ${o.note}`).join('\n')}
     datasetCount: results.length,
     barsTotal,
     maxHoldBars, minHistory,
+    riskModel,
     costScenario,
     elapsedMs,
     jobs,
@@ -1328,7 +1567,7 @@ ${bounds.overlaps.map((o) => `   · ${o.note}`).join('\n')}
 
   const json = {
     generatedAt: ctx.generatedAt, git: ctx.git, tag: ctx.tag, configDiff: cfgDiff,
-    splits, bounds, datasetCount: results.length, barsTotal, maxHoldBars, minHistory,
+    splits, bounds, datasetCount: results.length, barsTotal, maxHoldBars, minHistory, riskModel,
     costScenario, costTable, seed, bootstrap, elapsedMs, jobs, testCleanFrom,
     tradeableRule: `costR(base) < ${TRADEABLE_MAX_COST_R}`,
     perDataset,
@@ -1348,6 +1587,7 @@ ${bounds.overlaps.map((o) => `   · ${o.note}`).join('\n')}
         worstTrades: v.worstTrades, bestTrades: v.bestTrades,
         breakdowns: Object.fromEntries(v.breakdowns.map(([t, rows]) => [t, rows])),
         byExit: v.byExit, byRRBucket: v.byRRBucket, rr: v.rr,
+        metricAudit: v.metricAudit, fairness: v.fairness,
         avgHold: v.avgHold, medHold: v.medHold, maxHold: v.maxHold,
         verdictText: v.verdictText,
       }];
@@ -1357,11 +1597,12 @@ ${bounds.overlaps.map((o) => `   · ${o.note}`).join('\n')}
 
   if (args['dump-trades']) {
     for (const s of splits) {
-      const rows = ['symbol,market,timeframe,action,strength,confidence,entryTime,exitTime,holdBars,entry,exit,stopLoss,takeProfit,exitReason,rrPlanned,stopDistPct,rGross,costR,costRBase,rNet,tradeable'];
+      const rows = ['symbol,market,timeframe,action,strength,confidence,entryTime,exitTime,holdBars,entry,exit,stopLoss,takeProfit,exitReason,rrPlanned,stopDistPct,plannedRisk,realizedRisk,riskKeepRatio,rGrossPlanned,rGrossRealized,rGross,costR,costRBase,rNet,tradeable'];
       for (const t of ctx.bySplit[s].allTrades) {
         rows.push([t.symbol, t.market, t.timeframe, t.action, t.strength, t.confidence, t.entryTime, t.exitTime,
           t.holdBars, t.entry, t.exit, t.stopLoss, t.takeProfit, t.exitReason,
-          t.rrPlanned ?? '', t.stopDistPct, t.rGross, t.costR, t.costRBase, t.rNet,
+          t.rrPlanned ?? '', t.stopDistPct, t.plannedRisk, t.realizedRisk, t.riskKeepRatio,
+          t.rGrossPlanned, t.rGrossRealized, t.rGross, t.costR, t.costRBase, t.rNet,
           t.costRBase < TRADEABLE_MAX_COST_R ? 1 : 0].join(','));
       }
       fs.writeFileSync(path.join(REPORT_DIR, `${ctx.tag}-${s}-trades.csv`), `${rows.join('\n')}\n`, 'utf8');
@@ -1385,6 +1626,9 @@ const VERIFY_SAMPLE = [
 
 const CAVEATS = [
   'ผลในอดีตไม่การันตีอนาคต — รายงานนี้วัดว่ากติกาปัจจุบัน "เคย" ให้ผลอย่างไร ไม่ใช่คำพยากรณ์',
+  'ตัวหารของ R เป็น planned (ระยะที่ตั้งใจไว้ตอนออกสัญญาณ) ตัวเลขจึงเทียบกับรายงานก่อน 2026-08-17 ไม่ได้ตรง ๆ — ดู report/metric-fix.md',
+  'planned ยังไม่ได้ทำให้ R มีขอบเขตตายตัวทางคณิตศาสตร์ เพียงแต่ตัวหารไม่ขึ้นกับ gap อีกต่อไป — ระยะ SL ที่สัญญาณตั้งเองยังมีหางบางที่แคบผิดปกติได้ (p01 ~0.5% ของราคา แต่ต่ำสุดที่วัดได้ 0.07%)',
+  'ทุกข้อสรุปที่ตัดสินด้วยส่วนต่างเล็กกว่า 0.01 R/ไม้ ต้องเช็คซ้ำกับคอลัมน์ "ค+ข: ตัดที่ ±10" ในตารางตรวจเครื่องวัด ถ้าข้อสรุปพลิกระหว่างสองคอลัมน์ นั่นคือผลของหาง ไม่ใช่ของกฎ',
   'คลังข้อมูลยังมี survivorship bias เหลืออยู่: Yahoo ลบสัญลักษณ์ที่ออกจากกระดานทิ้ง (เช่น WBA ตอบ 404) ผลจริงจึงแย่กว่าที่วัดได้เล็กน้อยเสมอ',
   'ราคาไม่ได้หักปันผล — หุ้นปันผลสูงจะมี gap ลงทุกครั้งที่ขึ้นเครื่องหมาย XD ซึ่งระบบอาจอ่านเป็นสัญญาณกลับตัว',
   '1H ย้อนได้แค่ 730 วัน (เพดานของ Yahoo) = เห็นตลาดยุคเดียว ข้อสรุปจาก 1H อ่อนกว่า 1D มาก',

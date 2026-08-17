@@ -715,6 +715,12 @@ function verifyBacktestLoop(realBacktest, datasets, maxBarsPerDs) {
     const truth = realBacktest.runBacktest({
       symbol: ds.symbol, name: ds.name, market: ds.market, timeframe: ds.timeframe,
       candles: bars, maxHoldBars: OPT.maxHoldBars, minHistory: OPT.minHistory, feesR: OPT.feesR,
+      // ต้องระบุ 'realized' ให้ตรงกับลูปสำเนาในไฟล์นี้ ซึ่งคิด R แบบเดิม
+      // (หารด้วยระยะจริงหลัง gap) — ตั้งแต่ backtest.ts เพิ่ม riskModel ค่าเริ่มต้นเป็น
+      // 'planned' ตัวจริงกับสำเนาจึงหาร R คนละตัว แล้วด่านเทียบก็หยุดทั้งสคริปต์
+      // ⚠ ตัวเลขทั้งฉบับของ diagnosis.md ผูกกับนิยามเดิม การเปลี่ยนตรงนี้เป็น 'planned'
+      //   จะทำให้ตัวเลขในรายงานเทียบกับของเก่าไม่ได้ ต้องสร้างรายงานใหม่ทั้งฉบับพร้อมกัน
+      riskModel: 'realized',
     });
     const fast = makeFastIndicators(REAL.indicators, bars);
     const lab = createLabEngine(fast.ind, {});
