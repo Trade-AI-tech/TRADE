@@ -1,0 +1,7173 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-08-17T12:45:13.898Z",
+  "generator": "scripts/build-speed-scorecard.mjs",
+  "rebuildCommand": "node scripts/build-speed-scorecard.mjs",
+  "evidenceFile": "src/lib/speed-scorecard.evidence.json",
+  "method": {
+    "engine": "runBacktest() จาก src/lib/backtest.ts (walk-forward, ไม่มี look-ahead)",
+    "maxHoldBars": 6,
+    "feesR": 0,
+    "kMeaning": "K = จำนวนแท่งที่ไม้กินไป = holdBars + 1 · K=1 คือปิดจบภายในแท่งที่เข้าเอง",
+    "minReliableTrades": 30,
+    "testFraction": 0.3,
+    "windowDaysByTimeframe": {
+      "1H": 365,
+      "1D": 1825
+    },
+    "barMinutesByTimeframe": {
+      "1H": 60,
+      "1D": 1440
+    },
+    "speedMeasurableByTimeframe": {
+      "1H": true,
+      "1D": false
+    },
+    "caveats": [
+      "ยังไม่หักสเปรด/ค่าคอม/สลิปเพจ (feesR=0) — ผลจริงแย่กว่านี้เสมอ",
+      "แท่งที่แตะทั้ง SL และ TP นับ SL ก่อนเสมอ (OHLC ไม่บอกลำดับราคาในแท่ง)",
+      "winRate/avgR/profitFactor ในไฟล์นี้คิดภายใต้ maxHoldBars=6 เทียบกับ run-backtest.mjs (default 10) ตรง ๆ ไม่ได้",
+      "1D ตอบคำถาม \"จบใน 1 ชั่วโมง\" ไม่ได้ — หนึ่งแท่งคือหนึ่งวัน"
+    ]
+  },
+  "readerPolicy": {
+    "1H": {
+      "usePerPairSpeed": true,
+      "usePerPairProfit": false,
+      "speedMeasurable": true
+    },
+    "1D": {
+      "usePerPairSpeed": false,
+      "usePerPairProfit": false,
+      "speedMeasurable": false
+    }
+  },
+  "scoreReference": {
+    "1H": {
+      "metric": "pTpWithin2",
+      "sortedValues": [
+        0.0101,
+        0.0138,
+        0.0217,
+        0.0219,
+        0.0246,
+        0.0259,
+        0.0286,
+        0.029,
+        0.0294,
+        0.0294,
+        0.0321,
+        0.0367,
+        0.0411,
+        0.0413,
+        0.0425,
+        0.0429,
+        0.0472,
+        0.0536,
+        0.0542,
+        0.0548,
+        0.056,
+        0.0727,
+        0.073,
+        0.0744,
+        0.0758,
+        0.0855,
+        0.0903,
+        0.094,
+        0.0976,
+        0.1083,
+        0.119,
+        0.1338,
+        0.1349,
+        0.1359,
+        0.1395,
+        0.1402,
+        0.1408,
+        0.1429,
+        0.1438,
+        0.1446,
+        0.1472,
+        0.1473,
+        0.1493,
+        0.1534,
+        0.1575,
+        0.1604,
+        0.1653,
+        0.1653,
+        0.1655,
+        0.1661,
+        0.1667,
+        0.1701,
+        0.1704,
+        0.1714,
+        0.1753,
+        0.179,
+        0.1806
+      ]
+    },
+    "1D": {
+      "metric": "pTpWithin2",
+      "sortedValues": [
+        0,
+        0.0198,
+        0.036,
+        0.0367,
+        0.0403,
+        0.0426,
+        0.0467,
+        0.0469,
+        0.049,
+        0.0506,
+        0.0508,
+        0.051,
+        0.0526,
+        0.0526,
+        0.0526,
+        0.0565,
+        0.057,
+        0.0619,
+        0.0655,
+        0.066,
+        0.0674,
+        0.0686,
+        0.0706,
+        0.0709,
+        0.0714,
+        0.0721,
+        0.0811,
+        0.0816,
+        0.0825,
+        0.0879,
+        0.0887,
+        0.0928,
+        0.0932,
+        0.0957,
+        0.0994,
+        0.1,
+        0.1034,
+        0.1039,
+        0.1043,
+        0.1048,
+        0.1064,
+        0.1111,
+        0.1111,
+        0.113,
+        0.1143,
+        0.115,
+        0.1176,
+        0.1224,
+        0.13,
+        0.1354,
+        0.1359,
+        0.1414,
+        0.1491,
+        0.1774,
+        0.1978,
+        0.2049
+      ]
+    }
+  },
+  "validationSummary": {
+    "1H": {
+      "verdict": "partially_holds",
+      "trustPerPairSpeed": true,
+      "trustPerPairProfit": false,
+      "usablePairs": 57,
+      "note": "ความเร็ว (pTp2) รอด out-of-sample · ผลกำไร (avgR) ไม่รอด out-of-sample"
+    },
+    "1D": {
+      "verdict": "does_not_hold",
+      "trustPerPairSpeed": false,
+      "trustPerPairProfit": false,
+      "usablePairs": 44,
+      "note": "ความเร็ว (pTp2) ไม่รอด out-of-sample · ผลกำไร (avgR) ไม่รอด out-of-sample"
+    }
+  },
+  "pooled": {
+    "byMarketTimeframe": {
+      "US_STOCK|1H": {
+        "pairs": 12,
+        "trades": 1805,
+        "winRate": 0.4908,
+        "avgR": -0.0045,
+        "pTpWithin": {
+          "1": 0.1119,
+          "2": 0.1463,
+          "3": 0.1762,
+          "6": 0.2499
+        },
+        "pSlWithin": {
+          "1": 0.0621,
+          "2": 0.1202,
+          "3": 0.1778,
+          "6": 0.3169
+        },
+        "realizedRWithin": {
+          "1": -0.0035,
+          "2": -0.0457,
+          "3": -0.0576,
+          "6": -0.0045
+        },
+        "medianHoldBarsWin": 5
+      },
+      "CRYPTO|1H": {
+        "pairs": 9,
+        "trades": 7869,
+        "winRate": 0.516,
+        "avgR": 0.0245,
+        "pTpWithin": {
+          "1": 0.1187,
+          "2": 0.1638,
+          "3": 0.1973,
+          "6": 0.2703
+        },
+        "pSlWithin": {
+          "1": 0.0502,
+          "2": 0.1136,
+          "3": 0.1625,
+          "6": 0.267
+        },
+        "realizedRWithin": {
+          "1": -0.0083,
+          "2": -0.0284,
+          "3": -0.0367,
+          "6": 0.0245
+        },
+        "medianHoldBarsWin": 5
+      },
+      "TH_STOCK|1H": {
+        "pairs": 18,
+        "trades": 2288,
+        "winRate": 0.4148,
+        "avgR": 0.0259,
+        "pTpWithin": {
+          "1": 0.0651,
+          "2": 0.0905,
+          "3": 0.111,
+          "6": 0.1696
+        },
+        "pSlWithin": {
+          "1": 0.0726,
+          "2": 0.1246,
+          "3": 0.174,
+          "6": 0.2872
+        },
+        "realizedRWithin": {
+          "1": -0.0401,
+          "2": -0.0821,
+          "3": -0.1168,
+          "6": 0.0259
+        },
+        "medianHoldBarsWin": 5
+      },
+      "FOREX|1H": {
+        "pairs": 16,
+        "trades": 9290,
+        "winRate": 0.4786,
+        "avgR": -0.0106,
+        "pTpWithin": {
+          "1": 0.0183,
+          "2": 0.0325,
+          "3": 0.0489,
+          "6": 0.1013
+        },
+        "pSlWithin": {
+          "1": 0.0011,
+          "2": 0.003,
+          "3": 0.0057,
+          "6": 0.0134
+        },
+        "realizedRWithin": {
+          "1": 0.0018,
+          "2": 0.0049,
+          "3": 0.0083,
+          "6": -0.0106
+        },
+        "medianHoldBarsWin": 5
+      },
+      "GOLD|1H": {
+        "pairs": 2,
+        "trades": 1081,
+        "winRate": 0.531,
+        "avgR": 0.0305,
+        "pTpWithin": {
+          "1": 0.0999,
+          "2": 0.1434,
+          "3": 0.1739,
+          "6": 0.2526
+        },
+        "pSlWithin": {
+          "1": 0.0463,
+          "2": 0.0953,
+          "3": 0.1369,
+          "6": 0.2285
+        },
+        "realizedRWithin": {
+          "1": -0.0142,
+          "2": -0.0309,
+          "3": -0.047,
+          "6": 0.0305
+        },
+        "medianHoldBarsWin": 5
+      },
+      "US_STOCK|1D": {
+        "pairs": 12,
+        "trades": 1373,
+        "winRate": 0.4399,
+        "avgR": 0.0208,
+        "pTpWithin": {
+          "1": 0.0641,
+          "2": 0.0801,
+          "3": 0.1034,
+          "6": 0.1559
+        },
+        "pSlWithin": {
+          "1": 0.1253,
+          "2": 0.2097,
+          "3": 0.2841,
+          "6": 0.4086
+        },
+        "realizedRWithin": {
+          "1": -0.0794,
+          "2": -0.1516,
+          "3": -0.1745,
+          "6": 0.0208
+        },
+        "medianHoldBarsWin": 5
+      },
+      "CRYPTO|1D": {
+        "pairs": 9,
+        "trades": 1449,
+        "winRate": 0.4292,
+        "avgR": 0.0488,
+        "pTpWithin": {
+          "1": 0.0455,
+          "2": 0.0663,
+          "3": 0.0877,
+          "6": 0.1436
+        },
+        "pSlWithin": {
+          "1": 0.0959,
+          "2": 0.1615,
+          "3": 0.2284,
+          "6": 0.3637
+        },
+        "realizedRWithin": {
+          "1": -0.0718,
+          "2": -0.0911,
+          "3": -0.1014,
+          "6": 0.0488
+        },
+        "medianHoldBarsWin": 5
+      },
+      "TH_STOCK|1D": {
+        "pairs": 17,
+        "trades": 1670,
+        "winRate": 0.4078,
+        "avgR": 0.0067,
+        "pTpWithin": {
+          "1": 0.0449,
+          "2": 0.0653,
+          "3": 0.082,
+          "6": 0.1467
+        },
+        "pSlWithin": {
+          "1": 0.1138,
+          "2": 0.1952,
+          "3": 0.2563,
+          "6": 0.3838
+        },
+        "realizedRWithin": {
+          "1": -0.0901,
+          "2": -0.1438,
+          "3": -0.1715,
+          "6": 0.0067
+        },
+        "medianHoldBarsWin": 5
+      },
+      "FOREX|1D": {
+        "pairs": 16,
+        "trades": 1911,
+        "winRate": 0.3663,
+        "avgR": 0.1083,
+        "pTpWithin": {
+          "1": 0.0989,
+          "2": 0.1224,
+          "3": 0.1413,
+          "6": 0.1816
+        },
+        "pSlWithin": {
+          "1": 0.1863,
+          "2": 0.2564,
+          "3": 0.3129,
+          "6": 0.4171
+        },
+        "realizedRWithin": {
+          "1": -0.068,
+          "2": -0.1384,
+          "3": -0.1825,
+          "6": 0.1083
+        },
+        "medianHoldBarsWin": 5
+      },
+      "GOLD|1D": {
+        "pairs": 2,
+        "trades": 216,
+        "winRate": 0.4444,
+        "avgR": 0.1199,
+        "pTpWithin": {
+          "1": 0.0602,
+          "2": 0.0926,
+          "3": 0.1204,
+          "6": 0.2129
+        },
+        "pSlWithin": {
+          "1": 0.1111,
+          "2": 0.1945,
+          "3": 0.3102,
+          "6": 0.4028
+        },
+        "realizedRWithin": {
+          "1": -0.0629,
+          "2": -0.1279,
+          "3": -0.2249,
+          "6": 0.1199
+        },
+        "medianHoldBarsWin": 5
+      }
+    },
+    "byTimeframe": {
+      "1H": {
+        "pairs": 57,
+        "trades": 22333,
+        "winRate": 0.4887,
+        "avgR": 0.008,
+        "pTpWithin": {
+          "1": 0.07,
+          "2": 0.0993,
+          "3": 0.1239,
+          "6": 0.1872
+        },
+        "pSlWithin": {
+          "1": 0.0328,
+          "2": 0.0684,
+          "3": 0.0985,
+          "6": 0.1657
+        },
+        "realizedRWithin": {
+          "1": -0.0073,
+          "2": -0.0216,
+          "3": -0.0284,
+          "6": 0.008
+        },
+        "medianHoldBarsWin": 5
+      },
+      "1D": {
+        "pairs": 56,
+        "trades": 6619,
+        "winRate": 0.4084,
+        "avgR": 0.0518,
+        "pTpWithin": {
+          "1": 0.0651,
+          "2": 0.086,
+          "3": 0.1061,
+          "6": 0.1601
+        },
+        "pSlWithin": {
+          "1": 0.1331,
+          "2": 0.2085,
+          "3": 0.2741,
+          "6": 0.3948
+        },
+        "realizedRWithin": {
+          "1": -0.0766,
+          "2": -0.1318,
+          "3": -0.1617,
+          "6": 0.0518
+        },
+        "medianHoldBarsWin": 5
+      }
+    },
+    "gatedByMarketTimeframe": {
+      "US_STOCK|1H": {
+        "pairs": 12,
+        "trades": 303,
+        "winRate": 0.429,
+        "avgR": 0.1033,
+        "pTpWithin": {
+          "1": 0.0033,
+          "2": 0.0099,
+          "3": 0.0462,
+          "6": 0.132
+        },
+        "pSlWithin": {
+          "1": 0.066,
+          "2": 0.1584,
+          "3": 0.2079,
+          "6": 0.396
+        },
+        "realizedRWithin": {
+          "1": -0.0407,
+          "2": -0.159,
+          "3": -0.0433,
+          "6": 0.1033
+        },
+        "medianHoldBarsWin": 5
+      },
+      "CRYPTO|1H": {
+        "pairs": 9,
+        "trades": 1218,
+        "winRate": 0.445,
+        "avgR": 0.074,
+        "pTpWithin": {
+          "1": 0.0172,
+          "2": 0.0435,
+          "3": 0.0813,
+          "6": 0.1486
+        },
+        "pSlWithin": {
+          "1": 0.0788,
+          "2": 0.1781,
+          "3": 0.2447,
+          "6": 0.3785
+        },
+        "realizedRWithin": {
+          "1": -0.0425,
+          "2": -0.0891,
+          "3": -0.0761,
+          "6": 0.074
+        },
+        "medianHoldBarsWin": 5
+      },
+      "TH_STOCK|1H": {
+        "pairs": 18,
+        "trades": 356,
+        "winRate": 0.3848,
+        "avgR": 0.0195,
+        "pTpWithin": {
+          "1": 0,
+          "2": 0.0112,
+          "3": 0.0169,
+          "6": 0.0562
+        },
+        "pSlWithin": {
+          "1": 0.0955,
+          "2": 0.1348,
+          "3": 0.1742,
+          "6": 0.323
+        },
+        "realizedRWithin": {
+          "1": -0.0899,
+          "2": -0.1032,
+          "3": -0.1345,
+          "6": 0.0195
+        },
+        "medianHoldBarsWin": 5
+      },
+      "FOREX|1H": {
+        "pairs": 15,
+        "trades": 88,
+        "winRate": 0.4545,
+        "avgR": -0.0756,
+        "pTpWithin": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "6": 0.0568
+        },
+        "pSlWithin": {
+          "1": 0.0114,
+          "2": 0.0568,
+          "3": 0.1477,
+          "6": 0.2614
+        },
+        "realizedRWithin": {
+          "1": -0.0114,
+          "2": -0.0571,
+          "3": -0.148,
+          "6": -0.0756
+        },
+        "medianHoldBarsWin": 5
+      },
+      "GOLD|1H": {
+        "pairs": 2,
+        "trades": 173,
+        "winRate": 0.526,
+        "avgR": 0.1876,
+        "pTpWithin": {
+          "1": 0.0115,
+          "2": 0.052,
+          "3": 0.0751,
+          "6": 0.1445
+        },
+        "pSlWithin": {
+          "1": 0.0578,
+          "2": 0.1445,
+          "3": 0.1965,
+          "6": 0.3006
+        },
+        "realizedRWithin": {
+          "1": -0.0348,
+          "2": -0.0405,
+          "3": -0.0496,
+          "6": 0.1876
+        },
+        "medianHoldBarsWin": 5
+      },
+      "US_STOCK|1D": {
+        "pairs": 12,
+        "trades": 227,
+        "winRate": 0.4185,
+        "avgR": 0.0436,
+        "pTpWithin": {
+          "1": 0.0044,
+          "2": 0.0132,
+          "3": 0.0485,
+          "6": 0.0969
+        },
+        "pSlWithin": {
+          "1": 0.1057,
+          "2": 0.1938,
+          "3": 0.2687,
+          "6": 0.4582
+        },
+        "realizedRWithin": {
+          "1": -0.0617,
+          "2": -0.1366,
+          "3": -0.1357,
+          "6": 0.0436
+        },
+        "medianHoldBarsWin": 5
+      },
+      "CRYPTO|1D": {
+        "pairs": 9,
+        "trades": 180,
+        "winRate": 0.4111,
+        "avgR": 0.2929,
+        "pTpWithin": {
+          "1": 0.0167,
+          "2": 0.0444,
+          "3": 0.0778,
+          "6": 0.1667
+        },
+        "pSlWithin": {
+          "1": 0.1278,
+          "2": 0.2167,
+          "3": 0.3222,
+          "6": 0.4444
+        },
+        "realizedRWithin": {
+          "1": -0.0944,
+          "2": -0.0913,
+          "3": -0.0821,
+          "6": 0.2929
+        },
+        "medianHoldBarsWin": 5
+      },
+      "TH_STOCK|1D": {
+        "pairs": 18,
+        "trades": 244,
+        "winRate": 0.373,
+        "avgR": -0.0084,
+        "pTpWithin": {
+          "1": 0.0041,
+          "2": 0.0205,
+          "3": 0.0369,
+          "6": 0.0738
+        },
+        "pSlWithin": {
+          "1": 0.1721,
+          "2": 0.2541,
+          "3": 0.3033,
+          "6": 0.459
+        },
+        "realizedRWithin": {
+          "1": -0.1311,
+          "2": -0.1166,
+          "3": -0.1428,
+          "6": -0.0084
+        },
+        "medianHoldBarsWin": 5
+      },
+      "FOREX|1D": {
+        "pairs": 16,
+        "trades": 360,
+        "winRate": 0.2861,
+        "avgR": -0.1156,
+        "pTpWithin": {
+          "1": 0,
+          "2": 0,
+          "3": 0.0056,
+          "6": 0.0333
+        },
+        "pSlWithin": {
+          "1": 0.35,
+          "2": 0.4278,
+          "3": 0.4917,
+          "6": 0.6194
+        },
+        "realizedRWithin": {
+          "1": -0.0856,
+          "2": -0.1731,
+          "3": -0.2307,
+          "6": -0.1156
+        },
+        "medianHoldBarsWin": 5
+      },
+      "GOLD|1D": {
+        "pairs": 2,
+        "trades": 33,
+        "winRate": 0.5151,
+        "avgR": 0.7163,
+        "pTpWithin": {
+          "1": 0,
+          "2": 0.0303,
+          "3": 0.0606,
+          "6": 0.2121
+        },
+        "pSlWithin": {
+          "1": 0.0909,
+          "2": 0.1515,
+          "3": 0.2424,
+          "6": 0.303
+        },
+        "realizedRWithin": {
+          "1": -0.0606,
+          "2": -0.0807,
+          "3": -0.14,
+          "6": 0.7163
+        },
+        "medianHoldBarsWin": 5
+      }
+    },
+    "gatedByTimeframe": {
+      "1H": {
+        "pairs": 56,
+        "trades": 2138,
+        "winRate": 0.4397,
+        "avgR": 0.0721,
+        "pTpWithin": {
+          "1": 0.0112,
+          "2": 0.0323,
+          "3": 0.0617,
+          "6": 0.1268
+        },
+        "pSlWithin": {
+          "1": 0.0753,
+          "2": 0.1604,
+          "3": 0.2198,
+          "6": 0.3606
+        },
+        "realizedRWithin": {
+          "1": -0.0482,
+          "2": -0.0961,
+          "3": -0.082,
+          "6": 0.0721
+        },
+        "medianHoldBarsWin": 5
+      },
+      "1D": {
+        "pairs": 57,
+        "trades": 1044,
+        "winRate": 0.364,
+        "avgR": 0.0408,
+        "pTpWithin": {
+          "1": 0.0048,
+          "2": 0.0163,
+          "3": 0.0364,
+          "6": 0.0852
+        },
+        "pSlWithin": {
+          "1": 0.2088,
+          "2": 0.2912,
+          "3": 0.3621,
+          "6": 0.5067
+        },
+        "realizedRWithin": {
+          "1": -0.0918,
+          "2": -0.1349,
+          "3": -0.161,
+          "6": 0.0408
+        },
+        "medianHoldBarsWin": 5
+      }
+    }
+  },
+  "pairs": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 97,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.5155,
+      "avgR": 0.2767,
+      "profitFactor": 1.6158,
+      "pTpWithin": {
+        "1": 0.0412,
+        "2": 0.0619,
+        "3": 0.1031,
+        "6": 0.1546
+      },
+      "pSlWithin": {
+        "1": 0.0619,
+        "2": 0.0928,
+        "3": 0.2062,
+        "6": 0.3814
+      },
+      "realizedRWithin": {
+        "1": -0.0417,
+        "2": 0.0138,
+        "3": -0.0404,
+        "6": 0.2767
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.268,
+        "take_profit": 0.1134,
+        "time_exit": 0.4639,
+        "gap_stop": 0.1134,
+        "gap_target": 0.0412
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.4091,
+      "gatedAvgR": 0.0994,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0909,
+        "6": 0.1364
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0448,
+        "6": 0.0994
+      }
+    },
+    {
+      "symbol": "ADA",
+      "name": "คาร์ดาโน",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 168,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.4821,
+      "avgR": 0.0577,
+      "profitFactor": 1.1462,
+      "pTpWithin": {
+        "1": 0.0476,
+        "2": 0.0655,
+        "3": 0.0774,
+        "6": 0.1488
+      },
+      "pSlWithin": {
+        "1": 0.0774,
+        "2": 0.1369,
+        "3": 0.1786,
+        "6": 0.3214
+      },
+      "realizedRWithin": {
+        "1": -0.0753,
+        "2": -0.0991,
+        "3": -0.117,
+        "6": 0.0577
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3214,
+        "take_profit": 0.1488,
+        "time_exit": 0.5298,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.3846,
+      "gatedAvgR": -0.0649,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0769,
+        "3": 0.0769,
+        "6": 0.0769
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2308,
+        "2": -0.1538,
+        "3": -0.1538,
+        "6": -0.0649
+      }
+    },
+    {
+      "symbol": "ADVANC",
+      "name": "แอดวานซ์ อินโฟร์ เซอร์วิส",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 111,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3514,
+      "avgR": -0.054,
+      "profitFactor": 0.8888,
+      "pTpWithin": {
+        "1": 0.018,
+        "2": 0.036,
+        "3": 0.045,
+        "6": 0.1171
+      },
+      "pSlWithin": {
+        "1": 0.1261,
+        "2": 0.1802,
+        "3": 0.2432,
+        "6": 0.3874
+      },
+      "realizedRWithin": {
+        "1": -0.1159,
+        "2": -0.145,
+        "3": -0.1982,
+        "6": -0.054
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3604,
+        "take_profit": 0.0811,
+        "time_exit": 0.4955,
+        "gap_stop": 0.027,
+        "gap_target": 0.036
+      },
+      "gatedTrades": 16,
+      "gatedWinRate": 0.375,
+      "gatedAvgR": 0.0588,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0625,
+        "6": 0.125
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0625,
+        "2": -0.0625,
+        "3": 0.042,
+        "6": 0.0588
+      }
+    },
+    {
+      "symbol": "AMD",
+      "name": "AMD",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 98,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4694,
+      "avgR": 0.0491,
+      "profitFactor": 1.1216,
+      "pTpWithin": {
+        "1": 0.0612,
+        "2": 0.0816,
+        "3": 0.0816,
+        "6": 0.1531
+      },
+      "pSlWithin": {
+        "1": 0.1531,
+        "2": 0.2347,
+        "3": 0.3061,
+        "6": 0.3673
+      },
+      "realizedRWithin": {
+        "1": -0.105,
+        "2": -0.1845,
+        "3": -0.2577,
+        "6": 0.0491
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2755,
+        "take_profit": 0.102,
+        "time_exit": 0.4796,
+        "gap_stop": 0.0918,
+        "gap_target": 0.051
+      },
+      "gatedTrades": 10,
+      "gatedWinRate": 0.3,
+      "gatedAvgR": -0.1776,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.3,
+        "2": -0.3,
+        "3": -0.4,
+        "6": -0.1776
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 128,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.3906,
+      "avgR": -0.1851,
+      "profitFactor": 0.6367,
+      "pTpWithin": {
+        "1": 0.0234,
+        "2": 0.0469,
+        "3": 0.0469,
+        "6": 0.0938
+      },
+      "pSlWithin": {
+        "1": 0.1641,
+        "2": 0.2578,
+        "3": 0.3516,
+        "6": 0.4844
+      },
+      "realizedRWithin": {
+        "1": -0.1004,
+        "2": -0.2097,
+        "3": -0.3073,
+        "6": -0.1851
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3906,
+        "take_profit": 0.0547,
+        "time_exit": 0.4219,
+        "gap_stop": 0.0938,
+        "gap_target": 0.0391
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.25,
+      "gatedAvgR": -0.3645,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.05
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1,
+        "2": -0.2,
+        "3": -0.308,
+        "6": -0.3645
+      }
+    },
+    {
+      "symbol": "AOT",
+      "name": "ท่าอากาศยานไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 91,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.5055,
+      "avgR": 0.2059,
+      "profitFactor": 1.6073,
+      "pTpWithin": {
+        "1": 0.044,
+        "2": 0.0879,
+        "3": 0.1099,
+        "6": 0.1538
+      },
+      "pSlWithin": {
+        "1": 0.1099,
+        "2": 0.1868,
+        "3": 0.2198,
+        "6": 0.2857
+      },
+      "realizedRWithin": {
+        "1": -0.0711,
+        "2": -0.0787,
+        "3": -0.0874,
+        "6": 0.2059
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2527,
+        "take_profit": 0.1319,
+        "time_exit": 0.5604,
+        "gap_stop": 0.033,
+        "gap_target": 0.022
+      },
+      "gatedTrades": 10,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": 0.459,
+      "gatedPTpWithin": {
+        "1": 0.1,
+        "2": 0.1,
+        "3": 0.1,
+        "6": 0.2
+      },
+      "gatedRealizedRWithin": {
+        "1": 0.1,
+        "2": 0.1,
+        "3": 0.1,
+        "6": 0.459
+      }
+    },
+    {
+      "symbol": "AUDJPY",
+      "name": "ดอลลาร์ออสเตรเลีย/เยน",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 124,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:05.000Z",
+      "winRate": 0.379,
+      "avgR": 0.0048,
+      "profitFactor": 1.0117,
+      "pTpWithin": {
+        "1": 0.1532,
+        "2": 0.1774,
+        "3": 0.1935,
+        "6": 0.2581
+      },
+      "pSlWithin": {
+        "1": 0.121,
+        "2": 0.2097,
+        "3": 0.3065,
+        "6": 0.4032
+      },
+      "realizedRWithin": {
+        "1": -0.0508,
+        "2": -0.1403,
+        "3": -0.2262,
+        "6": 0.0048
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3145,
+        "take_profit": 0.1694,
+        "time_exit": 0.3387,
+        "gap_stop": 0.0887,
+        "gap_target": 0.0887
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.45,
+      "gatedAvgR": 0.7767,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.15
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.15,
+        "2": -0.2,
+        "3": -0.4,
+        "6": 0.7767
+      }
+    },
+    {
+      "symbol": "AUDTHB",
+      "name": "ดอลลาร์ออสเตรเลีย/บาท",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 154,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.2857,
+      "avgR": 0.0866,
+      "profitFactor": 1.2084,
+      "pTpWithin": {
+        "1": 0.0844,
+        "2": 0.1039,
+        "3": 0.1364,
+        "6": 0.1429
+      },
+      "pSlWithin": {
+        "1": 0.2792,
+        "2": 0.3636,
+        "3": 0.4156,
+        "6": 0.526
+      },
+      "realizedRWithin": {
+        "1": -0.0645,
+        "2": -0.1379,
+        "3": -0.1592,
+        "6": 0.0866
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2662,
+        "take_profit": 0.0649,
+        "time_exit": 0.3312,
+        "gap_stop": 0.2597,
+        "gap_target": 0.0779
+      },
+      "gatedTrades": 41,
+      "gatedWinRate": 0.0976,
+      "gatedAvgR": -0.3777,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.069,
+        "2": -0.2116,
+        "3": -0.3227,
+        "6": -0.3777
+      }
+    },
+    {
+      "symbol": "AUDUSD",
+      "name": "ดอลลาร์ออสเตรเลีย/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 100,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:57.000Z",
+      "winRate": 0.34,
+      "avgR": -0.2804,
+      "profitFactor": 0.4709,
+      "pTpWithin": {
+        "1": 0.11,
+        "2": 0.13,
+        "3": 0.16,
+        "6": 0.21
+      },
+      "pSlWithin": {
+        "1": 0.17,
+        "2": 0.26,
+        "3": 0.29,
+        "6": 0.45
+      },
+      "realizedRWithin": {
+        "1": -0.0804,
+        "2": -0.1697,
+        "3": -0.1757,
+        "6": -0.2804
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3,
+        "take_profit": 0.15,
+        "time_exit": 0.34,
+        "gap_stop": 0.15,
+        "gap_target": 0.06
+      },
+      "gatedTrades": 15,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.3791,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.1333,
+        "3": -0.2,
+        "6": -0.3791
+      }
+    },
+    {
+      "symbol": "AVAX",
+      "name": "อวาแลนช์",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 150,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.44,
+      "avgR": 0.1085,
+      "profitFactor": 1.2529,
+      "pTpWithin": {
+        "1": 0.02,
+        "2": 0.0467,
+        "3": 0.08,
+        "6": 0.1267
+      },
+      "pSlWithin": {
+        "1": 0.08,
+        "2": 0.1267,
+        "3": 0.2,
+        "6": 0.3533
+      },
+      "realizedRWithin": {
+        "1": -0.0651,
+        "2": -0.0585,
+        "3": -0.0076,
+        "6": 0.1085
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3533,
+        "take_profit": 0.1267,
+        "time_exit": 0.52,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.5385,
+      "gatedAvgR": 1.1669,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0769,
+        "6": 0.1538
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0769,
+        "2": -0.2308,
+        "3": 0.4343,
+        "6": 1.1669
+      }
+    },
+    {
+      "symbol": "BBL",
+      "name": "ธนาคารกรุงเทพ",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 97,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3608,
+      "avgR": -0.1215,
+      "profitFactor": 0.7408,
+      "pTpWithin": {
+        "1": 0.0515,
+        "2": 0.0928,
+        "3": 0.1031,
+        "6": 0.1443
+      },
+      "pSlWithin": {
+        "1": 0.0309,
+        "2": 0.1856,
+        "3": 0.2577,
+        "6": 0.4124
+      },
+      "realizedRWithin": {
+        "1": -0.0206,
+        "2": -0.1009,
+        "3": -0.1555,
+        "6": -0.1215
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.4124,
+        "take_profit": 0.1237,
+        "time_exit": 0.4433,
+        "gap_stop": 0,
+        "gap_target": 0.0206
+      },
+      "gatedTrades": 17,
+      "gatedWinRate": 0.4118,
+      "gatedAvgR": 0.1134,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0588,
+        "3": 0.0588,
+        "6": 0.0588
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.0588,
+        "6": 0.1134
+      }
+    },
+    {
+      "symbol": "BDMS",
+      "name": "กรุงเทพดุสิตเวชการ",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 102,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3824,
+      "avgR": -0.1451,
+      "profitFactor": 0.691,
+      "pTpWithin": {
+        "1": 0.049,
+        "2": 0.049,
+        "3": 0.0588,
+        "6": 0.1176
+      },
+      "pSlWithin": {
+        "1": 0.1373,
+        "2": 0.2157,
+        "3": 0.2843,
+        "6": 0.4118
+      },
+      "realizedRWithin": {
+        "1": -0.1293,
+        "2": -0.2142,
+        "3": -0.2817,
+        "6": -0.1451
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3824,
+        "take_profit": 0.0882,
+        "time_exit": 0.4706,
+        "gap_stop": 0.0294,
+        "gap_target": 0.0294
+      },
+      "gatedTrades": 11,
+      "gatedWinRate": 0.3636,
+      "gatedAvgR": -0.254,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0909
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2727,
+        "2": -0.3636,
+        "3": -0.4545,
+        "6": -0.254
+      }
+    },
+    {
+      "symbol": "BNB",
+      "name": "BNB",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 161,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.3975,
+      "avgR": -0.0433,
+      "profitFactor": 0.9082,
+      "pTpWithin": {
+        "1": 0.0497,
+        "2": 0.0932,
+        "3": 0.1304,
+        "6": 0.1863
+      },
+      "pSlWithin": {
+        "1": 0.118,
+        "2": 0.1801,
+        "3": 0.2733,
+        "6": 0.4037
+      },
+      "realizedRWithin": {
+        "1": -0.0948,
+        "2": -0.1048,
+        "3": -0.1234,
+        "6": -0.0433
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.4037,
+        "take_profit": 0.1863,
+        "time_exit": 0.4099,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 33,
+      "gatedWinRate": 0.3939,
+      "gatedAvgR": 0.1535,
+      "gatedPTpWithin": {
+        "1": 0.0303,
+        "2": 0.0606,
+        "3": 0.1818,
+        "6": 0.2424
+      },
+      "gatedRealizedRWithin": {
+        "1": 0.0609,
+        "2": 0.061,
+        "3": 0.1522,
+        "6": 0.1535
+      }
+    },
+    {
+      "symbol": "BTC",
+      "name": "บิตคอยน์",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 170,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.4706,
+      "avgR": 0.3028,
+      "profitFactor": 1.7555,
+      "pTpWithin": {
+        "1": 0.0588,
+        "2": 0.0706,
+        "3": 0.0765,
+        "6": 0.1412
+      },
+      "pSlWithin": {
+        "1": 0.1,
+        "2": 0.1529,
+        "3": 0.2294,
+        "6": 0.3294
+      },
+      "realizedRWithin": {
+        "1": -0.0824,
+        "2": -0.0646,
+        "3": -0.1292,
+        "6": 0.3028
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3294,
+        "take_profit": 0.1412,
+        "time_exit": 0.5294,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 32,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": 0.5225,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0313,
+        "3": 0.0313,
+        "6": 0.2188
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0938,
+        "2": -0.0626,
+        "3": -0.1563,
+        "6": 0.5225
+      }
+    },
+    {
+      "symbol": "CPALL",
+      "name": "ซีพี ออลล์",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 94,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4468,
+      "avgR": 0.0979,
+      "profitFactor": 1.2423,
+      "pTpWithin": {
+        "1": 0.0319,
+        "2": 0.0426,
+        "3": 0.0638,
+        "6": 0.1489
+      },
+      "pSlWithin": {
+        "1": 0.0851,
+        "2": 0.2021,
+        "3": 0.2872,
+        "6": 0.3404
+      },
+      "realizedRWithin": {
+        "1": -0.053,
+        "2": -0.165,
+        "3": -0.2098,
+        "6": 0.0979
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3191,
+        "take_profit": 0.1383,
+        "time_exit": 0.5106,
+        "gap_stop": 0.0213,
+        "gap_target": 0.0106
+      },
+      "gatedTrades": 9,
+      "gatedWinRate": 0.5556,
+      "gatedAvgR": 0.5369,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.1111,
+        "6": 0.2222
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1111,
+        "2": -0.1111,
+        "3": 0,
+        "6": 0.5369
+      }
+    },
+    {
+      "symbol": "CPN",
+      "name": "เซ็นทรัลพัฒนา",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 124,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.379,
+      "avgR": -0.1856,
+      "profitFactor": 0.5997,
+      "pTpWithin": {
+        "1": 0.0403,
+        "2": 0.0403,
+        "3": 0.0484,
+        "6": 0.0726
+      },
+      "pSlWithin": {
+        "1": 0.129,
+        "2": 0.1935,
+        "3": 0.2339,
+        "6": 0.4274
+      },
+      "realizedRWithin": {
+        "1": -0.076,
+        "2": -0.1432,
+        "3": -0.1895,
+        "6": -0.1856
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2984,
+        "take_profit": 0.0726,
+        "time_exit": 0.5,
+        "gap_stop": 0.129,
+        "gap_target": 0
+      },
+      "gatedTrades": 27,
+      "gatedWinRate": 0.2593,
+      "gatedAvgR": -0.5238,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1111,
+        "2": -0.1975,
+        "3": -0.3736,
+        "6": -0.5238
+      }
+    },
+    {
+      "symbol": "DELTA",
+      "name": "เดลต้า อีเลคโทรนิคส์",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 95,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4632,
+      "avgR": 0.1884,
+      "profitFactor": 1.4831,
+      "pTpWithin": {
+        "1": 0.0211,
+        "2": 0.0526,
+        "3": 0.0947,
+        "6": 0.1895
+      },
+      "pSlWithin": {
+        "1": 0.0947,
+        "2": 0.1579,
+        "3": 0.1895,
+        "6": 0.3474
+      },
+      "realizedRWithin": {
+        "1": -0.0551,
+        "2": -0.1014,
+        "3": -0.0424,
+        "6": 0.1884
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2526,
+        "take_profit": 0.1368,
+        "time_exit": 0.4632,
+        "gap_stop": 0.0947,
+        "gap_target": 0.0526
+      },
+      "gatedTrades": 12,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.2698,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0833,
+        "3": 0.0833,
+        "6": 0.1667
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1667,
+        "2": -0.0255,
+        "3": -0.0255,
+        "6": -0.2698
+      }
+    },
+    {
+      "symbol": "DOGE",
+      "name": "โดชคอยน์",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 158,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.3924,
+      "avgR": -0.023,
+      "profitFactor": 0.9483,
+      "pTpWithin": {
+        "1": 0.0316,
+        "2": 0.0506,
+        "3": 0.0696,
+        "6": 0.1456
+      },
+      "pSlWithin": {
+        "1": 0.0823,
+        "2": 0.1582,
+        "3": 0.2152,
+        "6": 0.3671
+      },
+      "realizedRWithin": {
+        "1": -0.0313,
+        "2": -0.0692,
+        "3": -0.092,
+        "6": -0.023
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3671,
+        "take_profit": 0.1456,
+        "time_exit": 0.4873,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 16,
+      "gatedWinRate": 0.375,
+      "gatedAvgR": -0.1433,
+      "gatedPTpWithin": {
+        "1": 0.0625,
+        "2": 0.0625,
+        "3": 0.0625,
+        "6": 0.1875
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1247,
+        "2": -0.1872,
+        "3": -0.2497,
+        "6": -0.1433
+      }
+    },
+    {
+      "symbol": "ETH",
+      "name": "อีเธอเรียม",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 141,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.4752,
+      "avgR": 0.0961,
+      "profitFactor": 1.2477,
+      "pTpWithin": {
+        "1": 0.0638,
+        "2": 0.0709,
+        "3": 0.0993,
+        "6": 0.156
+      },
+      "pSlWithin": {
+        "1": 0.0922,
+        "2": 0.1773,
+        "3": 0.2199,
+        "6": 0.3333
+      },
+      "realizedRWithin": {
+        "1": -0.0606,
+        "2": -0.0851,
+        "3": -0.0844,
+        "6": 0.0961
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3333,
+        "take_profit": 0.156,
+        "time_exit": 0.5106,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.4,
+      "gatedAvgR": 0.7265,
+      "gatedPTpWithin": {
+        "1": 0.05,
+        "2": 0.1,
+        "3": 0.15,
+        "6": 0.2
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0002,
+        "2": 0.2269,
+        "3": 0.227,
+        "6": 0.7265
+      }
+    },
+    {
+      "symbol": "EURGBP",
+      "name": "ยูโร/ปอนด์",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 113,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:05.000Z",
+      "winRate": 0.4425,
+      "avgR": -0.1153,
+      "profitFactor": 0.5778,
+      "pTpWithin": {
+        "1": 0.0885,
+        "2": 0.115,
+        "3": 0.1327,
+        "6": 0.1947
+      },
+      "pSlWithin": {
+        "1": 0.0354,
+        "2": 0.0531,
+        "3": 0.1239,
+        "6": 0.177
+      },
+      "realizedRWithin": {
+        "1": -0.0259,
+        "2": -0.0245,
+        "3": -0.0849,
+        "6": -0.1153
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.177,
+        "take_profit": 0.1327,
+        "time_exit": 0.6283,
+        "gap_stop": 0,
+        "gap_target": 0.0619
+      },
+      "gatedTrades": 4,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": -0.4285,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.25,
+        "3": -0.5,
+        "6": -0.4285
+      }
+    },
+    {
+      "symbol": "EURJPY",
+      "name": "ยูโร/เยน",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 122,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:04.000Z",
+      "winRate": 0.4508,
+      "avgR": 0.008,
+      "profitFactor": 1.0253,
+      "pTpWithin": {
+        "1": 0.1639,
+        "2": 0.2049,
+        "3": 0.2377,
+        "6": 0.2541
+      },
+      "pSlWithin": {
+        "1": 0.1148,
+        "2": 0.1803,
+        "3": 0.2295,
+        "6": 0.3033
+      },
+      "realizedRWithin": {
+        "1": -0.0495,
+        "2": -0.0974,
+        "3": -0.1309,
+        "6": 0.008
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2541,
+        "take_profit": 0.1393,
+        "time_exit": 0.4426,
+        "gap_stop": 0.0492,
+        "gap_target": 0.1148
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.4615,
+      "gatedAvgR": -0.1106,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.3166,
+        "3": -0.3935,
+        "6": -0.1106
+      }
+    },
+    {
+      "symbol": "EURTHB",
+      "name": "ยูโร/บาท",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 171,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.2982,
+      "avgR": -0.2667,
+      "profitFactor": 0.5066,
+      "pTpWithin": {
+        "1": 0.0643,
+        "2": 0.0994,
+        "3": 0.1287,
+        "6": 0.1579
+      },
+      "pSlWithin": {
+        "1": 0.269,
+        "2": 0.3743,
+        "3": 0.4737,
+        "6": 0.5556
+      },
+      "realizedRWithin": {
+        "1": -0.069,
+        "2": -0.2184,
+        "3": -0.3122,
+        "6": -0.2667
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2398,
+        "take_profit": 0.0877,
+        "time_exit": 0.2865,
+        "gap_stop": 0.3158,
+        "gap_target": 0.0702
+      },
+      "gatedTrades": 34,
+      "gatedWinRate": 0.2059,
+      "gatedAvgR": -0.2642,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0588,
+        "2": -0.1471,
+        "3": -0.1765,
+        "6": -0.2642
+      }
+    },
+    {
+      "symbol": "EURUSD",
+      "name": "ยูโร/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 97,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.3608,
+      "avgR": -0.1838,
+      "profitFactor": 0.5454,
+      "pTpWithin": {
+        "1": 0.0825,
+        "2": 0.0825,
+        "3": 0.0825,
+        "6": 0.1134
+      },
+      "pSlWithin": {
+        "1": 0.1649,
+        "2": 0.2268,
+        "3": 0.268,
+        "6": 0.3608
+      },
+      "realizedRWithin": {
+        "1": -0.1054,
+        "2": -0.1749,
+        "3": -0.2199,
+        "6": -0.1838
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.299,
+        "take_profit": 0.0722,
+        "time_exit": 0.5258,
+        "gap_stop": 0.0619,
+        "gap_target": 0.0412
+      },
+      "gatedTrades": 14,
+      "gatedWinRate": 0.5714,
+      "gatedAvgR": 0.2641,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2143,
+        "2": -0.2143,
+        "3": -0.2143,
+        "6": 0.2641
+      }
+    },
+    {
+      "symbol": "GBPJPY",
+      "name": "ปอนด์/เยน",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 115,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:06.000Z",
+      "winRate": 0.4,
+      "avgR": 0.118,
+      "profitFactor": 1.3592,
+      "pTpWithin": {
+        "1": 0.0957,
+        "2": 0.1043,
+        "3": 0.1391,
+        "6": 0.2087
+      },
+      "pSlWithin": {
+        "1": 0.1217,
+        "2": 0.1826,
+        "3": 0.2087,
+        "6": 0.3043
+      },
+      "realizedRWithin": {
+        "1": -0.0566,
+        "2": -0.1143,
+        "3": -0.0787,
+        "6": 0.118
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2435,
+        "take_profit": 0.1304,
+        "time_exit": 0.487,
+        "gap_stop": 0.0609,
+        "gap_target": 0.0783
+      },
+      "gatedTrades": 18,
+      "gatedWinRate": 0.6111,
+      "gatedAvgR": 0.8155,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.1111,
+        "6": 0.1667
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0556,
+        "2": -0.1111,
+        "3": 0.1821,
+        "6": 0.8155
+      }
+    },
+    {
+      "symbol": "GBPTHB",
+      "name": "ปอนด์/บาท",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 185,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.2162,
+      "avgR": -0.3184,
+      "profitFactor": 0.3135,
+      "pTpWithin": {
+        "1": 0.0703,
+        "2": 0.0811,
+        "3": 0.0865,
+        "6": 0.1189
+      },
+      "pSlWithin": {
+        "1": 0.4054,
+        "2": 0.4486,
+        "3": 0.5189,
+        "6": 0.6324
+      },
+      "realizedRWithin": {
+        "1": -0.0738,
+        "2": -0.137,
+        "3": -0.2288,
+        "6": -0.3184
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1838,
+        "take_profit": 0.0595,
+        "time_exit": 0.2486,
+        "gap_stop": 0.4486,
+        "gap_target": 0.0595
+      },
+      "gatedTrades": 63,
+      "gatedWinRate": 0.0952,
+      "gatedAvgR": -0.2524,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0317
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0952,
+        "2": -0.137,
+        "3": -0.239,
+        "6": -0.2524
+      }
+    },
+    {
+      "symbol": "GBPUSD",
+      "name": "ปอนด์/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 103,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.4175,
+      "avgR": -0.1549,
+      "profitFactor": 0.6127,
+      "pTpWithin": {
+        "1": 0.1068,
+        "2": 0.1359,
+        "3": 0.1553,
+        "6": 0.1942
+      },
+      "pSlWithin": {
+        "1": 0.165,
+        "2": 0.2524,
+        "3": 0.3107,
+        "6": 0.4272
+      },
+      "realizedRWithin": {
+        "1": -0.056,
+        "2": -0.1355,
+        "3": -0.1845,
+        "6": -0.1549
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3107,
+        "take_profit": 0.1553,
+        "time_exit": 0.3786,
+        "gap_stop": 0.1165,
+        "gap_target": 0.0388
+      },
+      "gatedTrades": 8,
+      "gatedWinRate": 0.375,
+      "gatedAvgR": -0.0624,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.125
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.25,
+        "6": -0.0624
+      }
+    },
+    {
+      "symbol": "GOOGL",
+      "name": "Alphabet (Google)",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 115,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4,
+      "avgR": 0.032,
+      "profitFactor": 1.0684,
+      "pTpWithin": {
+        "1": 0.1043,
+        "2": 0.113,
+        "3": 0.1652,
+        "6": 0.2087
+      },
+      "pSlWithin": {
+        "1": 0.0957,
+        "2": 0.1739,
+        "3": 0.287,
+        "6": 0.4087
+      },
+      "realizedRWithin": {
+        "1": -0.0698,
+        "2": -0.1474,
+        "3": -0.109,
+        "6": 0.032
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.313,
+        "take_profit": 0.0957,
+        "time_exit": 0.3826,
+        "gap_stop": 0.0957,
+        "gap_target": 0.113
+      },
+      "gatedTrades": 16,
+      "gatedWinRate": 0.375,
+      "gatedAvgR": -0.2081,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0625,
+        "6": 0.0625
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0625,
+        "2": -0.125,
+        "3": -0.2331,
+        "6": -0.2081
+      }
+    },
+    {
+      "symbol": "GULF",
+      "name": "กัลฟ์ ดีเวลลอปเมนท์",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 17,
+      "reliable": false,
+      "bars": 334,
+      "firstBar": "2025-04-03T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4706,
+      "avgR": 0.137,
+      "profitFactor": 1.4269,
+      "pTpWithin": {
+        "1": 0.0588,
+        "2": 0.1176,
+        "3": 0.1176,
+        "6": 0.1765
+      },
+      "pSlWithin": {
+        "1": 0.2353,
+        "2": 0.2353,
+        "3": 0.2353,
+        "6": 0.4118
+      },
+      "realizedRWithin": {
+        "1": -0.1176,
+        "2": 0.0259,
+        "3": 0.0259,
+        "6": 0.137
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2941,
+        "take_profit": 0.1176,
+        "time_exit": 0.4118,
+        "gap_stop": 0.1176,
+        "gap_target": 0.0588
+      },
+      "gatedTrades": 2,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": -0.3017,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.5,
+        "2": -0.5,
+        "3": -0.5,
+        "6": -0.3017
+      }
+    },
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 124,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.3952,
+      "avgR": -0.0957,
+      "profitFactor": 0.7976,
+      "pTpWithin": {
+        "1": 0.1048,
+        "2": 0.1048,
+        "3": 0.1129,
+        "6": 0.1694
+      },
+      "pSlWithin": {
+        "1": 0.1532,
+        "2": 0.2661,
+        "3": 0.3387,
+        "6": 0.4435
+      },
+      "realizedRWithin": {
+        "1": -0.1228,
+        "2": -0.2408,
+        "3": -0.284,
+        "6": -0.0957
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.379,
+        "take_profit": 0.121,
+        "time_exit": 0.3871,
+        "gap_stop": 0.0645,
+        "gap_target": 0.0484
+      },
+      "gatedTrades": 19,
+      "gatedWinRate": 0.4737,
+      "gatedAvgR": 0.381,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.2105
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1053,
+        "2": -0.2232,
+        "3": -0.2232,
+        "6": 0.381
+      }
+    },
+    {
+      "symbol": "JPYTHB",
+      "name": "เยน/บาท",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 153,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:57.000Z",
+      "winRate": 0.3137,
+      "avgR": 2.4523,
+      "profitFactor": 6.7907,
+      "pTpWithin": {
+        "1": 0.0654,
+        "2": 0.1176,
+        "3": 0.1307,
+        "6": 0.1503
+      },
+      "pSlWithin": {
+        "1": 0.268,
+        "2": 0.3333,
+        "3": 0.3856,
+        "6": 0.5163
+      },
+      "realizedRWithin": {
+        "1": -0.0741,
+        "2": -0.1332,
+        "3": -0.1832,
+        "6": 2.4523
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2418,
+        "take_profit": 0.098,
+        "time_exit": 0.3333,
+        "gap_stop": 0.2745,
+        "gap_target": 0.0523
+      },
+      "gatedTrades": 40,
+      "gatedWinRate": 0.1,
+      "gatedAvgR": -0.3658,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.075,
+        "2": -0.1667,
+        "3": -0.1917,
+        "6": -0.3658
+      }
+    },
+    {
+      "symbol": "KBANK",
+      "name": "ธนาคารกสิกรไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 98,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4388,
+      "avgR": 0.1565,
+      "profitFactor": 1.3241,
+      "pTpWithin": {
+        "1": 0.0918,
+        "2": 0.1224,
+        "3": 0.1327,
+        "6": 0.2449
+      },
+      "pSlWithin": {
+        "1": 0.0816,
+        "2": 0.1531,
+        "3": 0.2449,
+        "6": 0.4082
+      },
+      "realizedRWithin": {
+        "1": -0.0567,
+        "2": -0.1241,
+        "3": -0.1955,
+        "6": 0.1565
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3469,
+        "take_profit": 0.1429,
+        "time_exit": 0.3469,
+        "gap_stop": 0.0612,
+        "gap_target": 0.102
+      },
+      "gatedTrades": 12,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": 0.2403,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0833
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1667,
+        "2": -0.1667,
+        "3": -0.25,
+        "6": 0.2403
+      }
+    },
+    {
+      "symbol": "KTB",
+      "name": "ธนาคารกรุงไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 90,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.5,
+      "avgR": 0.3636,
+      "profitFactor": 2.0385,
+      "pTpWithin": {
+        "1": 0.0889,
+        "2": 0.1111,
+        "3": 0.1333,
+        "6": 0.2444
+      },
+      "pSlWithin": {
+        "1": 0.1667,
+        "2": 0.2,
+        "3": 0.2111,
+        "6": 0.3111
+      },
+      "realizedRWithin": {
+        "1": -0.1501,
+        "2": 0.0344,
+        "3": 0.0628,
+        "6": 0.3636
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2778,
+        "take_profit": 0.1778,
+        "time_exit": 0.4444,
+        "gap_stop": 0.0333,
+        "gap_target": 0.0667
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.45,
+      "gatedAvgR": 1.136,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.05,
+        "3": 0.1,
+        "6": 0.1
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.25,
+        "2": 0.6746,
+        "3": 0.7746,
+        "6": 1.136
+      }
+    },
+    {
+      "symbol": "LINK",
+      "name": "เชนลิงก์",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 175,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.4114,
+      "avgR": -0.0932,
+      "profitFactor": 0.807,
+      "pTpWithin": {
+        "1": 0.0457,
+        "2": 0.0686,
+        "3": 0.08,
+        "6": 0.1257
+      },
+      "pSlWithin": {
+        "1": 0.0971,
+        "2": 0.1714,
+        "3": 0.2457,
+        "6": 0.4114
+      },
+      "realizedRWithin": {
+        "1": -0.0827,
+        "2": -0.122,
+        "3": -0.1734,
+        "6": -0.0932
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.4114,
+        "take_profit": 0.1257,
+        "time_exit": 0.4629,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 11,
+      "gatedWinRate": 0.4545,
+      "gatedAvgR": 0.1365,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0909
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1818,
+        "2": -0.2727,
+        "3": -0.3636,
+        "6": 0.1365
+      }
+    },
+    {
+      "symbol": "META",
+      "name": "Meta",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 118,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4746,
+      "avgR": 0.1913,
+      "profitFactor": 1.4652,
+      "pTpWithin": {
+        "1": 0.0424,
+        "2": 0.0508,
+        "3": 0.0763,
+        "6": 0.161
+      },
+      "pSlWithin": {
+        "1": 0.1441,
+        "2": 0.1949,
+        "3": 0.2458,
+        "6": 0.3983
+      },
+      "realizedRWithin": {
+        "1": -0.0687,
+        "2": -0.1183,
+        "3": -0.0914,
+        "6": 0.1913
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3136,
+        "take_profit": 0.1102,
+        "time_exit": 0.4407,
+        "gap_stop": 0.0847,
+        "gap_target": 0.0508
+      },
+      "gatedTrades": 29,
+      "gatedWinRate": 0.4483,
+      "gatedAvgR": 0.0272,
+      "gatedPTpWithin": {
+        "1": 0.0345,
+        "2": 0.0345,
+        "3": 0.0345,
+        "6": 0.0345
+      },
+      "gatedRealizedRWithin": {
+        "1": 0.0346,
+        "2": -0.0446,
+        "3": -0.1489,
+        "6": 0.0272
+      }
+    },
+    {
+      "symbol": "MINT",
+      "name": "ไมเนอร์ อินเตอร์เนชั่นแนล",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 98,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3265,
+      "avgR": -0.1122,
+      "profitFactor": 0.7862,
+      "pTpWithin": {
+        "1": 0.051,
+        "2": 0.051,
+        "3": 0.0612,
+        "6": 0.0918
+      },
+      "pSlWithin": {
+        "1": 0.1429,
+        "2": 0.2449,
+        "3": 0.3367,
+        "6": 0.4592
+      },
+      "realizedRWithin": {
+        "1": -0.1288,
+        "2": -0.2344,
+        "3": -0.3165,
+        "6": -0.1122
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.4082,
+        "take_profit": 0.0612,
+        "time_exit": 0.449,
+        "gap_stop": 0.051,
+        "gap_target": 0.0306
+      },
+      "gatedTrades": 17,
+      "gatedWinRate": 0.2353,
+      "gatedAvgR": -0.4441,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0588,
+        "6": 0.0588
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2353,
+        "2": -0.4706,
+        "3": -0.4877,
+        "6": -0.4441
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 124,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4194,
+      "avgR": 0.0716,
+      "profitFactor": 1.1592,
+      "pTpWithin": {
+        "1": 0.0484,
+        "2": 0.0565,
+        "3": 0.0887,
+        "6": 0.1694
+      },
+      "pSlWithin": {
+        "1": 0.1371,
+        "2": 0.25,
+        "3": 0.3226,
+        "6": 0.3952
+      },
+      "realizedRWithin": {
+        "1": -0.0836,
+        "2": -0.2144,
+        "3": -0.2034,
+        "6": 0.0716
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2903,
+        "take_profit": 0.121,
+        "time_exit": 0.4355,
+        "gap_stop": 0.1048,
+        "gap_target": 0.0484
+      },
+      "gatedTrades": 23,
+      "gatedWinRate": 0.5217,
+      "gatedAvgR": 0.4134,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0435,
+        "6": 0.1304
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.087,
+        "2": -0.1739,
+        "3": -0.1764,
+        "6": 0.4134
+      }
+    },
+    {
+      "symbol": "NFLX",
+      "name": "Netflix",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 106,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4906,
+      "avgR": 0.1016,
+      "profitFactor": 1.2613,
+      "pTpWithin": {
+        "1": 0.066,
+        "2": 0.066,
+        "3": 0.0943,
+        "6": 0.1415
+      },
+      "pSlWithin": {
+        "1": 0.1321,
+        "2": 0.1981,
+        "3": 0.2358,
+        "6": 0.3491
+      },
+      "realizedRWithin": {
+        "1": -0.1112,
+        "2": -0.1773,
+        "3": -0.1531,
+        "6": 0.1016
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3302,
+        "take_profit": 0.0755,
+        "time_exit": 0.5094,
+        "gap_stop": 0.0189,
+        "gap_target": 0.066
+      },
+      "gatedTrades": 19,
+      "gatedWinRate": 0.5263,
+      "gatedAvgR": 0.4457,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.1053,
+        "6": 0.2105
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0526,
+        "2": -0.1053,
+        "3": 0.1632,
+        "6": 0.4457
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 116,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4483,
+      "avgR": -0.0142,
+      "profitFactor": 0.9658,
+      "pTpWithin": {
+        "1": 0.0776,
+        "2": 0.1034,
+        "3": 0.1293,
+        "6": 0.1638
+      },
+      "pSlWithin": {
+        "1": 0.1034,
+        "2": 0.1983,
+        "3": 0.25,
+        "6": 0.3793
+      },
+      "realizedRWithin": {
+        "1": -0.071,
+        "2": -0.1384,
+        "3": -0.1706,
+        "6": -0.0142
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3103,
+        "take_profit": 0.1293,
+        "time_exit": 0.4569,
+        "gap_stop": 0.069,
+        "gap_target": 0.0345
+      },
+      "gatedTrades": 11,
+      "gatedWinRate": 0.5455,
+      "gatedAvgR": 0.2209,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0909,
+        "3": 0.0909,
+        "6": 0.0909
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0408,
+        "3": -0.0408,
+        "6": 0.2209
+      }
+    },
+    {
+      "symbol": "NZDUSD",
+      "name": "ดอลลาร์นิวซีแลนด์/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 90,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:57.000Z",
+      "winRate": 0.3556,
+      "avgR": -0.2489,
+      "profitFactor": 0.4835,
+      "pTpWithin": {
+        "1": 0.1111,
+        "2": 0.1111,
+        "3": 0.1222,
+        "6": 0.1444
+      },
+      "pSlWithin": {
+        "1": 0.2222,
+        "2": 0.3111,
+        "3": 0.3444,
+        "6": 0.5
+      },
+      "realizedRWithin": {
+        "1": -0.1683,
+        "2": -0.2629,
+        "3": -0.2944,
+        "6": -0.2489
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.4333,
+        "take_profit": 0.0333,
+        "time_exit": 0.3556,
+        "gap_stop": 0.0667,
+        "gap_target": 0.1111
+      },
+      "gatedTrades": 17,
+      "gatedWinRate": 0.2353,
+      "gatedAvgR": -0.4908,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2353,
+        "2": -0.3529,
+        "3": -0.4706,
+        "6": -0.4908
+      }
+    },
+    {
+      "symbol": "OR",
+      "name": "ปตท. น้ำมันและการค้าปลีก",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 95,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4632,
+      "avgR": 0.1536,
+      "profitFactor": 1.404,
+      "pTpWithin": {
+        "1": 0.0105,
+        "2": 0.0526,
+        "3": 0.0632,
+        "6": 0.1684
+      },
+      "pSlWithin": {
+        "1": 0.0526,
+        "2": 0.1368,
+        "3": 0.1895,
+        "6": 0.2947
+      },
+      "realizedRWithin": {
+        "1": -0.0526,
+        "2": -0.093,
+        "3": -0.0908,
+        "6": 0.1536
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2737,
+        "take_profit": 0.1474,
+        "time_exit": 0.5368,
+        "gap_stop": 0.0211,
+        "gap_target": 0.0211
+      },
+      "gatedTrades": 9,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.2971,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1111,
+        "2": -0.1111,
+        "3": -0.2222,
+        "6": -0.2971
+      }
+    },
+    {
+      "symbol": "PTT",
+      "name": "ปตท.",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 101,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.396,
+      "avgR": -0.0105,
+      "profitFactor": 0.9785,
+      "pTpWithin": {
+        "1": 0.0198,
+        "2": 0.0198,
+        "3": 0.0396,
+        "6": 0.0891
+      },
+      "pSlWithin": {
+        "1": 0.099,
+        "2": 0.2475,
+        "3": 0.2673,
+        "6": 0.4158
+      },
+      "realizedRWithin": {
+        "1": -0.0776,
+        "2": -0.2529,
+        "3": -0.1562,
+        "6": -0.0105
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3366,
+        "take_profit": 0.0792,
+        "time_exit": 0.495,
+        "gap_stop": 0.0792,
+        "gap_target": 0.0099
+      },
+      "gatedTrades": 9,
+      "gatedWinRate": 0.2222,
+      "gatedAvgR": -0.5481,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1111,
+        "2": -0.4444,
+        "3": -0.4444,
+        "6": -0.5481
+      }
+    },
+    {
+      "symbol": "PTTEP",
+      "name": "ปตท.สผ.",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 114,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3246,
+      "avgR": -0.2165,
+      "profitFactor": 0.6072,
+      "pTpWithin": {
+        "1": 0.0263,
+        "2": 0.0526,
+        "3": 0.0965,
+        "6": 0.1667
+      },
+      "pSlWithin": {
+        "1": 0.1316,
+        "2": 0.2456,
+        "3": 0.3333,
+        "6": 0.4737
+      },
+      "realizedRWithin": {
+        "1": -0.1025,
+        "2": -0.22,
+        "3": -0.2384,
+        "6": -0.2165
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3596,
+        "take_profit": 0.1579,
+        "time_exit": 0.3596,
+        "gap_stop": 0.114,
+        "gap_target": 0.0088
+      },
+      "gatedTrades": 14,
+      "gatedWinRate": 0.2143,
+      "gatedAvgR": -0.5318,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0714
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2143,
+        "2": -0.4509,
+        "3": -0.5224,
+        "6": -0.5318
+      }
+    },
+    {
+      "symbol": "QQQ",
+      "name": "ดัชนี Nasdaq 100 (QQQ)",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 114,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.5,
+      "avgR": 0.0608,
+      "profitFactor": 1.1479,
+      "pTpWithin": {
+        "1": 0.1053,
+        "2": 0.1491,
+        "3": 0.1491,
+        "6": 0.1842
+      },
+      "pSlWithin": {
+        "1": 0.1053,
+        "2": 0.1842,
+        "3": 0.2544,
+        "6": 0.3772
+      },
+      "realizedRWithin": {
+        "1": -0.0482,
+        "2": -0.0577,
+        "3": -0.1324,
+        "6": 0.0608
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2807,
+        "take_profit": 0.1579,
+        "time_exit": 0.4386,
+        "gap_stop": 0.0965,
+        "gap_target": 0.0263
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.4091,
+      "gatedAvgR": -0.1262,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1364,
+        "2": -0.2895,
+        "3": -0.2895,
+        "6": -0.1262
+      }
+    },
+    {
+      "symbol": "SCB",
+      "name": "เอสซีบี เอกซ์",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 81,
+      "reliable": true,
+      "bars": 1050,
+      "firstBar": "2022-04-20T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4198,
+      "avgR": -0.178,
+      "profitFactor": 0.6992,
+      "pTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0123,
+        "6": 0.0741
+      },
+      "pSlWithin": {
+        "1": 0.0988,
+        "2": 0.1605,
+        "3": 0.2346,
+        "6": 0.3827
+      },
+      "realizedRWithin": {
+        "1": -0.0864,
+        "2": -0.1507,
+        "3": -0.2315,
+        "6": -0.178
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3333,
+        "take_profit": 0.0494,
+        "time_exit": 0.5432,
+        "gap_stop": 0.0494,
+        "gap_target": 0.0247
+      },
+      "gatedTrades": 14,
+      "gatedWinRate": 0.3571,
+      "gatedAvgR": -0.2316,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0714,
+        "3": -0.0714,
+        "6": -0.2316
+      }
+    },
+    {
+      "symbol": "SCC",
+      "name": "ปูนซิเมนต์ไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 96,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.4688,
+      "avgR": 0.0877,
+      "profitFactor": 1.217,
+      "pTpWithin": {
+        "1": 0.0833,
+        "2": 0.1354,
+        "3": 0.1458,
+        "6": 0.2083
+      },
+      "pSlWithin": {
+        "1": 0.125,
+        "2": 0.1875,
+        "3": 0.2188,
+        "6": 0.3333
+      },
+      "realizedRWithin": {
+        "1": -0.1086,
+        "2": -0.1144,
+        "3": -0.111,
+        "6": 0.0877
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2917,
+        "take_profit": 0.1563,
+        "time_exit": 0.4583,
+        "gap_stop": 0.0417,
+        "gap_target": 0.0521
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.5909,
+      "gatedAvgR": 0.3739,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0455,
+        "3": 0.0455,
+        "6": 0.1364
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0909,
+        "2": -0.0455,
+        "3": -0.0909,
+        "6": 0.3739
+      }
+    },
+    {
+      "symbol": "SOL",
+      "name": "โซลานา",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 158,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.443,
+      "avgR": 0.1179,
+      "profitFactor": 1.2708,
+      "pTpWithin": {
+        "1": 0.0443,
+        "2": 0.057,
+        "3": 0.1013,
+        "6": 0.1329
+      },
+      "pSlWithin": {
+        "1": 0.1203,
+        "2": 0.1899,
+        "3": 0.2532,
+        "6": 0.3797
+      },
+      "realizedRWithin": {
+        "1": -0.1064,
+        "2": -0.1507,
+        "3": -0.038,
+        "6": 0.1179
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3797,
+        "take_profit": 0.1266,
+        "time_exit": 0.4873,
+        "gap_stop": 0,
+        "gap_target": 0.0063
+      },
+      "gatedTrades": 17,
+      "gatedWinRate": 0.4118,
+      "gatedAvgR": 0.6595,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0588,
+        "3": 0.0588,
+        "6": 0.1765
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2353,
+        "2": -0.176,
+        "3": -0.2349,
+        "6": 0.6595
+      }
+    },
+    {
+      "symbol": "SPY",
+      "name": "ดัชนี S&P 500 (SPY)",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 124,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.4113,
+      "avgR": -0.1165,
+      "profitFactor": 0.7734,
+      "pTpWithin": {
+        "1": 0.0726,
+        "2": 0.0887,
+        "3": 0.1129,
+        "6": 0.1613
+      },
+      "pSlWithin": {
+        "1": 0.1371,
+        "2": 0.2661,
+        "3": 0.3306,
+        "6": 0.5081
+      },
+      "realizedRWithin": {
+        "1": -0.0628,
+        "2": -0.204,
+        "3": -0.2071,
+        "6": -0.1165
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3952,
+        "take_profit": 0.121,
+        "time_exit": 0.3306,
+        "gap_stop": 0.1129,
+        "gap_target": 0.0403
+      },
+      "gatedTrades": 27,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.3273,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.037,
+        "6": 0.037
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.037,
+        "2": -0.2222,
+        "3": -0.2116,
+        "6": -0.3273
+      }
+    },
+    {
+      "symbol": "TRUE",
+      "name": "ทรู คอร์ปอเรชั่น",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 94,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.383,
+      "avgR": -0.0187,
+      "profitFactor": 0.9542,
+      "pTpWithin": {
+        "1": 0.0745,
+        "2": 0.1064,
+        "3": 0.117,
+        "6": 0.1596
+      },
+      "pSlWithin": {
+        "1": 0.1596,
+        "2": 0.1809,
+        "3": 0.2979,
+        "6": 0.4043
+      },
+      "realizedRWithin": {
+        "1": -0.1257,
+        "2": -0.1149,
+        "3": -0.2017,
+        "6": -0.0187
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3617,
+        "take_profit": 0.1064,
+        "time_exit": 0.4362,
+        "gap_stop": 0.0426,
+        "gap_target": 0.0532
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.2308,
+      "gatedAvgR": -0.2103,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2308,
+        "2": -0.3077,
+        "3": -0.3077,
+        "6": -0.2103
+      }
+    },
+    {
+      "symbol": "TSLA",
+      "name": "Tesla",
+      "market": "US_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 109,
+      "reliable": true,
+      "bars": 1253,
+      "firstBar": "2021-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T13:30:00.000Z",
+      "winRate": 0.3945,
+      "avgR": -0.0395,
+      "profitFactor": 0.9146,
+      "pTpWithin": {
+        "1": 0.0183,
+        "2": 0.0367,
+        "3": 0.0826,
+        "6": 0.1101
+      },
+      "pSlWithin": {
+        "1": 0.1009,
+        "2": 0.1651,
+        "3": 0.2477,
+        "6": 0.3761
+      },
+      "realizedRWithin": {
+        "1": -0.0626,
+        "2": -0.0968,
+        "3": -0.0971,
+        "6": -0.0395
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2844,
+        "take_profit": 0.1009,
+        "time_exit": 0.5138,
+        "gap_stop": 0.0917,
+        "gap_target": 0.0092
+      },
+      "gatedTrades": 9,
+      "gatedWinRate": 0.4444,
+      "gatedAvgR": 0.3638,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.1111,
+        "3": 0.2222,
+        "6": 0.2222
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0.261,
+        "3": 0.4615,
+        "6": 0.3638
+      }
+    },
+    {
+      "symbol": "TTB",
+      "name": "ทีเอ็มบีธนชาต",
+      "market": "TH_STOCK",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 89,
+      "reliable": true,
+      "bars": 1216,
+      "firstBar": "2021-08-19T03:00:00.000Z",
+      "lastBar": "2026-08-17T03:00:00.000Z",
+      "winRate": 0.3708,
+      "avgR": 0.0309,
+      "profitFactor": 1.0806,
+      "pTpWithin": {
+        "1": 0.0674,
+        "2": 0.0674,
+        "3": 0.0787,
+        "6": 0.1236
+      },
+      "pSlWithin": {
+        "1": 0.1573,
+        "2": 0.2247,
+        "3": 0.2921,
+        "6": 0.382
+      },
+      "realizedRWithin": {
+        "1": -0.1218,
+        "2": -0.1892,
+        "3": -0.2341,
+        "6": 0.0309
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3258,
+        "take_profit": 0.1011,
+        "time_exit": 0.4944,
+        "gap_stop": 0.0562,
+        "gap_target": 0.0225
+      },
+      "gatedTrades": 10,
+      "gatedWinRate": 0.4,
+      "gatedAvgR": 0.1185,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1,
+        "2": -0.3,
+        "3": -0.3,
+        "6": 0.1185
+      }
+    },
+    {
+      "symbol": "USDCAD",
+      "name": "ดอลลาร์/ดอลลาร์แคนาดา",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 94,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:03.000Z",
+      "winRate": 0.4468,
+      "avgR": 0.1842,
+      "profitFactor": 1.6236,
+      "pTpWithin": {
+        "1": 0.0851,
+        "2": 0.0957,
+        "3": 0.117,
+        "6": 0.1809
+      },
+      "pSlWithin": {
+        "1": 0.0319,
+        "2": 0.0957,
+        "3": 0.117,
+        "6": 0.1809
+      },
+      "realizedRWithin": {
+        "1": -0.0287,
+        "2": -0.087,
+        "3": -0.0791,
+        "6": 0.1842
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1702,
+        "take_profit": 0.0957,
+        "time_exit": 0.6383,
+        "gap_stop": 0.0106,
+        "gap_target": 0.0851
+      },
+      "gatedTrades": 17,
+      "gatedWinRate": 0.5294,
+      "gatedAvgR": 0.1584,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1176
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0588,
+        "2": -0.1176,
+        "3": -0.1176,
+        "6": 0.1584
+      }
+    },
+    {
+      "symbol": "USDCHF",
+      "name": "ดอลลาร์/ฟรังก์สวิส",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 91,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:05.000Z",
+      "winRate": 0.4176,
+      "avgR": -0.1641,
+      "profitFactor": 0.5845,
+      "pTpWithin": {
+        "1": 0.1429,
+        "2": 0.1978,
+        "3": 0.1978,
+        "6": 0.2527
+      },
+      "pSlWithin": {
+        "1": 0.0989,
+        "2": 0.1868,
+        "3": 0.2418,
+        "6": 0.3407
+      },
+      "realizedRWithin": {
+        "1": -0.0738,
+        "2": -0.1412,
+        "3": -0.1968,
+        "6": -0.1641
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3187,
+        "take_profit": 0.1868,
+        "time_exit": 0.4066,
+        "gap_stop": 0.022,
+        "gap_target": 0.0659
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.2381,
+      "gatedAvgR": -0.4629,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1429,
+        "2": -0.2381,
+        "3": -0.2883,
+        "6": -0.4629
+      }
+    },
+    {
+      "symbol": "USDJPY",
+      "name": "ดอลลาร์/เยน",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 100,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:04.000Z",
+      "winRate": 0.42,
+      "avgR": -0.147,
+      "profitFactor": 0.6199,
+      "pTpWithin": {
+        "1": 0.09,
+        "2": 0.1,
+        "3": 0.13,
+        "6": 0.17
+      },
+      "pSlWithin": {
+        "1": 0.15,
+        "2": 0.23,
+        "3": 0.28,
+        "6": 0.4
+      },
+      "realizedRWithin": {
+        "1": -0.0796,
+        "2": -0.1555,
+        "3": -0.1635,
+        "6": -0.147
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.29,
+        "take_profit": 0.13,
+        "time_exit": 0.43,
+        "gap_stop": 0.11,
+        "gap_target": 0.04
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.5385,
+      "gatedAvgR": -0.1145,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.1699,
+        "3": -0.2468,
+        "6": -0.1145
+      }
+    },
+    {
+      "symbol": "USDTHB",
+      "name": "ดอลลาร์/บาท",
+      "market": "FOREX",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 99,
+      "reliable": true,
+      "bars": 1298,
+      "firstBar": "2021-08-18T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:45:04.000Z",
+      "winRate": 0.5354,
+      "avgR": 0.1746,
+      "profitFactor": 1.5852,
+      "pTpWithin": {
+        "1": 0.1212,
+        "2": 0.1414,
+        "3": 0.1414,
+        "6": 0.2222
+      },
+      "pSlWithin": {
+        "1": 0.0707,
+        "2": 0.101,
+        "3": 0.1515,
+        "6": 0.2626
+      },
+      "realizedRWithin": {
+        "1": -0.0492,
+        "2": -0.069,
+        "3": -0.1195,
+        "6": 0.1746
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2424,
+        "take_profit": 0.1515,
+        "time_exit": 0.5152,
+        "gap_stop": 0.0202,
+        "gap_target": 0.0707
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.5909,
+      "gatedAvgR": 0.2586,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0455
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0909,
+        "2": -0.0909,
+        "3": -0.0909,
+        "6": 0.2586
+      }
+    },
+    {
+      "symbol": "XAGUSD",
+      "name": "โลหะเงิน",
+      "market": "GOLD",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 111,
+      "reliable": true,
+      "bars": 1255,
+      "firstBar": "2021-08-19T04:00:00.000Z",
+      "lastBar": "2026-08-17T04:00:00.000Z",
+      "winRate": 0.4234,
+      "avgR": 0.228,
+      "profitFactor": 1.4557,
+      "pTpWithin": {
+        "1": 0.045,
+        "2": 0.0721,
+        "3": 0.1081,
+        "6": 0.2162
+      },
+      "pSlWithin": {
+        "1": 0.0811,
+        "2": 0.1532,
+        "3": 0.2883,
+        "6": 0.4144
+      },
+      "realizedRWithin": {
+        "1": -0.0495,
+        "2": -0.1127,
+        "3": -0.2276,
+        "6": 0.228
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2432,
+        "take_profit": 0.1171,
+        "time_exit": 0.3694,
+        "gap_stop": 0.1712,
+        "gap_target": 0.0991
+      },
+      "gatedTrades": 12,
+      "gatedWinRate": 0.5833,
+      "gatedAvgR": 1.6285,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0833,
+        "6": 0.4167
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0833,
+        "2": -0.1809,
+        "3": -0.1775,
+        "6": 1.6285
+      }
+    },
+    {
+      "symbol": "XAUUSD",
+      "name": "ทองคำ",
+      "market": "GOLD",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 105,
+      "reliable": true,
+      "bars": 1255,
+      "firstBar": "2021-08-19T04:00:00.000Z",
+      "lastBar": "2026-08-17T04:00:00.000Z",
+      "winRate": 0.4667,
+      "avgR": 0.0056,
+      "profitFactor": 1.0133,
+      "pTpWithin": {
+        "1": 0.0762,
+        "2": 0.1143,
+        "3": 0.1333,
+        "6": 0.2095
+      },
+      "pSlWithin": {
+        "1": 0.1429,
+        "2": 0.2381,
+        "3": 0.3333,
+        "6": 0.3905
+      },
+      "realizedRWithin": {
+        "1": -0.0771,
+        "2": -0.1439,
+        "3": -0.2221,
+        "6": 0.0056
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3333,
+        "take_profit": 0.2,
+        "time_exit": 0.4,
+        "gap_stop": 0.0571,
+        "gap_target": 0.0095
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.4762,
+      "gatedAvgR": 0.195,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0476,
+        "3": 0.0476,
+        "6": 0.0952
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0476,
+        "2": -0.0234,
+        "3": -0.1186,
+        "6": 0.195
+      }
+    },
+    {
+      "symbol": "XRP",
+      "name": "XRP",
+      "market": "CRYPTO",
+      "timeframe": "1D",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 168,
+      "reliable": true,
+      "bars": 1825,
+      "firstBar": "2021-08-19T00:00:00.000Z",
+      "lastBar": "2026-08-17T00:00:00.000Z",
+      "winRate": 0.3571,
+      "avgR": -0.0716,
+      "profitFactor": 0.8404,
+      "pTpWithin": {
+        "1": 0.0476,
+        "2": 0.0714,
+        "3": 0.0774,
+        "6": 0.131
+      },
+      "pSlWithin": {
+        "1": 0.0952,
+        "2": 0.1607,
+        "3": 0.2381,
+        "6": 0.369
+      },
+      "realizedRWithin": {
+        "1": -0.0453,
+        "2": -0.0631,
+        "3": -0.1285,
+        "6": -0.0716
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.369,
+        "take_profit": 0.131,
+        "time_exit": 0.5,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 25,
+      "gatedWinRate": 0.28,
+      "gatedAvgR": -0.3334,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.04
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.16,
+        "2": -0.28,
+        "3": -0.44,
+        "6": -0.3334
+      }
+    },
+    {
+      "symbol": "AAPL",
+      "name": "Apple",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 140,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.5643,
+      "avgR": 0.2763,
+      "profitFactor": 1.8185,
+      "pTpWithin": {
+        "1": 0.1214,
+        "2": 0.1714,
+        "3": 0.2,
+        "6": 0.2786
+      },
+      "pSlWithin": {
+        "1": 0.0357,
+        "2": 0.0714,
+        "3": 0.1357,
+        "6": 0.2786
+      },
+      "realizedRWithin": {
+        "1": 0.2074,
+        "2": 0.23,
+        "3": 0.2017,
+        "6": 0.2763
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2286,
+        "take_profit": 0.2571,
+        "time_exit": 0.4429,
+        "gap_stop": 0.05,
+        "gap_target": 0.0214
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.45,
+      "gatedAvgR": 0.0487,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.05,
+        "3": 0.1,
+        "6": 0.15
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.05,
+        "2": 0.0746,
+        "3": 0.1182,
+        "6": 0.0487
+      }
+    },
+    {
+      "symbol": "ADA",
+      "name": "คาร์ดาโน",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 867,
+      "reliable": true,
+      "bars": 8726,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:04.000Z",
+      "winRate": 0.5502,
+      "avgR": 0.082,
+      "profitFactor": 1.2407,
+      "pTpWithin": {
+        "1": 0.1303,
+        "2": 0.1753,
+        "3": 0.2122,
+        "6": 0.2941
+      },
+      "pSlWithin": {
+        "1": 0.0611,
+        "2": 0.1292,
+        "3": 0.1788,
+        "6": 0.2849
+      },
+      "realizedRWithin": {
+        "1": -0.0145,
+        "2": -0.0385,
+        "3": -0.0405,
+        "6": 0.082
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2814,
+        "take_profit": 0.2849,
+        "time_exit": 0.421,
+        "gap_stop": 0.0035,
+        "gap_target": 0.0092
+      },
+      "gatedTrades": 166,
+      "gatedWinRate": 0.4578,
+      "gatedAvgR": 0.0936,
+      "gatedPTpWithin": {
+        "1": 0.012,
+        "2": 0.0422,
+        "3": 0.0663,
+        "6": 0.1506
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0558,
+        "2": -0.0967,
+        "3": -0.1171,
+        "6": 0.0936
+      }
+    },
+    {
+      "symbol": "ADVANC",
+      "name": "แอดวานซ์ อินโฟร์ เซอร์วิส",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 126,
+      "reliable": true,
+      "bars": 1678,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.5,
+      "avgR": 0.1296,
+      "profitFactor": 1.4066,
+      "pTpWithin": {
+        "1": 0.0873,
+        "2": 0.119,
+        "3": 0.1429,
+        "6": 0.246
+      },
+      "pSlWithin": {
+        "1": 0.0159,
+        "2": 0.0714,
+        "3": 0.1032,
+        "6": 0.2222
+      },
+      "realizedRWithin": {
+        "1": -0.0004,
+        "2": -0.0296,
+        "3": -0.0566,
+        "6": 0.1296
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1905,
+        "take_profit": 0.2222,
+        "time_exit": 0.5317,
+        "gap_stop": 0.0317,
+        "gap_target": 0.0238
+      },
+      "gatedTrades": 11,
+      "gatedWinRate": 0.4545,
+      "gatedAvgR": 0.2896,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0909,
+        "3": 0.0909,
+        "6": 0.0909
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0909,
+        "2": 0.0909,
+        "3": 0.0909,
+        "6": 0.2896
+      }
+    },
+    {
+      "symbol": "AMD",
+      "name": "AMD",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 132,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4318,
+      "avgR": -0.2388,
+      "profitFactor": 0.6896,
+      "pTpWithin": {
+        "1": 0.0758,
+        "2": 0.0758,
+        "3": 0.1061,
+        "6": 0.2197
+      },
+      "pSlWithin": {
+        "1": 0.053,
+        "2": 0.1061,
+        "3": 0.1894,
+        "6": 0.4394
+      },
+      "realizedRWithin": {
+        "1": -0.0252,
+        "2": -0.1115,
+        "3": -0.1922,
+        "6": -0.2388
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3106,
+        "take_profit": 0.1894,
+        "time_exit": 0.3409,
+        "gap_stop": 0.1288,
+        "gap_target": 0.0303
+      },
+      "gatedTrades": 26,
+      "gatedWinRate": 0.4615,
+      "gatedAvgR": 0.0443,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0385,
+        "6": 0.1923
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.2502,
+        "3": -0.2245,
+        "6": 0.0443
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 144,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.5208,
+      "avgR": -0.0624,
+      "profitFactor": 0.8422,
+      "pTpWithin": {
+        "1": 0.1458,
+        "2": 0.1806,
+        "3": 0.2222,
+        "6": 0.2708
+      },
+      "pSlWithin": {
+        "1": 0.0417,
+        "2": 0.125,
+        "3": 0.1736,
+        "6": 0.2917
+      },
+      "realizedRWithin": {
+        "1": -0.0063,
+        "2": -0.106,
+        "3": -0.0888,
+        "6": -0.0624
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2361,
+        "take_profit": 0.2361,
+        "time_exit": 0.4375,
+        "gap_stop": 0.0556,
+        "gap_target": 0.0347
+      },
+      "gatedTrades": 28,
+      "gatedWinRate": 0.4643,
+      "gatedAvgR": 0.1112,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0357,
+        "6": 0.1786
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0357,
+        "3": 0.003,
+        "6": 0.1112
+      }
+    },
+    {
+      "symbol": "AOT",
+      "name": "ท่าอากาศยานไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 110,
+      "reliable": true,
+      "bars": 1679,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4091,
+      "avgR": -0.0585,
+      "profitFactor": 0.853,
+      "pTpWithin": {
+        "1": 0.0364,
+        "2": 0.0727,
+        "3": 0.0818,
+        "6": 0.1364
+      },
+      "pSlWithin": {
+        "1": 0.0364,
+        "2": 0.0909,
+        "3": 0.1273,
+        "6": 0.2818
+      },
+      "realizedRWithin": {
+        "1": -0.0218,
+        "2": -0.0581,
+        "3": -0.0849,
+        "6": -0.0585
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2455,
+        "take_profit": 0.1182,
+        "time_exit": 0.5818,
+        "gap_stop": 0.0364,
+        "gap_target": 0.0182
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.2381,
+      "gatedAvgR": -0.4164,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0952,
+        "3": -0.0952,
+        "6": -0.4164
+      }
+    },
+    {
+      "symbol": "AUDJPY",
+      "name": "ดอลลาร์ออสเตรเลีย/เยน",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 581,
+      "reliable": true,
+      "bars": 6140,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:43.000Z",
+      "winRate": 0.4785,
+      "avgR": -0.0124,
+      "profitFactor": 0.8975,
+      "pTpWithin": {
+        "1": 0.0275,
+        "2": 0.0413,
+        "3": 0.062,
+        "6": 0.1033
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0034,
+        "3": 0.0052,
+        "6": 0.0207
+      },
+      "realizedRWithin": {
+        "1": 0.0048,
+        "2": 0.0075,
+        "3": 0.0149,
+        "6": -0.0124
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0189,
+        "take_profit": 0.1015,
+        "time_exit": 0.8761,
+        "gap_stop": 0.0017,
+        "gap_target": 0.0017
+      },
+      "gatedTrades": 3,
+      "gatedWinRate": 0,
+      "gatedAvgR": -1,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.3333,
+        "6": -1
+      }
+    },
+    {
+      "symbol": "AUDTHB",
+      "name": "ดอลลาร์ออสเตรเลีย/บาท",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 644,
+      "reliable": true,
+      "bars": 6120,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:39:57.000Z",
+      "winRate": 0.4953,
+      "avgR": 0.014,
+      "profitFactor": 1.1393,
+      "pTpWithin": {
+        "1": 0.0047,
+        "2": 0.0217,
+        "3": 0.0326,
+        "6": 0.0792
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0062
+      },
+      "realizedRWithin": {
+        "1": 0.0008,
+        "2": 0.0061,
+        "3": 0.0101,
+        "6": 0.014
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0062,
+        "take_profit": 0.0714,
+        "time_exit": 0.9146,
+        "gap_stop": 0,
+        "gap_target": 0.0078
+      },
+      "gatedTrades": 6,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": 0.4457,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1667
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.4457
+      }
+    },
+    {
+      "symbol": "AUDUSD",
+      "name": "ดอลลาร์ออสเตรเลีย/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 597,
+      "reliable": true,
+      "bars": 6164,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:41:57.000Z",
+      "winRate": 0.4841,
+      "avgR": -0.0068,
+      "profitFactor": 0.9438,
+      "pTpWithin": {
+        "1": 0.0201,
+        "2": 0.0536,
+        "3": 0.0787,
+        "6": 0.1792
+      },
+      "pSlWithin": {
+        "1": 0.0034,
+        "2": 0.005,
+        "3": 0.0101,
+        "6": 0.0285
+      },
+      "realizedRWithin": {
+        "1": -0.0011,
+        "2": 0.0104,
+        "3": 0.0146,
+        "6": -0.0068
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0235,
+        "take_profit": 0.1709,
+        "time_exit": 0.7923,
+        "gap_stop": 0.005,
+        "gap_target": 0.0084
+      },
+      "gatedTrades": 6,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": -0.1589,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1667,
+        "2": -0.1667,
+        "3": -0.3333,
+        "6": -0.1589
+      }
+    },
+    {
+      "symbol": "AVAX",
+      "name": "อวาแลนช์",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 873,
+      "reliable": true,
+      "bars": 8726,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:21.000Z",
+      "winRate": 0.4777,
+      "avgR": 0.0019,
+      "profitFactor": 1.0047,
+      "pTpWithin": {
+        "1": 0.1203,
+        "2": 0.1604,
+        "3": 0.1913,
+        "6": 0.2589
+      },
+      "pSlWithin": {
+        "1": 0.0619,
+        "2": 0.1432,
+        "3": 0.2131,
+        "6": 0.3391
+      },
+      "realizedRWithin": {
+        "1": -0.0099,
+        "2": -0.0557,
+        "3": -0.0744,
+        "6": 0.0019
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3356,
+        "take_profit": 0.252,
+        "time_exit": 0.4021,
+        "gap_stop": 0.0034,
+        "gap_target": 0.0069
+      },
+      "gatedTrades": 150,
+      "gatedWinRate": 0.3867,
+      "gatedAvgR": -0.082,
+      "gatedPTpWithin": {
+        "1": 0.0133,
+        "2": 0.0267,
+        "3": 0.0667,
+        "6": 0.1133
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0684,
+        "2": -0.1415,
+        "3": -0.1616,
+        "6": -0.082
+      }
+    },
+    {
+      "symbol": "BBL",
+      "name": "ธนาคารกรุงเทพ",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 126,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4365,
+      "avgR": 0.1382,
+      "profitFactor": 1.5348,
+      "pTpWithin": {
+        "1": 0.0952,
+        "2": 0.1349,
+        "3": 0.1587,
+        "6": 0.254
+      },
+      "pSlWithin": {
+        "1": 0.0794,
+        "2": 0.1032,
+        "3": 0.127,
+        "6": 0.2063
+      },
+      "realizedRWithin": {
+        "1": -0.0361,
+        "2": -0.0408,
+        "3": -0.0336,
+        "6": 0.1382
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1667,
+        "take_profit": 0.2063,
+        "time_exit": 0.5397,
+        "gap_stop": 0.0397,
+        "gap_target": 0.0476
+      },
+      "gatedTrades": 13,
+      "gatedWinRate": 0.5385,
+      "gatedAvgR": 0.3996,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0769,
+        "2": -0.0769,
+        "3": -0.0769,
+        "6": 0.3996
+      }
+    },
+    {
+      "symbol": "BDMS",
+      "name": "กรุงเทพดุสิตเวชการ",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 142,
+      "reliable": true,
+      "bars": 1677,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3873,
+      "avgR": -0.2333,
+      "profitFactor": 0.5457,
+      "pTpWithin": {
+        "1": 0.1408,
+        "2": 0.1408,
+        "3": 0.1901,
+        "6": 0.2183
+      },
+      "pSlWithin": {
+        "1": 0.1338,
+        "2": 0.1761,
+        "3": 0.2394,
+        "6": 0.331
+      },
+      "realizedRWithin": {
+        "1": -0.0882,
+        "2": -0.2799,
+        "3": -0.2935,
+        "6": -0.2333
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2817,
+        "take_profit": 0.162,
+        "time_exit": 0.4507,
+        "gap_stop": 0.0493,
+        "gap_target": 0.0563
+      },
+      "gatedTrades": 19,
+      "gatedWinRate": 0.4737,
+      "gatedAvgR": 0.1444,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0526,
+        "6": 0.0526
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1053,
+        "2": -0.1053,
+        "3": -0.0075,
+        "6": 0.1444
+      }
+    },
+    {
+      "symbol": "BNB",
+      "name": "BNB",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 843,
+      "reliable": true,
+      "bars": 8729,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:55.000Z",
+      "winRate": 0.4982,
+      "avgR": -0.0042,
+      "profitFactor": 0.9867,
+      "pTpWithin": {
+        "1": 0.1151,
+        "2": 0.1661,
+        "3": 0.1969,
+        "6": 0.2823
+      },
+      "pSlWithin": {
+        "1": 0.0356,
+        "2": 0.0819,
+        "3": 0.1246,
+        "6": 0.2135
+      },
+      "realizedRWithin": {
+        "1": 0.0089,
+        "2": 0.0035,
+        "3": -0.0106,
+        "6": -0.0042
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2112,
+        "take_profit": 0.2776,
+        "time_exit": 0.5042,
+        "gap_stop": 0.0024,
+        "gap_target": 0.0047
+      },
+      "gatedTrades": 85,
+      "gatedWinRate": 0.3882,
+      "gatedAvgR": -0.0295,
+      "gatedPTpWithin": {
+        "1": 0.0471,
+        "2": 0.0588,
+        "3": 0.0706,
+        "6": 0.1529
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0093,
+        "2": -0.0683,
+        "3": -0.1494,
+        "6": -0.0295
+      }
+    },
+    {
+      "symbol": "BTC",
+      "name": "บิตคอยน์",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 842,
+      "reliable": true,
+      "bars": 8729,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:54.000Z",
+      "winRate": 0.5012,
+      "avgR": -0.0002,
+      "profitFactor": 0.9995,
+      "pTpWithin": {
+        "1": 0.1045,
+        "2": 0.1473,
+        "3": 0.1793,
+        "6": 0.2506
+      },
+      "pSlWithin": {
+        "1": 0.0321,
+        "2": 0.0748,
+        "3": 0.1128,
+        "6": 0.1888
+      },
+      "realizedRWithin": {
+        "1": 0.0003,
+        "2": -0.0104,
+        "3": -0.0112,
+        "6": -0.0002
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1853,
+        "take_profit": 0.2435,
+        "time_exit": 0.5606,
+        "gap_stop": 0.0036,
+        "gap_target": 0.0071
+      },
+      "gatedTrades": 109,
+      "gatedWinRate": 0.4128,
+      "gatedAvgR": 0.0228,
+      "gatedPTpWithin": {
+        "1": 0.0092,
+        "2": 0.0092,
+        "3": 0.0642,
+        "6": 0.1193
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0453,
+        "2": -0.1554,
+        "3": -0.082,
+        "6": 0.0228
+      }
+    },
+    {
+      "symbol": "CPALL",
+      "name": "ซีพี ออลล์",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 120,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4917,
+      "avgR": 0.0988,
+      "profitFactor": 1.2439,
+      "pTpWithin": {
+        "1": 0.0833,
+        "2": 0.1083,
+        "3": 0.1583,
+        "6": 0.1917
+      },
+      "pSlWithin": {
+        "1": 0.0833,
+        "2": 0.15,
+        "3": 0.225,
+        "6": 0.325
+      },
+      "realizedRWithin": {
+        "1": -0.0478,
+        "2": -0.0972,
+        "3": -0.1334,
+        "6": 0.0988
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2833,
+        "take_profit": 0.1583,
+        "time_exit": 0.4833,
+        "gap_stop": 0.0417,
+        "gap_target": 0.0333
+      },
+      "gatedTrades": 12,
+      "gatedWinRate": 0.75,
+      "gatedAvgR": 0.6386,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0833,
+        "3": -0.0833,
+        "6": 0.6386
+      }
+    },
+    {
+      "symbol": "CPN",
+      "name": "เซ็นทรัลพัฒนา",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 134,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4925,
+      "avgR": 0.0339,
+      "profitFactor": 1.0935,
+      "pTpWithin": {
+        "1": 0.1119,
+        "2": 0.1493,
+        "3": 0.1716,
+        "6": 0.2239
+      },
+      "pSlWithin": {
+        "1": 0.0299,
+        "2": 0.1119,
+        "3": 0.1567,
+        "6": 0.2612
+      },
+      "realizedRWithin": {
+        "1": 0.0038,
+        "2": -0.087,
+        "3": -0.0829,
+        "6": 0.0339
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1866,
+        "take_profit": 0.1866,
+        "time_exit": 0.5149,
+        "gap_stop": 0.0746,
+        "gap_target": 0.0373
+      },
+      "gatedTrades": 18,
+      "gatedWinRate": 0.3889,
+      "gatedAvgR": -0.0812,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0556,
+        "2": -0.1111,
+        "3": -0.1111,
+        "6": -0.0812
+      }
+    },
+    {
+      "symbol": "DELTA",
+      "name": "เดลต้า อีเลคโทรนิคส์",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 103,
+      "reliable": true,
+      "bars": 1677,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.5049,
+      "avgR": 0.107,
+      "profitFactor": 1.2397,
+      "pTpWithin": {
+        "1": 0.0874,
+        "2": 0.1359,
+        "3": 0.1456,
+        "6": 0.2621
+      },
+      "pSlWithin": {
+        "1": 0.0388,
+        "2": 0.0971,
+        "3": 0.2039,
+        "6": 0.3204
+      },
+      "realizedRWithin": {
+        "1": -0.0292,
+        "2": 0.0029,
+        "3": -0.1474,
+        "6": 0.107
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2621,
+        "take_profit": 0.1942,
+        "time_exit": 0.4175,
+        "gap_stop": 0.0583,
+        "gap_target": 0.068
+      },
+      "gatedTrades": 15,
+      "gatedWinRate": 0.5333,
+      "gatedAvgR": 0.3071,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.1333,
+        "3": 0.1333,
+        "6": 0.2
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0667,
+        "2": 0.2472,
+        "3": 0.1806,
+        "6": 0.3071
+      }
+    },
+    {
+      "symbol": "DOGE",
+      "name": "โดชคอยน์",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 906,
+      "reliable": true,
+      "bars": 8727,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:57.000Z",
+      "winRate": 0.5011,
+      "avgR": -0.0046,
+      "profitFactor": 0.9882,
+      "pTpWithin": {
+        "1": 0.1071,
+        "2": 0.1446,
+        "3": 0.1854,
+        "6": 0.2517
+      },
+      "pSlWithin": {
+        "1": 0.0629,
+        "2": 0.1258,
+        "3": 0.1854,
+        "6": 0.3168
+      },
+      "realizedRWithin": {
+        "1": -0.015,
+        "2": -0.0332,
+        "3": -0.0524,
+        "6": -0.0046
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3146,
+        "take_profit": 0.2461,
+        "time_exit": 0.4316,
+        "gap_stop": 0.0022,
+        "gap_target": 0.0055
+      },
+      "gatedTrades": 158,
+      "gatedWinRate": 0.4873,
+      "gatedAvgR": 0.1593,
+      "gatedPTpWithin": {
+        "1": 0.0316,
+        "2": 0.0633,
+        "3": 0.0949,
+        "6": 0.1835
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0157,
+        "2": -0.0186,
+        "3": -0.0072,
+        "6": 0.1593
+      }
+    },
+    {
+      "symbol": "ETH",
+      "name": "อีเธอเรียม",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 892,
+      "reliable": true,
+      "bars": 8726,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:53.000Z",
+      "winRate": 0.5213,
+      "avgR": 0.0212,
+      "profitFactor": 1.0673,
+      "pTpWithin": {
+        "1": 0.1267,
+        "2": 0.1704,
+        "3": 0.1984,
+        "6": 0.2791
+      },
+      "pSlWithin": {
+        "1": 0.0381,
+        "2": 0.0886,
+        "3": 0.1244,
+        "6": 0.2321
+      },
+      "realizedRWithin": {
+        "1": 0.0042,
+        "2": -0.0072,
+        "3": -0.0118,
+        "6": 0.0212
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2298,
+        "take_profit": 0.2713,
+        "time_exit": 0.4888,
+        "gap_stop": 0.0022,
+        "gap_target": 0.0078
+      },
+      "gatedTrades": 128,
+      "gatedWinRate": 0.4609,
+      "gatedAvgR": 0.0932,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0313,
+        "3": 0.0938,
+        "6": 0.1484
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0703,
+        "2": -0.0877,
+        "3": 0.0131,
+        "6": 0.0932
+      }
+    },
+    {
+      "symbol": "EURGBP",
+      "name": "ยูโร/ปอนด์",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 593,
+      "reliable": true,
+      "bars": 6154,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:40.000Z",
+      "winRate": 0.4503,
+      "avgR": -0.0143,
+      "profitFactor": 0.7931,
+      "pTpWithin": {
+        "1": 0.0034,
+        "2": 0.0219,
+        "3": 0.032,
+        "6": 0.0793
+      },
+      "pSlWithin": {
+        "1": 0.0017,
+        "2": 0.0017,
+        "3": 0.0017,
+        "6": 0.0034
+      },
+      "realizedRWithin": {
+        "1": -0.0007,
+        "2": 0.0055,
+        "3": 0.0085,
+        "6": -0.0143
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0034,
+        "take_profit": 0.0776,
+        "time_exit": 0.9174,
+        "gap_stop": 0,
+        "gap_target": 0.0017
+      },
+      "gatedTrades": 0,
+      "gatedWinRate": null,
+      "gatedAvgR": null,
+      "gatedPTpWithin": {},
+      "gatedRealizedRWithin": {}
+    },
+    {
+      "symbol": "EURJPY",
+      "name": "ยูโร/เยน",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 545,
+      "reliable": true,
+      "bars": 6141,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:35.000Z",
+      "winRate": 0.4679,
+      "avgR": -0.0102,
+      "profitFactor": 0.8898,
+      "pTpWithin": {
+        "1": 0.0202,
+        "2": 0.0367,
+        "3": 0.0477,
+        "6": 0.0972
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0037,
+        "3": 0.0037,
+        "6": 0.0092
+      },
+      "realizedRWithin": {
+        "1": 0.0047,
+        "2": 0.0088,
+        "3": 0.0126,
+        "6": -0.0102
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0092,
+        "take_profit": 0.0972,
+        "time_exit": 0.8936,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 3,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.1463,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.3333,
+        "3": -0.3333,
+        "6": -0.1463
+      }
+    },
+    {
+      "symbol": "EURTHB",
+      "name": "ยูโร/บาท",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 650,
+      "reliable": true,
+      "bars": 6123,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:39:57.000Z",
+      "winRate": 0.4523,
+      "avgR": -0.021,
+      "profitFactor": 0.8092,
+      "pTpWithin": {
+        "1": 0.0123,
+        "2": 0.0138,
+        "3": 0.0246,
+        "6": 0.0615
+      },
+      "pSlWithin": {
+        "1": 0.0015,
+        "2": 0.0015,
+        "3": 0.0015,
+        "6": 0.0062
+      },
+      "realizedRWithin": {
+        "1": 0.002,
+        "2": 0.0024,
+        "3": 0.0066,
+        "6": -0.021
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0046,
+        "take_profit": 0.0538,
+        "time_exit": 0.9323,
+        "gap_stop": 0.0015,
+        "gap_target": 0.0077
+      },
+      "gatedTrades": 5,
+      "gatedWinRate": 0.8,
+      "gatedAvgR": 0.3082,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.3082
+      }
+    },
+    {
+      "symbol": "EURUSD",
+      "name": "ยูโร/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 518,
+      "reliable": true,
+      "bars": 6133,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:42:57.000Z",
+      "winRate": 0.5019,
+      "avgR": -0.0159,
+      "profitFactor": 0.8408,
+      "pTpWithin": {
+        "1": 0.0251,
+        "2": 0.0425,
+        "3": 0.0792,
+        "6": 0.168
+      },
+      "pSlWithin": {
+        "1": 0.0019,
+        "2": 0.0058,
+        "3": 0.0116,
+        "6": 0.0193
+      },
+      "realizedRWithin": {
+        "1": 0.0033,
+        "2": 0.0053,
+        "3": 0.0098,
+        "6": -0.0159
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0174,
+        "take_profit": 0.1641,
+        "time_exit": 0.8127,
+        "gap_stop": 0.0019,
+        "gap_target": 0.0039
+      },
+      "gatedTrades": 3,
+      "gatedWinRate": 0,
+      "gatedAvgR": -0.8671,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.3333,
+        "6": -0.8671
+      }
+    },
+    {
+      "symbol": "GBPJPY",
+      "name": "ปอนด์/เยน",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 545,
+      "reliable": true,
+      "bars": 6138,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:37.000Z",
+      "winRate": 0.5083,
+      "avgR": 0.0006,
+      "profitFactor": 1.0066,
+      "pTpWithin": {
+        "1": 0.0183,
+        "2": 0.0294,
+        "3": 0.0495,
+        "6": 0.0991
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0018,
+        "3": 0.0018,
+        "6": 0.0073
+      },
+      "realizedRWithin": {
+        "1": 0.0025,
+        "2": 0.0042,
+        "3": 0.0124,
+        "6": 0.0006
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0073,
+        "take_profit": 0.0991,
+        "time_exit": 0.8936,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 4,
+      "gatedWinRate": 0.25,
+      "gatedAvgR": -0.327,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": -0.327
+      }
+    },
+    {
+      "symbol": "GBPTHB",
+      "name": "ปอนด์/บาท",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 646,
+      "reliable": true,
+      "bars": 6122,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:39:57.000Z",
+      "winRate": 0.4783,
+      "avgR": -0.009,
+      "profitFactor": 0.9174,
+      "pTpWithin": {
+        "1": 0.0139,
+        "2": 0.0294,
+        "3": 0.0372,
+        "6": 0.0728
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0015,
+        "6": 0.0062
+      },
+      "realizedRWithin": {
+        "1": 0.001,
+        "2": 0.0056,
+        "3": 0.0083,
+        "6": -0.009
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0062,
+        "take_profit": 0.0635,
+        "time_exit": 0.9211,
+        "gap_stop": 0,
+        "gap_target": 0.0093
+      },
+      "gatedTrades": 7,
+      "gatedWinRate": 0.8571,
+      "gatedAvgR": 0.5079,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1429
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.5079
+      }
+    },
+    {
+      "symbol": "GBPUSD",
+      "name": "ปอนด์/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 560,
+      "reliable": true,
+      "bars": 6135,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:42:57.000Z",
+      "winRate": 0.4911,
+      "avgR": -0.0211,
+      "profitFactor": 0.803,
+      "pTpWithin": {
+        "1": 0.0143,
+        "2": 0.0429,
+        "3": 0.0696,
+        "6": 0.1446
+      },
+      "pSlWithin": {
+        "1": 0.0036,
+        "2": 0.0054,
+        "3": 0.0054,
+        "6": 0.0125
+      },
+      "realizedRWithin": {
+        "1": -0.0006,
+        "2": 0.0061,
+        "3": 0.0146,
+        "6": -0.0211
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0125,
+        "take_profit": 0.1393,
+        "time_exit": 0.8429,
+        "gap_stop": 0,
+        "gap_target": 0.0054
+      },
+      "gatedTrades": 3,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.5558,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.3333,
+        "3": -0.3333,
+        "6": -0.5558
+      }
+    },
+    {
+      "symbol": "GOOGL",
+      "name": "Alphabet (Google)",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 163,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4601,
+      "avgR": 0.1041,
+      "profitFactor": 1.2556,
+      "pTpWithin": {
+        "1": 0.1227,
+        "2": 0.1472,
+        "3": 0.1779,
+        "6": 0.2515
+      },
+      "pSlWithin": {
+        "1": 0.0859,
+        "2": 0.1656,
+        "3": 0.1902,
+        "6": 0.3374
+      },
+      "realizedRWithin": {
+        "1": -0.0132,
+        "2": -0.0764,
+        "3": 0.0385,
+        "6": 0.1041
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2699,
+        "take_profit": 0.2086,
+        "time_exit": 0.411,
+        "gap_stop": 0.0675,
+        "gap_target": 0.0429
+      },
+      "gatedTrades": 32,
+      "gatedWinRate": 0.5625,
+      "gatedAvgR": 1.1365,
+      "gatedPTpWithin": {
+        "1": 0.0313,
+        "2": 0.0313,
+        "3": 0.125,
+        "6": 0.2188
+      },
+      "gatedRealizedRWithin": {
+        "1": 0.0833,
+        "2": 0.0208,
+        "3": 0.8063,
+        "6": 1.1365
+      }
+    },
+    {
+      "symbol": "GULF",
+      "name": "กัลฟ์ ดีเวลลอปเมนท์",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 119,
+      "reliable": true,
+      "bars": 1679,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4874,
+      "avgR": -0.0587,
+      "profitFactor": 0.878,
+      "pTpWithin": {
+        "1": 0.1008,
+        "2": 0.1429,
+        "3": 0.1765,
+        "6": 0.2269
+      },
+      "pSlWithin": {
+        "1": 0.0336,
+        "2": 0.084,
+        "3": 0.1345,
+        "6": 0.2857
+      },
+      "realizedRWithin": {
+        "1": 0.0033,
+        "2": -0.0708,
+        "3": -0.0863,
+        "6": -0.0587
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2269,
+        "take_profit": 0.1933,
+        "time_exit": 0.4874,
+        "gap_stop": 0.0588,
+        "gap_target": 0.0336
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.3182,
+      "gatedAvgR": -0.4605,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0455,
+        "3": 0.0455,
+        "6": 0.0455
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0455,
+        "2": -0.0652,
+        "3": -0.1561,
+        "6": -0.4605
+      }
+    },
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 145,
+      "reliable": true,
+      "bars": 1735,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.5103,
+      "avgR": -0.016,
+      "profitFactor": 0.9553,
+      "pTpWithin": {
+        "1": 0.1034,
+        "2": 0.1655,
+        "3": 0.1931,
+        "6": 0.2621
+      },
+      "pSlWithin": {
+        "1": 0.0207,
+        "2": 0.0552,
+        "3": 0.1448,
+        "6": 0.2483
+      },
+      "realizedRWithin": {
+        "1": 0.0198,
+        "2": 0.0346,
+        "3": -0.0184,
+        "6": -0.016
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2069,
+        "take_profit": 0.2345,
+        "time_exit": 0.4897,
+        "gap_stop": 0.0414,
+        "gap_target": 0.0276
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.2381,
+      "gatedAvgR": -0.2984,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0476
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0952,
+        "3": -0.2381,
+        "6": -0.2984
+      }
+    },
+    {
+      "symbol": "JPYTHB",
+      "name": "เยน/บาท",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 560,
+      "reliable": true,
+      "bars": 6115,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:39:57.000Z",
+      "winRate": 0.4107,
+      "avgR": -0.0359,
+      "profitFactor": 0.7327,
+      "pTpWithin": {
+        "1": 0.025,
+        "2": 0.0321,
+        "3": 0.0446,
+        "6": 0.0839
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0071,
+        "3": 0.0107,
+        "6": 0.0214
+      },
+      "realizedRWithin": {
+        "1": 0.0034,
+        "2": -0.0026,
+        "3": -0.0021,
+        "6": -0.0359
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0179,
+        "take_profit": 0.0732,
+        "time_exit": 0.8946,
+        "gap_stop": 0.0036,
+        "gap_target": 0.0107
+      },
+      "gatedTrades": 9,
+      "gatedWinRate": 0.5556,
+      "gatedAvgR": -0.1782,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.1111,
+        "6": -0.1782
+      }
+    },
+    {
+      "symbol": "KBANK",
+      "name": "ธนาคารกสิกรไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 123,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4634,
+      "avgR": 0.0472,
+      "profitFactor": 1.1622,
+      "pTpWithin": {
+        "1": 0.065,
+        "2": 0.0976,
+        "3": 0.1301,
+        "6": 0.2114
+      },
+      "pSlWithin": {
+        "1": 0.0244,
+        "2": 0.0894,
+        "3": 0.1382,
+        "6": 0.2033
+      },
+      "realizedRWithin": {
+        "1": -0.0123,
+        "2": -0.0693,
+        "3": -0.1085,
+        "6": 0.0472
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1626,
+        "take_profit": 0.1707,
+        "time_exit": 0.5854,
+        "gap_stop": 0.0407,
+        "gap_target": 0.0407
+      },
+      "gatedTrades": 20,
+      "gatedWinRate": 0.45,
+      "gatedAvgR": 0.1629,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1,
+        "2": -0.2,
+        "3": -0.25,
+        "6": 0.1629
+      }
+    },
+    {
+      "symbol": "KTB",
+      "name": "ธนาคารกรุงไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 146,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3425,
+      "avgR": -0.1108,
+      "profitFactor": 0.7551,
+      "pTpWithin": {
+        "1": 0.0411,
+        "2": 0.0548,
+        "3": 0.0616,
+        "6": 0.1096
+      },
+      "pSlWithin": {
+        "1": 0.0548,
+        "2": 0.1301,
+        "3": 0.2055,
+        "6": 0.3562
+      },
+      "realizedRWithin": {
+        "1": -0.0333,
+        "2": -0.1003,
+        "3": -0.1645,
+        "6": -0.1108
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3219,
+        "take_profit": 0.1027,
+        "time_exit": 0.5342,
+        "gap_stop": 0.0342,
+        "gap_target": 0.0068
+      },
+      "gatedTrades": 25,
+      "gatedWinRate": 0.24,
+      "gatedAvgR": -0.2595,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.04
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.08,
+        "2": -0.08,
+        "3": -0.12,
+        "6": -0.2595
+      }
+    },
+    {
+      "symbol": "LINK",
+      "name": "เชนลิงก์",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 916,
+      "reliable": true,
+      "bars": 8726,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:44:24.000Z",
+      "winRate": 0.5186,
+      "avgR": 0.0273,
+      "profitFactor": 1.0764,
+      "pTpWithin": {
+        "1": 0.1299,
+        "2": 0.179,
+        "3": 0.2183,
+        "6": 0.2784
+      },
+      "pSlWithin": {
+        "1": 0.0633,
+        "2": 0.1299,
+        "3": 0.1823,
+        "6": 0.2904
+      },
+      "realizedRWithin": {
+        "1": -0.0176,
+        "2": -0.029,
+        "3": -0.0297,
+        "6": 0.0273
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.286,
+        "take_profit": 0.2664,
+        "time_exit": 0.4312,
+        "gap_stop": 0.0044,
+        "gap_target": 0.012
+      },
+      "gatedTrades": 174,
+      "gatedWinRate": 0.4655,
+      "gatedAvgR": 0.1637,
+      "gatedPTpWithin": {
+        "1": 0.023,
+        "2": 0.0747,
+        "3": 0.1149,
+        "6": 0.1667
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0155,
+        "2": 0.0101,
+        "3": 0.0199,
+        "6": 0.1637
+      }
+    },
+    {
+      "symbol": "META",
+      "name": "Meta",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 147,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4898,
+      "avgR": -0.1412,
+      "profitFactor": 0.6971,
+      "pTpWithin": {
+        "1": 0.1293,
+        "2": 0.1701,
+        "3": 0.2109,
+        "6": 0.2857
+      },
+      "pSlWithin": {
+        "1": 0.0884,
+        "2": 0.1633,
+        "3": 0.2041,
+        "6": 0.3469
+      },
+      "realizedRWithin": {
+        "1": -0.0513,
+        "2": -0.1835,
+        "3": -0.187,
+        "6": -0.1412
+      },
+      "medianHoldBarsWin": 4,
+      "exitShare": {
+        "stop_loss": 0.2993,
+        "take_profit": 0.2585,
+        "time_exit": 0.3673,
+        "gap_stop": 0.0476,
+        "gap_target": 0.0272
+      },
+      "gatedTrades": 18,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.8407,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0556
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1667,
+        "2": -0.9016,
+        "3": -0.9016,
+        "6": -0.8407
+      }
+    },
+    {
+      "symbol": "MINT",
+      "name": "ไมเนอร์ อินเตอร์เนชั่นแนล",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 122,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4672,
+      "avgR": 0.0792,
+      "profitFactor": 1.2041,
+      "pTpWithin": {
+        "1": 0.0164,
+        "2": 0.0246,
+        "3": 0.0492,
+        "6": 0.082
+      },
+      "pSlWithin": {
+        "1": 0.0492,
+        "2": 0.1066,
+        "3": 0.1721,
+        "6": 0.3033
+      },
+      "realizedRWithin": {
+        "1": -0.0424,
+        "2": -0.0829,
+        "3": -0.1173,
+        "6": 0.0792
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2459,
+        "take_profit": 0.0656,
+        "time_exit": 0.6148,
+        "gap_stop": 0.0574,
+        "gap_target": 0.0164
+      },
+      "gatedTrades": 24,
+      "gatedWinRate": 0.5417,
+      "gatedAvgR": 0.1391,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0417
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0833,
+        "2": -0.0833,
+        "3": -0.2315,
+        "6": 0.1391
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 144,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4931,
+      "avgR": 0.0784,
+      "profitFactor": 1.2003,
+      "pTpWithin": {
+        "1": 0.0694,
+        "2": 0.0903,
+        "3": 0.1042,
+        "6": 0.2083
+      },
+      "pSlWithin": {
+        "1": 0.0764,
+        "2": 0.1458,
+        "3": 0.1944,
+        "6": 0.3056
+      },
+      "realizedRWithin": {
+        "1": -0.0589,
+        "2": -0.0966,
+        "3": -0.1381,
+        "6": 0.0784
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2569,
+        "take_profit": 0.1528,
+        "time_exit": 0.4861,
+        "gap_stop": 0.0486,
+        "gap_target": 0.0556
+      },
+      "gatedTrades": 32,
+      "gatedWinRate": 0.4375,
+      "gatedAvgR": 0.0123,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.0313,
+        "3": 0.0313,
+        "6": 0.1563
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0313,
+        "2": -0.1017,
+        "3": -0.1642,
+        "6": 0.0123
+      }
+    },
+    {
+      "symbol": "NFLX",
+      "name": "Netflix",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 146,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4452,
+      "avgR": 0.0227,
+      "profitFactor": 1.048,
+      "pTpWithin": {
+        "1": 0.1233,
+        "2": 0.1575,
+        "3": 0.1918,
+        "6": 0.2534
+      },
+      "pSlWithin": {
+        "1": 0.0685,
+        "2": 0.1301,
+        "3": 0.2192,
+        "6": 0.3767
+      },
+      "realizedRWithin": {
+        "1": -0.0253,
+        "2": -0.0317,
+        "3": -0.0183,
+        "6": 0.0227
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3014,
+        "take_profit": 0.2055,
+        "time_exit": 0.3699,
+        "gap_stop": 0.0753,
+        "gap_target": 0.0479
+      },
+      "gatedTrades": 39,
+      "gatedWinRate": 0.359,
+      "gatedAvgR": 0.1999,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0513,
+        "6": 0.1026
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0769,
+        "2": -0.2137,
+        "3": 0.052,
+        "6": 0.1999
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 146,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4315,
+      "avgR": -0.1285,
+      "profitFactor": 0.696,
+      "pTpWithin": {
+        "1": 0.1164,
+        "2": 0.1438,
+        "3": 0.1644,
+        "6": 0.2192
+      },
+      "pSlWithin": {
+        "1": 0.1096,
+        "2": 0.1712,
+        "3": 0.2329,
+        "6": 0.411
+      },
+      "realizedRWithin": {
+        "1": -0.0442,
+        "2": -0.0866,
+        "3": -0.1285,
+        "6": -0.1285
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3356,
+        "take_profit": 0.1918,
+        "time_exit": 0.3699,
+        "gap_stop": 0.0753,
+        "gap_target": 0.0274
+      },
+      "gatedTrades": 22,
+      "gatedWinRate": 0.2727,
+      "gatedAvgR": -0.3151,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0455
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0909,
+        "2": -0.1818,
+        "3": -0.2727,
+        "6": -0.3151
+      }
+    },
+    {
+      "symbol": "NZDUSD",
+      "name": "ดอลลาร์นิวซีแลนด์/ดอลลาร์",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 572,
+      "reliable": true,
+      "bars": 6164,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:41:57.000Z",
+      "winRate": 0.5227,
+      "avgR": 0.019,
+      "profitFactor": 1.1769,
+      "pTpWithin": {
+        "1": 0.0385,
+        "2": 0.0542,
+        "3": 0.0822,
+        "6": 0.1608
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0052,
+        "3": 0.0122,
+        "6": 0.0175
+      },
+      "realizedRWithin": {
+        "1": 0.0032,
+        "2": 0.0048,
+        "3": 0.011,
+        "6": 0.019
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0157,
+        "take_profit": 0.1486,
+        "time_exit": 0.8217,
+        "gap_stop": 0.0017,
+        "gap_target": 0.0122
+      },
+      "gatedTrades": 8,
+      "gatedWinRate": 0.375,
+      "gatedAvgR": -0.2426,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.1276,
+        "3": -0.2526,
+        "6": -0.2426
+      }
+    },
+    {
+      "symbol": "OR",
+      "name": "ปตท. น้ำมันและการค้าปลีก",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 125,
+      "reliable": true,
+      "bars": 1679,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.328,
+      "avgR": -0.0795,
+      "profitFactor": 0.8197,
+      "pTpWithin": {
+        "1": 0.032,
+        "2": 0.056,
+        "3": 0.072,
+        "6": 0.104
+      },
+      "pSlWithin": {
+        "1": 0.184,
+        "2": 0.256,
+        "3": 0.28,
+        "6": 0.424
+      },
+      "realizedRWithin": {
+        "1": -0.1162,
+        "2": -0.1615,
+        "3": -0.1631,
+        "6": -0.0795
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.344,
+        "take_profit": 0.096,
+        "time_exit": 0.472,
+        "gap_stop": 0.08,
+        "gap_target": 0.008
+      },
+      "gatedTrades": 14,
+      "gatedWinRate": 0.3571,
+      "gatedAvgR": -0.0026,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.1429
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1429,
+        "2": -0.2143,
+        "3": -0.2857,
+        "6": -0.0026
+      }
+    },
+    {
+      "symbol": "PTT",
+      "name": "ปตท.",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 152,
+      "reliable": true,
+      "bars": 1677,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3882,
+      "avgR": 0.0877,
+      "profitFactor": 1.2873,
+      "pTpWithin": {
+        "1": 0.0658,
+        "2": 0.0855,
+        "3": 0.0987,
+        "6": 0.1776
+      },
+      "pSlWithin": {
+        "1": 0.0526,
+        "2": 0.0855,
+        "3": 0.1316,
+        "6": 0.2434
+      },
+      "realizedRWithin": {
+        "1": -0.0153,
+        "2": -0.0033,
+        "3": -0.0479,
+        "6": 0.0877
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2237,
+        "take_profit": 0.1579,
+        "time_exit": 0.5789,
+        "gap_stop": 0.0197,
+        "gap_target": 0.0197
+      },
+      "gatedTrades": 29,
+      "gatedWinRate": 0.3793,
+      "gatedAvgR": 0.1771,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.069
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0345,
+        "2": -0.0345,
+        "3": -0.069,
+        "6": 0.1771
+      }
+    },
+    {
+      "symbol": "PTTEP",
+      "name": "ปตท.สผ.",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 117,
+      "reliable": true,
+      "bars": 1680,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.4103,
+      "avgR": 0.0266,
+      "profitFactor": 1.0812,
+      "pTpWithin": {
+        "1": 0.0684,
+        "2": 0.094,
+        "3": 0.1026,
+        "6": 0.1795
+      },
+      "pSlWithin": {
+        "1": 0.0171,
+        "2": 0.0598,
+        "3": 0.1111,
+        "6": 0.188
+      },
+      "realizedRWithin": {
+        "1": 0.0033,
+        "2": -0.0195,
+        "3": -0.0934,
+        "6": 0.0266
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1368,
+        "take_profit": 0.1624,
+        "time_exit": 0.6325,
+        "gap_stop": 0.0513,
+        "gap_target": 0.0171
+      },
+      "gatedTrades": 23,
+      "gatedWinRate": 0.4348,
+      "gatedAvgR": 0.1548,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.087
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.087,
+        "3": -0.087,
+        "6": 0.1548
+      }
+    },
+    {
+      "symbol": "QQQ",
+      "name": "ดัชนี Nasdaq 100 (QQQ)",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 162,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.537,
+      "avgR": 0.0073,
+      "profitFactor": 1.0208,
+      "pTpWithin": {
+        "1": 0.1173,
+        "2": 0.1667,
+        "3": 0.2037,
+        "6": 0.2778
+      },
+      "pSlWithin": {
+        "1": 0.037,
+        "2": 0.0864,
+        "3": 0.1543,
+        "6": 0.2593
+      },
+      "realizedRWithin": {
+        "1": 0.0103,
+        "2": -0.0175,
+        "3": -0.0497,
+        "6": 0.0073
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1852,
+        "take_profit": 0.2469,
+        "time_exit": 0.463,
+        "gap_stop": 0.0741,
+        "gap_target": 0.0309
+      },
+      "gatedTrades": 32,
+      "gatedWinRate": 0.5,
+      "gatedAvgR": 0.134,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0938,
+        "6": 0.1563
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0625,
+        "2": -0.1563,
+        "3": -0.0335,
+        "6": 0.134
+      }
+    },
+    {
+      "symbol": "SCB",
+      "name": "เอสซีบี เอกซ์",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 137,
+      "reliable": true,
+      "bars": 1677,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3942,
+      "avgR": 0.0006,
+      "profitFactor": 1.0022,
+      "pTpWithin": {
+        "1": 0.0365,
+        "2": 0.073,
+        "3": 0.0803,
+        "6": 0.1095
+      },
+      "pSlWithin": {
+        "1": 0.0438,
+        "2": 0.073,
+        "3": 0.1022,
+        "6": 0.1825
+      },
+      "realizedRWithin": {
+        "1": -0.0273,
+        "2": -0.018,
+        "3": -0.0407,
+        "6": 0.0006
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.146,
+        "take_profit": 0.0949,
+        "time_exit": 0.708,
+        "gap_stop": 0.0365,
+        "gap_target": 0.0146
+      },
+      "gatedTrades": 18,
+      "gatedWinRate": 0.4444,
+      "gatedAvgR": 0.1018,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2222,
+        "2": -0.2222,
+        "3": -0.2778,
+        "6": 0.1018
+      }
+    },
+    {
+      "symbol": "SCC",
+      "name": "ปูนซิเมนต์ไทย",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 121,
+      "reliable": true,
+      "bars": 1678,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3471,
+      "avgR": 0.2032,
+      "profitFactor": 1.4931,
+      "pTpWithin": {
+        "1": 0.0496,
+        "2": 0.0744,
+        "3": 0.0826,
+        "6": 0.124
+      },
+      "pSlWithin": {
+        "1": 0.0579,
+        "2": 0.1157,
+        "3": 0.157,
+        "6": 0.3306
+      },
+      "realizedRWithin": {
+        "1": -0.0517,
+        "2": -0.0897,
+        "3": -0.1286,
+        "6": 0.2032
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2975,
+        "take_profit": 0.0909,
+        "time_exit": 0.5455,
+        "gap_stop": 0.0331,
+        "gap_target": 0.0331
+      },
+      "gatedTrades": 23,
+      "gatedWinRate": 0.2609,
+      "gatedAvgR": -0.4345,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.087,
+        "2": -0.1304,
+        "3": -0.2174,
+        "6": -0.4345
+      }
+    },
+    {
+      "symbol": "SOL",
+      "name": "โซลานา",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 877,
+      "reliable": true,
+      "bars": 8728,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:54.000Z",
+      "winRate": 0.5188,
+      "avgR": 0.0443,
+      "profitFactor": 1.1265,
+      "pTpWithin": {
+        "1": 0.1106,
+        "2": 0.1653,
+        "3": 0.195,
+        "6": 0.2657
+      },
+      "pSlWithin": {
+        "1": 0.0547,
+        "2": 0.1345,
+        "3": 0.1836,
+        "6": 0.2816
+      },
+      "realizedRWithin": {
+        "1": -0.0228,
+        "2": -0.039,
+        "3": -0.048,
+        "6": 0.0443
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2805,
+        "take_profit": 0.2577,
+        "time_exit": 0.4527,
+        "gap_stop": 0.0011,
+        "gap_target": 0.008
+      },
+      "gatedTrades": 123,
+      "gatedWinRate": 0.4715,
+      "gatedAvgR": 0.0971,
+      "gatedPTpWithin": {
+        "1": 0.0244,
+        "2": 0.0569,
+        "3": 0.0894,
+        "6": 0.1382
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0436,
+        "2": -0.1062,
+        "3": -0.0779,
+        "6": 0.0971
+      }
+    },
+    {
+      "symbol": "SPY",
+      "name": "ดัชนี S&P 500 (SPY)",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 172,
+      "reliable": true,
+      "bars": 1735,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.5349,
+      "avgR": 0.0018,
+      "profitFactor": 1.0078,
+      "pTpWithin": {
+        "1": 0.0988,
+        "2": 0.1395,
+        "3": 0.1628,
+        "6": 0.2267
+      },
+      "pSlWithin": {
+        "1": 0.0291,
+        "2": 0.0581,
+        "3": 0.0814,
+        "6": 0.1221
+      },
+      "realizedRWithin": {
+        "1": -0.0128,
+        "2": -0.0164,
+        "3": -0.0209,
+        "6": 0.0018
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1047,
+        "take_profit": 0.186,
+        "time_exit": 0.6512,
+        "gap_stop": 0.0174,
+        "gap_target": 0.0407
+      },
+      "gatedTrades": 12,
+      "gatedWinRate": 0.4167,
+      "gatedAvgR": -0.1919,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0833
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1667,
+        "2": -0.25,
+        "3": -0.25,
+        "6": -0.1919
+      }
+    },
+    {
+      "symbol": "TRUE",
+      "name": "ทรู คอร์ปอเรชั่น",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 127,
+      "reliable": true,
+      "bars": 1679,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3307,
+      "avgR": 0.0522,
+      "profitFactor": 1.1563,
+      "pTpWithin": {
+        "1": 0.0236,
+        "2": 0.0472,
+        "3": 0.0709,
+        "6": 0.1181
+      },
+      "pSlWithin": {
+        "1": 0.1654,
+        "2": 0.2283,
+        "3": 0.2756,
+        "6": 0.3701
+      },
+      "realizedRWithin": {
+        "1": -0.0793,
+        "2": -0.1065,
+        "3": -0.1343,
+        "6": 0.0522
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2756,
+        "take_profit": 0.1102,
+        "time_exit": 0.5118,
+        "gap_stop": 0.0945,
+        "gap_target": 0.0079
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": 0.2741,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0476,
+        "6": 0.0952
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.2857,
+        "2": -0.2857,
+        "3": -0.2119,
+        "6": 0.2741
+      }
+    },
+    {
+      "symbol": "TSLA",
+      "name": "Tesla",
+      "market": "US_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 164,
+      "reliable": true,
+      "bars": 1736,
+      "firstBar": "2025-08-18T13:30:00.000Z",
+      "lastBar": "2026-08-14T20:00:00.000Z",
+      "winRate": 0.4634,
+      "avgR": 0.0155,
+      "profitFactor": 1.0346,
+      "pTpWithin": {
+        "1": 0.1159,
+        "2": 0.1402,
+        "3": 0.1707,
+        "6": 0.2439
+      },
+      "pSlWithin": {
+        "1": 0.0976,
+        "2": 0.1646,
+        "3": 0.2256,
+        "6": 0.4207
+      },
+      "realizedRWithin": {
+        "1": -0.0309,
+        "2": -0.0826,
+        "3": -0.1053,
+        "6": 0.0155
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.3476,
+        "take_profit": 0.2073,
+        "time_exit": 0.3354,
+        "gap_stop": 0.0732,
+        "gap_target": 0.0366
+      },
+      "gatedTrades": 21,
+      "gatedWinRate": 0.5714,
+      "gatedAvgR": 0.3738,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0952
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0476,
+        "2": -0.0476,
+        "3": -0.0476,
+        "6": 0.3738
+      }
+    },
+    {
+      "symbol": "TTB",
+      "name": "ทีเอ็มบีธนชาต",
+      "market": "TH_STOCK",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 138,
+      "reliable": true,
+      "bars": 1676,
+      "firstBar": "2025-08-18T03:00:00.000Z",
+      "lastBar": "2026-08-17T09:30:00.000Z",
+      "winRate": 0.3333,
+      "avgR": 0.0555,
+      "profitFactor": 1.1583,
+      "pTpWithin": {
+        "1": 0.029,
+        "2": 0.029,
+        "3": 0.0362,
+        "6": 0.1014
+      },
+      "pSlWithin": {
+        "1": 0.1812,
+        "2": 0.1957,
+        "3": 0.2319,
+        "6": 0.3333
+      },
+      "realizedRWithin": {
+        "1": -0.1182,
+        "2": -0.1327,
+        "3": -0.1727,
+        "6": 0.0555
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2536,
+        "take_profit": 0.087,
+        "time_exit": 0.5652,
+        "gap_stop": 0.0797,
+        "gap_target": 0.0145
+      },
+      "gatedTrades": 28,
+      "gatedWinRate": 0.1786,
+      "gatedAvgR": -0.0888,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0714
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.1429,
+        "2": -0.1786,
+        "3": -0.2143,
+        "6": -0.0888
+      }
+    },
+    {
+      "symbol": "USDCAD",
+      "name": "ดอลลาร์/ดอลลาร์แคนาดา",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 594,
+      "reliable": true,
+      "bars": 6167,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:30.000Z",
+      "winRate": 0.4899,
+      "avgR": -0.0053,
+      "profitFactor": 0.923,
+      "pTpWithin": {
+        "1": 0.0034,
+        "2": 0.0101,
+        "3": 0.0152,
+        "6": 0.0404
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0.0017,
+        "6": 0.0034
+      },
+      "realizedRWithin": {
+        "1": 0.0005,
+        "2": 0.0036,
+        "3": 0.0037,
+        "6": -0.0053
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0034,
+        "take_profit": 0.0404,
+        "time_exit": 0.9562,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 1,
+      "gatedWinRate": 1,
+      "gatedAvgR": 0.4878,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.4878
+      }
+    },
+    {
+      "symbol": "USDCHF",
+      "name": "ดอลลาร์/ฟรังก์สวิส",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 560,
+      "reliable": true,
+      "bars": 6107,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:28.000Z",
+      "winRate": 0.5054,
+      "avgR": -0.0098,
+      "profitFactor": 0.9033,
+      "pTpWithin": {
+        "1": 0.0089,
+        "2": 0.0286,
+        "3": 0.0554,
+        "6": 0.1036
+      },
+      "pSlWithin": {
+        "1": 0,
+        "2": 0.0018,
+        "3": 0.0036,
+        "6": 0.0071
+      },
+      "realizedRWithin": {
+        "1": 0.0018,
+        "2": 0.0063,
+        "3": 0.0149,
+        "6": -0.0098
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0071,
+        "take_profit": 0.1036,
+        "time_exit": 0.8893,
+        "gap_stop": 0,
+        "gap_target": 0
+      },
+      "gatedTrades": 1,
+      "gatedWinRate": 1,
+      "gatedAvgR": 1.9334,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 1
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 1.9334
+      }
+    },
+    {
+      "symbol": "USDJPY",
+      "name": "ดอลลาร์/เยน",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 541,
+      "reliable": true,
+      "bars": 6098,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:23.000Z",
+      "winRate": 0.4769,
+      "avgR": -0.0255,
+      "profitFactor": 0.7742,
+      "pTpWithin": {
+        "1": 0.024,
+        "2": 0.0259,
+        "3": 0.0388,
+        "6": 0.0998
+      },
+      "pSlWithin": {
+        "1": 0.0018,
+        "2": 0.0018,
+        "3": 0.0074,
+        "6": 0.0185
+      },
+      "realizedRWithin": {
+        "1": 0.0014,
+        "2": 0.0024,
+        "3": 0.0002,
+        "6": -0.0255
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0185,
+        "take_profit": 0.098,
+        "time_exit": 0.8817,
+        "gap_stop": 0,
+        "gap_target": 0.0018
+      },
+      "gatedTrades": 5,
+      "gatedWinRate": 0.6,
+      "gatedAvgR": 0.1257,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.2
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": 0,
+        "3": -0.2,
+        "6": 0.1257
+      }
+    },
+    {
+      "symbol": "USDTHB",
+      "name": "ดอลลาร์/บาท",
+      "market": "FOREX",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 584,
+      "reliable": true,
+      "bars": 6043,
+      "firstBar": "2025-08-17T23:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:43.000Z",
+      "winRate": 0.4486,
+      "avgR": -0.0189,
+      "profitFactor": 0.8421,
+      "pTpWithin": {
+        "1": 0.0377,
+        "2": 0.0411,
+        "3": 0.0428,
+        "6": 0.0668
+      },
+      "pSlWithin": {
+        "1": 0.0034,
+        "2": 0.0051,
+        "3": 0.0154,
+        "6": 0.0291
+      },
+      "realizedRWithin": {
+        "1": 0.0022,
+        "2": 0.0016,
+        "3": -0.0076,
+        "6": -0.0189
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.0291,
+        "take_profit": 0.0634,
+        "time_exit": 0.9041,
+        "gap_stop": 0,
+        "gap_target": 0.0034
+      },
+      "gatedTrades": 24,
+      "gatedWinRate": 0.3333,
+      "gatedAvgR": -0.1649,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "6": 0.0417
+      },
+      "gatedRealizedRWithin": {
+        "1": 0,
+        "2": -0.0417,
+        "3": -0.125,
+        "6": -0.1649
+      }
+    },
+    {
+      "symbol": "XAGUSD",
+      "name": "โลหะเงิน",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 528,
+      "reliable": true,
+      "bars": 5685,
+      "firstBar": "2025-08-17T22:00:00.000Z",
+      "lastBar": "2026-08-17T12:33:17.000Z",
+      "winRate": 0.5549,
+      "avgR": 0.054,
+      "profitFactor": 1.1595,
+      "pTpWithin": {
+        "1": 0.1117,
+        "2": 0.1534,
+        "3": 0.1837,
+        "6": 0.2652
+      },
+      "pSlWithin": {
+        "1": 0.0739,
+        "2": 0.1307,
+        "3": 0.178,
+        "6": 0.2879
+      },
+      "realizedRWithin": {
+        "1": -0.0354,
+        "2": -0.0575,
+        "3": -0.075,
+        "6": 0.054
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2803,
+        "take_profit": 0.2557,
+        "time_exit": 0.447,
+        "gap_stop": 0.0076,
+        "gap_target": 0.0095
+      },
+      "gatedTrades": 104,
+      "gatedWinRate": 0.5385,
+      "gatedAvgR": 0.173,
+      "gatedPTpWithin": {
+        "1": 0.0192,
+        "2": 0.0673,
+        "3": 0.0865,
+        "6": 0.1442
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.0386,
+        "2": -0.0094,
+        "3": -0.0311,
+        "6": 0.173
+      }
+    },
+    {
+      "symbol": "XAUUSD",
+      "name": "ทองคำ",
+      "market": "GOLD",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 553,
+      "reliable": true,
+      "bars": 5686,
+      "firstBar": "2025-08-17T22:00:00.000Z",
+      "lastBar": "2026-08-17T12:33:17.000Z",
+      "winRate": 0.5081,
+      "avgR": 0.008,
+      "profitFactor": 1.0303,
+      "pTpWithin": {
+        "1": 0.0886,
+        "2": 0.1338,
+        "3": 0.1646,
+        "6": 0.2405
+      },
+      "pSlWithin": {
+        "1": 0.0199,
+        "2": 0.0615,
+        "3": 0.0976,
+        "6": 0.1718
+      },
+      "realizedRWithin": {
+        "1": 0.006,
+        "2": -0.0056,
+        "3": -0.0202,
+        "6": 0.008
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.1682,
+        "take_profit": 0.2333,
+        "time_exit": 0.5877,
+        "gap_stop": 0.0036,
+        "gap_target": 0.0072
+      },
+      "gatedTrades": 69,
+      "gatedWinRate": 0.5072,
+      "gatedAvgR": 0.2097,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.029,
+        "3": 0.058,
+        "6": 0.1449
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.029,
+        "2": -0.0874,
+        "3": -0.0776,
+        "6": 0.2097
+      }
+    },
+    {
+      "symbol": "XRP",
+      "name": "XRP",
+      "market": "CRYPTO",
+      "timeframe": "1H",
+      "measuredAt": "2026-08-17T12:45:13.898Z",
+      "trades": 853,
+      "reliable": true,
+      "bars": 8729,
+      "firstBar": "2025-08-17T13:00:00.000Z",
+      "lastBar": "2026-08-17T12:43:59.000Z",
+      "winRate": 0.5569,
+      "avgR": 0.0532,
+      "profitFactor": 1.1693,
+      "pTpWithin": {
+        "1": 0.1231,
+        "2": 0.1653,
+        "3": 0.1981,
+        "6": 0.272
+      },
+      "pSlWithin": {
+        "1": 0.0399,
+        "2": 0.1114,
+        "3": 0.1536,
+        "6": 0.2485
+      },
+      "realizedRWithin": {
+        "1": -0.0073,
+        "2": -0.0447,
+        "3": -0.0507,
+        "6": 0.0532
+      },
+      "medianHoldBarsWin": 5,
+      "exitShare": {
+        "stop_loss": 0.2462,
+        "take_profit": 0.2638,
+        "time_exit": 0.4795,
+        "gap_stop": 0.0023,
+        "gap_target": 0.0082
+      },
+      "gatedTrades": 125,
+      "gatedWinRate": 0.44,
+      "gatedAvgR": 0.0747,
+      "gatedPTpWithin": {
+        "1": 0,
+        "2": 0.016,
+        "3": 0.056,
+        "6": 0.152
+      },
+      "gatedRealizedRWithin": {
+        "1": -0.056,
+        "2": -0.1841,
+        "3": -0.1747,
+        "6": 0.0747
+      }
+    }
+  ],
+  "unmeasured": []
+}

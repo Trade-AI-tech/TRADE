@@ -1,7 +1,26 @@
 // supabase/functions/scan-signals/index.ts
 //
 // สแกนตลาดตาม watchlist ของผู้ใช้ทุกคน → สร้างสัญญาณ BUY/SELL (1D + 1H) → บันทึกลง signals
-// → แจ้งเตือนสองช่องทาง: Web Push เด้งบนมือถือ/เดสก์ท็อป และ Telegram (ตามการตั้งค่าของแต่ละคน)
+// → ส่ง Telegram ให้คนที่ตั้งค่าไว้ (ถ้ามี)
+//
+// ── ⚠ ไฟล์นี้ "ไม่ส่ง Web Push" อีกต่อไป (แก้เมื่อ 2026-08-17) ────────────────
+// เดิมตรงนี้วนยิง push ทีละสัญญาณ (หนึ่งสัญญาณ = หนึ่งครั้งที่โทรศัพท์สั่น) ซึ่งขัดสเปก
+// ของเจ้าของตรง ๆ ว่า "ชั่วโมงนึงแจ้งเตือน 1 ครั้ง" และไฟล์นี้เป็น Deno ไฟล์เดียวจบ
+// จึง import ตัวรวมชุด (src/lib/push-digest.ts) มาใช้ไม่ได้ — ทางเลือกมีแค่
+//   (ก) ก๊อปตรรกะรวมชุดมาเป็นสำเนาที่สาม แล้วเฝ้าไม่ให้เพี้ยนตลอดไป หรือ
+//   (ข) ไม่ส่งจากที่นี่ ปล่อยให้แถวใน signals ค้างเป็น push_sent = false (ค่าเริ่มต้น)
+//       แล้วให้ "ตัวส่งกลาง" ตัวเดียวของระบบเก็บไปแจ้งเป็นชุดเดียวต่อชั่วโมง
+// เลือก (ข) เพราะสำเนาที่สามคือหนี้ที่เพี้ยนเงียบได้ (มีเครื่องตรวจ parity คุมแค่
+// indicators/signal-engine เท่านั้น ไม่ได้คุมตรรกะแจ้งเตือน)
+//
+// ตัวส่งกลางตอนนี้คือ scripts/scan-universe.mjs (รันจาก .github/workflows/scan-universe.yml
+// ทุกชั่วโมง) ซึ่งเรียก sendPendingSignalsToUser ใน src/lib/push-server.ts
+//
+// ⚠ ผลข้างเคียงที่ต้องรู้ก่อน deploy ไฟล์นี้: ถ้าเอาไฟล์นี้ขึ้นแล้วตั้ง pg_cron ให้ยิง
+//   โดยที่ตัวส่งกลางไม่ได้ทำงาน (เช่นโควตา GitHub Actions หมด) จะได้สัญญาณใหม่ในฐานข้อมูล
+//   แต่ไม่มีแจ้งเตือนเด้งเลย และถ้ายังไม่ได้รัน migration 006 (วัดจริง 2026-08-17: ยังไม่ได้รัน)
+//   ตัวส่งกลางจะแจ้งเฉพาะสัญญาณที่ "รอบของมันเองสแกนเจอ" เท่านั้น = ของที่ไฟล์นี้สร้างจะเงียบ
+//   ทางที่ถูกคือรัน 006 ก่อน แล้วค่อยพิจารณาว่าจะมีตัวสแกนสองตัวไปทำไม
 //
 // ── ทำไมต้องมีไฟล์นี้ ───────────────────────────────────────────────────────
 // ตัวสแกนเดิมคือ Next.js route /api/cron/scan-markets บน Vercel ซึ่งรันได้แค่วันละครั้ง
@@ -21,16 +40,10 @@
 // ── ตัวแปรลับที่ต้องตั้ง (Dashboard → Edge Functions → Secrets) ─────────────
 //   MONITOR_SECRET    = สตริงสุ่มยาว ๆ — ใช้ค่าเดียวกับของ monitor-positions ได้เลย
 //                       (ฝั่งคนตั้ง pg_cron จะได้เก็บใน Vault ชุดเดียวไม่ต้องจำสองค่า)
-//   VAPID_PUBLIC_KEY  = กุญแจสาธารณะ VAPID ต้องตรงทุกตัวอักษรกับค่าที่ฝังใน src/lib/push-client.ts คือ
-//                       BJ5rraVBry2126riFyLp_kt2DdVMdzddMbfdMcGIOe6syMh2KkJkW6-js-kBXbhW0H6k6SvrcLBojW6gYjAeZ28
-//                       ไม่ตรงกัน = บริการ push ปฏิเสธ (401/403) ทุกเครื่องที่สมัครด้วยกุญแจฝั่งเว็บ
-//   VAPID_PRIVATE_KEY = กุญแจลับคู่กัน (base64url ของสเกลาร์ 32 ไบต์ รูปแบบเดียวกับที่
-//                       `npx web-push generate-vapid-keys` พ่นออกมา)
-//   VAPID_SUBJECT     = ที่ติดต่อเจ้าของเซิร์ฟเวอร์ตาม RFC 8292 เช่น mailto:you@example.com
 //   ส่วน SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY แพลตฟอร์มใส่ให้อัตโนมัติ ไม่ต้องตั้งเอง
 //
-//   VAPID_* ไม่ครบหรือรูปแบบเพี้ยน → ฟังก์ชันยังสแกน + ส่ง Telegram ตามปกติ
-//   แต่ข้ามช่องทาง push ทั้งรอบ และบอกเหตุผลตรง ๆ ใน response (ไม่เงียบ และไม่ล้มทั้งงาน)
+//   ไม่ต้องตั้ง VAPID_* ให้ฟังก์ชันนี้แล้ว (ไม่ได้ส่ง push จากที่นี่) — กุญแจ VAPID
+//   ยังจำเป็นสำหรับตัวส่งกลางฝั่ง Node เท่านั้น
 //
 // ── วิธีเรียก / การตั้งเวลา ─────────────────────────────────────────────────
 // ตั้ง pg_cron + pg_net ยิงทุกชั่วโมงตามแบบแผนเดียวกับ supabase/scripts/schedule_monitor.sql
@@ -51,9 +64,6 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-// Deno-native Web Push (WebCrypto ล้วน) — จัดการ VAPID JWT (RFC 8292) และเข้ารหัส payload
-// แบบ aes128gcm (RFC 8291) ให้ทั้งหมด · Supabase Edge Runtime รองรับ jsr: specifier
-import * as webpush from 'jsr:@negrel/webpush@0.5.0';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ชนิดข้อมูลที่ใช้ในไฟล์นี้
@@ -143,14 +153,6 @@ interface TelegramProfileRow {
   telegram_chat_id: string | null;
   telegram_enabled: boolean | null;
   alert_preferences: Partial<AlertPreferences> | null;
-}
-
-/** แถว push_subscriptions เฉพาะ field ที่ตัวส่งใช้ (ดู supabase/migrations/005_push_subscriptions.sql) */
-interface PushSubscriptionRow {
-  id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -977,180 +979,20 @@ export async function sendSignalAlert(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Web Push — ส่งแจ้งเตือนเด้งเข้าเครื่องที่ผู้ใช้กดอนุญาตไว้ (ตาราง push_subscriptions)
+// Web Push — ถูกถอดออกจากไฟล์นี้แล้ว (2026-08-17)
 //
-// กุญแจ VAPID ในโปรเจกต์นี้เก็บแบบ base64url ดิบตามธรรมเนียมของ `web-push` (npm):
-//   public  = จุดบนเส้นโค้ง P-256 แบบ uncompressed 65 ไบต์
-//             (ตัวเดียวกับที่ฝังเป็น VAPID_PUBLIC_KEY ใน src/lib/push-client.ts)
-//   private = สเกลาร์ 32 ไบต์
-// แต่ importVapidKeys ของ jsr:@negrel/webpush รับ JWK จึงต้องประกอบ JWK จากค่าดิบก่อน:
-// x, y มาจากการผ่าจุด public (ไบต์ 1-32 และ 33-64 ถัดจาก 0x04) ส่วน d คือ private ตรง ๆ
+// เดิมตรงนี้มีชุดเครื่องมือส่ง push ครบชุด (แปลงกุญแจ VAPID → ตั้ง ApplicationServer →
+// ประกอบข้อความรายสัญญาณ → ยิงทีละเครื่อง) แล้ววนเรียกในลูป "หนึ่งสัญญาณ = หนึ่งใบ"
+// ซึ่งทำให้โทรศัพท์สั่นเท่าจำนวนสัญญาณของรอบนั้น
+//
+// ตอนนี้ไฟล์นี้ทำหน้าที่ "สแกน + บันทึก" อย่างเดียว แถวที่ insert จะมี push_sent = false
+// ตามค่าเริ่มต้นของ migration 006 แล้วตัวส่งกลาง (src/lib/push-server.ts →
+// sendPendingSignalsToUser) กวาดไปแจ้งเป็นชุดเดียวต่อชั่วโมง พร้อมจัดลำดับให้ตรงกับหน้าเว็บ
+//
+// ⚠ ห้ามใส่ตัวส่ง push กลับเข้ามาในไฟล์นี้ ถ้าอยากให้ Edge Function แจ้งเตือนเองได้จริง
+//   ต้องย้าย "ตรรกะรวมชุด+จัดลำดับ+จำกัดความถี่" ทั้งก้อนมาเป็นสำเนาที่มีเครื่องตรวจ parity
+//   ของตัวเองก่อน (แบบเดียวกับ indicators/signal-engine) ไม่ใช่เขียนใหม่ให้พอใช้
 // ═══════════════════════════════════════════════════════════════════════════
-
-/** base64url → ไบต์ดิบ (atob รับ base64 มาตรฐาน จึงต้องแปลงอักขระ + เติม padding ก่อน) */
-function b64urlToBytes(value: string): Uint8Array {
-  const padded = value + '='.repeat((4 - (value.length % 4)) % 4);
-  const raw = atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
-}
-
-/** ไบต์ดิบ → base64url ไม่มี padding (รูปแบบที่ฟิลด์ x/y/d ของ JWK ต้องการ) */
-function bytesToB64url(bytes: Uint8Array): string {
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/**
- * เตรียมตัวส่ง push หนึ่งตัวต่อรอบการทำงาน
- *
- * คืน server = null พร้อมเหตุผลเมื่อ config ไม่ครบ/เพี้ยน — จงใจ "ไม่โยน" เพราะช่องทาง
- * push พังไม่ควรลากการสแกนและ Telegram ล้มไปด้วย แต่เหตุผลต้องโผล่ใน response เสมอ
- */
-async function createAppServer(): Promise<{
-  server: webpush.ApplicationServer | null;
-  reason: string | null;
-}> {
-  const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim() ?? '';
-  const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() ?? '';
-  const subject = Deno.env.get('VAPID_SUBJECT')?.trim() ?? '';
-
-  const missing: string[] = [];
-  if (!publicKey) missing.push('VAPID_PUBLIC_KEY');
-  if (!privateKey) missing.push('VAPID_PRIVATE_KEY');
-  if (!subject) missing.push('VAPID_SUBJECT');
-  if (missing.length > 0) {
-    return { server: null, reason: `ยังไม่ได้ตั้ง ${missing.join(', ')} ใน Edge Function Secrets` };
-  }
-
-  // บริการ push ตรวจ claim `sub` ใน VAPID JWT — ค่าที่ไม่ใช่ mailto:/https: จะโดนปฏิเสธ
-  if (!subject.startsWith('mailto:') && !subject.startsWith('https://')) {
-    return { server: null, reason: 'VAPID_SUBJECT ต้องขึ้นต้นด้วย mailto: หรือ https://' };
-  }
-
-  try {
-    const pub = b64urlToBytes(publicKey);
-    // จุด P-256 แบบ uncompressed ต้องยาว 65 ไบต์และขึ้นต้น 0x04 — ผิดจากนี้คือวางค่าผิดช่อง
-    if (pub.length !== 65 || pub[0] !== 0x04) {
-      return {
-        server: null,
-        reason: 'VAPID_PUBLIC_KEY ไม่ใช่จุด P-256 แบบ uncompressed (65 ไบต์ ขึ้นต้น 0x04) ตามรูปแบบของ web-push',
-      };
-    }
-    const d = b64urlToBytes(privateKey);
-    if (d.length !== 32) {
-      return {
-        server: null,
-        reason: 'VAPID_PRIVATE_KEY ไม่ใช่สเกลาร์ 32 ไบต์ — ต้องเป็นค่าจาก web-push generate-vapid-keys',
-      };
-    }
-
-    const x = bytesToB64url(pub.slice(1, 33));
-    const y = bytesToB64url(pub.slice(33, 65));
-
-    const vapidKeys = await webpush.importVapidKeys(
-      {
-        publicKey: { kty: 'EC', crv: 'P-256', x, y },
-        // JWK ของกุญแจลับต้องพก x, y ของฝั่ง public ไว้ด้วยตามสเปก
-        privateKey: { kty: 'EC', crv: 'P-256', x, y, d: bytesToB64url(d) },
-      },
-      { extractable: false },
-    );
-
-    const server = await webpush.ApplicationServer.new({
-      contactInformation: subject,
-      vapidKeys,
-    });
-    return { server, reason: null };
-  } catch (err) {
-    return { server: null, reason: `นำเข้า VAPID keys ไม่สำเร็จ: ${String(err)}` };
-  }
-}
-
-/**
- * payload ที่ public/sw.js ฝั่งเครื่องผู้ใช้อ่าน — ต้องมี title/body/url/tag ตามที่มันคาด
- * เขียนให้อ่านจบบน lock screen: หัวเรื่องบอก action+symbol+ราคา+timeframe
- * เนื้อบอก SL · TP · ความมั่นใจ · tag = id ของสัญญาณ เพื่อให้ส่งซ้ำสัญญาณเดิมทับ
- * แจ้งเตือนเดิมแทนที่จะเด้งรัว (sw.js ใช้ tag เป็นตัวยุบ)
- */
-function formatPushPayload(signal: Signal): string {
-  // HOLD/weak ถูกกรองทิ้งก่อนถึงตรงนี้ — เผื่อไว้ให้ค่ากลาง ๆ แทนที่จะพัง
-  const emoji = signal.action === 'BUY' ? '🟢' : signal.action === 'SELL' ? '🔴' : '🟡';
-  return JSON.stringify({
-    title: `${emoji} ${signal.action} ${signal.symbol} @${signal.entry_price} (${signal.timeframe})`,
-    body: `SL ${signal.stop_loss} · TP ${signal.take_profit} · ความมั่นใจ ${signal.confidence}%`,
-    url: '/signals',
-    tag: signal.id,
-  });
-}
-
-/**
- * อายุข้อความ push ที่บริการ push เก็บไว้รอเครื่องที่ออฟไลน์ (วินาที)
- * สัญญาณเทรดเก่าไปไม่กี่ชั่วโมงก็หมดความหมาย — เด้งช้าครึ่งวันมีแต่พาเข้าไม้ผิดจังหวะ
- */
-const PUSH_TTL_SECONDS = 4 * 3600;
-
-type PushAttempt =
-  | { outcome: 'sent' }
-  /** บริการ push ตอบ 404/410 = เครื่องนั้นถอนการสมัครไปแล้ว ต้องลบแถวทิ้ง */
-  | { outcome: 'gone' }
-  | { outcome: 'failed'; detail: string };
-
-/**
- * ยิง push หนึ่งเครื่อง พร้อมเพดานเวลารอ
- *
- * PushSubscriber ไม่เปิดช่องส่ง AbortSignal จึง "ยกเลิก" คำขอจริงไม่ได้ — ทำได้แค่
- * เลิกรอแล้วนับเป็นล้มเหลว (rejection ถูกจับไว้ใน .then แล้ว ไม่มีทางหลุดเป็น
- * unhandled rejection ที่จะพาทั้งฟังก์ชันตาย) เหตุผลเดียวกับ FETCH_TIMEOUT_MS ของ Yahoo:
- * เครื่องเดียวค้างต้องไม่กินเวลาจนเครื่องอื่นไม่ได้รับแจ้งเตือน
- */
-async function pushWithDeadline(
-  server: webpush.ApplicationServer,
-  sub: PushSubscriptionRow,
-  payload: string,
-): Promise<PushAttempt> {
-  // ชนิดของ timer ผูกกับ ReturnType เพราะ type ของ Node (ผ่าน esm.sh) กับของ Deno ให้คนละชนิด
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const subscriber = server.subscribe({
-      endpoint: sub.endpoint,
-      keys: { p256dh: sub.p256dh, auth: sub.auth },
-    });
-    const attempt: Promise<PushAttempt> = subscriber
-      .pushTextMessage(payload, {
-        // แจ้งเตือนสัญญาณเทรดเป็นของด่วน — ขอให้ OS ปลุกเครื่องส่งทันที
-        urgency: webpush.Urgency.High,
-        ttl: PUSH_TTL_SECONDS,
-      })
-      .then(
-        (): PushAttempt => ({ outcome: 'sent' }),
-        (err: unknown): PushAttempt => {
-          if (
-            err instanceof webpush.PushMessageError &&
-            (err.isGone() || err.response.status === 404)
-          ) {
-            return { outcome: 'gone' };
-          }
-          const detail = err instanceof webpush.PushMessageError ? err.toString() : String(err);
-          return { outcome: 'failed', detail };
-        },
-      );
-    const deadline = new Promise<PushAttempt>((resolve) => {
-      timer = setTimeout(
-        () => resolve({ outcome: 'failed', detail: `เลิกรอหลังผ่านไป ${FETCH_TIMEOUT_MS} ms` }),
-        FETCH_TIMEOUT_MS,
-      );
-    });
-    return await Promise.race([attempt, deadline]);
-  } catch (err) {
-    // กุญแจในแถวเพี้ยนจนเข้ารหัสไม่ได้ ฯลฯ — นับเป็นล้มเหลวธรรมดา ไม่ลากทั้งรอบล้ม
-    return { outcome: 'failed', detail: String(err) };
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ตัวงานหลัก
@@ -1204,9 +1046,10 @@ serve(async (req: Request) => {
   //
   // ไม่มี MONITOR_SECRET = ปฏิเสธ ไม่ใช่ปล่อยผ่าน
   //
-  // route นี้เขียนตาราง signals ของผู้ใช้ทุกคนด้วย service-role และยิงแจ้งเตือน
-  // push + Telegram ถึงมือถือผู้ใช้จริง — แจ้งเตือนที่ส่งออกไปแล้วเรียกคืนไม่ได้
-  // ถ้าลืมตั้ง secret แล้วเปิดโล่ง ใครก็สั่งสแปมแจ้งเตือนปลอมถึงผู้ใช้ทุกคนได้
+  // route นี้เขียนตาราง signals ของผู้ใช้ทุกคนด้วย service-role และส่ง Telegram ถึงผู้ใช้จริง
+  // ข้อความที่ส่งออกไปแล้วเรียกคืนไม่ได้ และสัญญาณที่ถูกยัดเข้าตารางจะถูกตัวส่งกลาง
+  // หยิบไปเด้งเข้ามือถือให้เองในรอบถัดไป — ถ้าลืมตั้ง secret แล้วเปิดโล่ง
+  // ใครก็สั่งสแปมสัญญาณปลอมถึงผู้ใช้ทุกคนได้
   const expectedSecret = Deno.env.get('MONITOR_SECRET');
   const authHeader = req.headers.get('authorization');
   const bearer = authHeader && /^Bearer\s+/i.test(authHeader)
@@ -1237,13 +1080,6 @@ serve(async (req: Request) => {
   });
 
   try {
-    // 0. เตรียมช่องทาง push หนึ่งครั้งต่อรอบ — config เพี้ยนให้ข้ามช่องทางนี้ทั้งรอบ
-    //    พร้อมเหตุผลใน response ไม่ใช่ล้มทั้งฟังก์ชัน (Telegram กับการสแกนต้องเดินต่อ)
-    const { server: appServer, reason: pushDisabledReason } = await createAppServer();
-    if (pushDisabledReason) {
-      console.error('ช่องทาง push ถูกปิดรอบนี้:', pushDisabledReason);
-    }
-
     // 1. watchlist ทั้งหมดที่เปิดใช้งาน
     const { data: wlRows, error: wlErr } = await supabase
       .from('watchlist')
@@ -1261,10 +1097,8 @@ serve(async (req: Request) => {
         signalsGenerated: 0,
         telegramSent: 0,
         telegramFailed: 0,
-        pushConfigured: appServer !== null,
-        pushSent: 0,
-        pushFailed: 0,
-        pushPruned: 0,
+        // ฟังก์ชันนี้ไม่ส่ง push เอง — ตัวส่งกลางเป็นคนแจ้งเป็นชุดเดียวต่อชั่วโมง
+        pushSentBy: 'central-digest-sender',
         skipped: [],
         hourlySkippedForTime: 0,
         timedOut: false,
@@ -1428,18 +1262,17 @@ serve(async (req: Request) => {
       if (insErr) throw insErr;
     }
 
-    // 7. แจ้งเตือนตามการตั้งค่าของแต่ละคน — Telegram และ Web Push ใช้ตัวกรอง
-    //    alert_preferences ชุดเดียวกัน (ไม่ได้ตั้งค่า = ส่ง, ตั้ง false เท่านั้นถึงเงียบ)
+    // 7. Telegram ตามการตั้งค่าของแต่ละคน (ไม่ได้ตั้งค่า = ส่ง, ตั้ง false เท่านั้นถึงเงียบ)
     //
-    // ลูปนี้ "ไม่" เช็คงบเวลา โดยตั้งใจ: สัญญาณถูก insert ไปแล้ว ถ้าข้ามการแจ้งเตือนรอบนี้
+    // ⚠ Web Push ไม่อยู่ในลูปนี้แล้ว — แถวที่เพิ่ง insert ค้างเป็น push_sent = false
+    //   แล้วตัวส่งกลางกวาดไปแจ้งเป็นชุดเดียวต่อชั่วโมง (เหตุผลเต็มอยู่หัวไฟล์)
+    //
+    // ลูปนี้ "ไม่" เช็คงบเวลา โดยตั้งใจ: สัญญาณถูก insert ไปแล้ว ถ้าข้ามการส่ง Telegram รอบนี้
     // รอบถัดไปจะมองเป็นสัญญาณซ้ำ (ตัวกันซ้ำ 20/4 ชม. ข้อ 3) แล้วไม่สร้างใหม่
-    // = การแจ้งเตือนหายถาวร กู้ไม่ได้ — ยอมเสี่ยงเกินงบดีกว่าเงียบ และความเสี่ยงค้างนาน
-    // ถูกกดด้วยเพดานเวลารอต่อคำขอ (FETCH_TIMEOUT_MS) ของทุกช่องทางอยู่แล้ว
+    // = ข้อความนั้นหายถาวร กู้ไม่ได้ — ยอมเสี่ยงเกินงบดีกว่าเงียบ และความเสี่ยงค้างนาน
+    // ถูกกดด้วยเพดานเวลารอต่อคำขอ (FETCH_TIMEOUT_MS) อยู่แล้ว
     let telegramSent = 0;
     let telegramFailed = 0;
-    let pushSent = 0;
-    let pushFailed = 0;
-    let pushPruned = 0;
 
     const userIds = [...new Set(signalsToInsert.map((s) => s.user_id))];
 
@@ -1453,88 +1286,35 @@ serve(async (req: Request) => {
       const profile = (profileRow as TelegramProfileRow | null) ?? null;
       const prefs = (profile?.alert_preferences ?? {}) as Partial<AlertPreferences>;
       // Telegram ต้องครบสามอย่าง: เปิดสวิตช์ + มี token + มี chat id — ขาดอย่างใดข้ามช่องทางนี้
-      // (push ไม่ผูกกับสวิตช์ Telegram — คนที่เลิกใช้ Telegram แล้วยังต้องได้แจ้งเตือนบนมือถือ)
       const telegram =
         profile?.telegram_enabled && profile.telegram_bot_token && profile.telegram_chat_id
           ? { botToken: profile.telegram_bot_token, chatId: profile.telegram_chat_id }
           : null;
-
-      // subscription ทุกเครื่องของ user นี้ ดึงครั้งเดียวใช้ซ้ำกับทุกสัญญาณ
-      let subs: PushSubscriptionRow[] = [];
-      if (appServer) {
-        const { data: subRows, error: subErr } = await supabase
-          .from('push_subscriptions')
-          .select('id, endpoint, p256dh, auth')
-          .eq('user_id', userId);
-        if (subErr) console.error('อ่าน push_subscriptions ไม่สำเร็จ:', userId, subErr);
-        else subs = (subRows ?? []) as PushSubscriptionRow[];
-      }
-
-      /** endpoint ที่บริการ push บอกว่าตายแล้ว (404/410) — สัญญาณถัดไปของรอบนี้ไม่ต้องลองซ้ำ */
-      const deadEndpoints = new Set<string>();
-      /** endpoint ที่ส่งสำเร็จอย่างน้อยหนึ่งครั้งรอบนี้ — อัปเดต last_used_at ทีเดียวตอนจบ user */
-      const sentEndpoints = new Set<string>();
+      if (!telegram) continue;
 
       for (const signal of signalsToInsert.filter((s) => s.user_id === userId)) {
         if (signal.action === 'BUY' && prefs.buy_signals === false) continue;
         if (signal.action === 'SELL' && prefs.sell_signals === false) continue;
         if (prefs.strong_signals_only && signal.strength !== 'strong' && signal.strength !== 'very_strong') continue;
 
-        // ── Telegram (พฤติกรรมเดิมของ /api/cron/scan-markets ทุกอย่าง) ──────
-        if (telegram) {
-          const res = await sendSignalAlert(telegram, signal);
+        const res = await sendSignalAlert(telegram, signal);
 
-          // บันทึกทุกครั้งไม่ว่าสำเร็จหรือไม่ — ไว้ไล่ย้อนว่าเคยพยายามส่งอะไรไปแล้วบ้าง
-          await supabase.from('telegram_alerts').insert({
-            user_id: userId,
-            signal_id: signal.id,
-            message: `${signal.action} ${signal.symbol} @ ${signal.entry_price}`,
-            success: res.success,
-            error: res.error ?? null,
-          });
+        // บันทึกทุกครั้งไม่ว่าสำเร็จหรือไม่ — ไว้ไล่ย้อนว่าเคยพยายามส่งอะไรไปแล้วบ้าง
+        await supabase.from('telegram_alerts').insert({
+          user_id: userId,
+          signal_id: signal.id,
+          message: `${signal.action} ${signal.symbol} @ ${signal.entry_price}`,
+          success: res.success,
+          error: res.error ?? null,
+        });
 
-          if (res.success) {
-            telegramSent++;
-            await supabase.from('signals').update({ telegram_sent: true }).eq('id', signal.id);
-          } else {
-            telegramFailed++;
-            console.error('telegram send failed:', res.error);
-          }
+        if (res.success) {
+          telegramSent++;
+          await supabase.from('signals').update({ telegram_sent: true }).eq('id', signal.id);
+        } else {
+          telegramFailed++;
+          console.error('telegram send failed:', res.error);
         }
-
-        // ── Web Push: ส่งเข้าทุกเครื่องที่ยังไม่ตาย ─────────────────────────
-        if (appServer && subs.length > 0) {
-          const payload = formatPushPayload(signal);
-          for (const sub of subs) {
-            if (deadEndpoints.has(sub.endpoint)) continue;
-
-            const attempt = await pushWithDeadline(appServer, sub, payload);
-            if (attempt.outcome === 'sent') {
-              pushSent++;
-              sentEndpoints.add(sub.endpoint);
-            } else if (attempt.outcome === 'gone') {
-              // เครื่องถอนการสมัครไปแล้ว เก็บแถวไว้ก็ยิงไม่เข้าตลอดไป — ลบทิ้งเลย
-              deadEndpoints.add(sub.endpoint);
-              const { error: delErr } = await supabase
-                .from('push_subscriptions')
-                .delete()
-                .eq('endpoint', sub.endpoint);
-              if (delErr) console.error('ลบ subscription ที่ตายแล้วไม่สำเร็จ:', delErr);
-              else pushPruned++;
-            } else {
-              pushFailed++;
-              console.error('web push ส่งไม่สำเร็จ:', sub.endpoint.slice(0, 60), attempt.detail);
-            }
-          }
-        }
-      }
-
-      if (sentEndpoints.size > 0) {
-        const { error: touchErr } = await supabase
-          .from('push_subscriptions')
-          .update({ last_used_at: new Date().toISOString() })
-          .in('endpoint', [...sentEndpoints]);
-        if (touchErr) console.error('อัปเดต last_used_at ไม่สำเร็จ:', touchErr);
       }
     }
 
@@ -1551,7 +1331,13 @@ serve(async (req: Request) => {
 
     // ข้อความภาษาไทยสำหรับคน ประกอบเฉพาะเมื่อมีเรื่องต้องบอกจริง ๆ
     const messages: string[] = [];
-    if (pushDisabledReason) messages.push(`ช่องทาง push ถูกข้ามทั้งรอบ: ${pushDisabledReason}`);
+    // ต้องบอกทุกรอบที่สร้างสัญญาณ ไม่งั้นคนอ่าน log จะเข้าใจว่ารอบนี้แจ้งเตือนไปแล้ว
+    if (signalsToInsert.length > 0) {
+      messages.push(
+        `สร้างสัญญาณ ${signalsToInsert.length} ตัว และยังไม่ได้แจ้งเตือน (push_sent = false) ` +
+          'ฟังก์ชันนี้ไม่ส่ง Web Push เอง — ตัวส่งกลางจะกวาดไปแจ้งเป็นชุดเดียวต่อชั่วโมง'
+      );
+    }
     if (timedOut) {
       const parts: string[] = [];
       if (dailyNotFetched > 0) parts.push(`1D ที่ยังไม่ได้ดึง ${dailyNotFetched} ตัว`);
@@ -1569,11 +1355,9 @@ serve(async (req: Request) => {
       signalsGenerated: signalsToInsert.length,
       telegramSent,
       telegramFailed,
-      // false = รอบนี้ไม่ได้ส่ง push เลย เหตุผลอยู่ใน message
-      pushConfigured: appServer !== null,
-      pushSent,
-      pushFailed,
-      pushPruned,
+      // ฟังก์ชันนี้ไม่ส่ง push เอง — ค่าคงที่นี้มีไว้ให้คนที่ไล่ปัญหาเห็นว่า "ใครเป็นคนส่ง"
+      // โดยไม่ต้องเดาจากการที่ตัวเลข pushSent หายไปเฉย ๆ
+      pushSentBy: 'central-digest-sender',
       skipped: [...skipped],
       hourlySkippedForTime,
       // false = ดึงข้อมูลครบทั้ง 1D และ 1H ในรอบนี้

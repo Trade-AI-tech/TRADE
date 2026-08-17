@@ -1,0 +1,193 @@
+name: Scan Universe
+
+# ============================================
+# ตัวสแกน "ทุกกราฟที่ระบบรู้จัก" — แทนที่ตัวสแกนที่อ่านแค่ watchlist
+#
+# ทำอะไร: checkout repo → ติดตั้ง 4 แพ็กเกจ → รัน scripts/scan-universe.mjs
+#         สคริปต์โหลด src/lib/*.ts ตัวจริงเข้ามา (ไม่มีสำเนา) → ดึง Yahoo ทั้งจักรวาล
+#         → generateSignal → passesGate → บันทึกลง signals → Web Push เข้าโทรศัพท์
+#
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ ทำไมงานหนักถึงมารันที่นี่ ไม่ใช่ที่ Vercel — ตัวเลขที่วัดจริงทั้งหมด            │
+# └──────────────────────────────────────────────────────────────────────────────┘
+#
+# วัดเมื่อ 2026-08-17 บนจักรวาล 58 สัญลักษณ์ (116 คำขอ = 1D + 1H ต่อตัว):
+#
+#   ดึง Yahoo ที่ concurrency 4   →  8.70 วิ   สำเร็จ 116/116  ไม่โดน 429
+#   ดึง Yahoo ที่ concurrency 6   →  6.32 วิ   สำเร็จ 116/116  ไม่โดน 429
+#   รอบสแกนเต็ม (dry run)         →  2.21 วิ   (ดึง 1.69 วิ)
+#   รอบสแกนเต็ม (เขียน DB + push) →  5.50 วิ   (ดึง 1.73 วิ · เขียนราคา 58 แถว · push 1 ใบ)
+#   npm install 4 แพ็กเกจ         →  5.19 วิ   (27 แพ็กเกจ 33 MB — ไม่ใช่ npm ci ทั้งโปรเจกต์)
+#   ลอกชนิดออกจาก .ts + import    →  0.20 วิ
+#   ข้อมูลที่ดึงเข้ามาต่อรอบ      →  7.79 MB   (เฉลี่ย 68.7 KB/คำขอ)
+#   CPU ของโปรเซสทั้งรอบ          →  1.16 วิ   (ส่วน generateSignal ล้วน ๆ = 0.063 วิ)
+#
+# ── โควตา GitHub Actions (repo นี้เป็น PRIVATE จึงถูกคิดนาที · แผนฟรี 2,000 นาที/เดือน
+#    และ GitHub ปัดขึ้นเป็น "นาทีเต็ม" ต่อ job ต่อให้จบใน 15 วินาที) ─────────────────
+#
+#   งบเวลาต่อจ็อบ: checkout ~3 วิ + setup-node ~2 วิ + npm install 5.2 วิ + สแกน 5.5 วิ
+#                  ≈ 16 วิ  → ต่ำกว่า 60 วิเยอะมาก → ถูกคิด 1 นาที/รอบ
+#                  (นี่คือเหตุผลที่ไม่ใช้ `npm ci` — ลง next/react/recharts ทั้งชุดจะดัน
+#                   จ็อบข้าม 60 วิ แล้วโดนคิด 2 นาที/รอบ = 1,460 นาที/เดือน ทันที)
+#
+#   รายชั่วโมงทุกวัน (คริปโตในจักรวาลเปิด 24/7 เสาร์-อาทิตย์ก็มีแท่งใหม่):
+#     24 × 365 ÷ 12 = 730 รอบ/เดือน × 1 นาที = ~731 นาที/เดือน
+#
+#   งบที่เหลือ: 2,000 − 731 = 1,269 นาที ให้ deploy.yml (~4-5 นาที/push) = ~254-317 push/เดือน
+#   monitor-positions.yml ปิด schedule อยู่ (pg_cron บน Supabase เป็นตัวจับเวลาแทน) = 0 นาที
+#
+#   ⚠ ยอดรวมจริงเพิ่มขึ้นแค่ ~111 นาที/เดือน ไม่ใช่ 731
+#     เพราะ scan-markets.yml เดิมกินอยู่แล้ว ~620 นาที/เดือน (รายชั่วโมง อา.-ศ.)
+#     และไฟล์นี้มาแทนที่ — schedule ของไฟล์นั้นถูกปิดไปพร้อมกับการเพิ่มไฟล์นี้
+#
+# ── ทำไมไม่เอาไว้บน Vercel (ตอบตรง ๆ ด้วยตัวเลข ไม่ใช่ความรู้สึก) ────────────────
+#
+#   1) เรื่อง CPU อย่างเดียว Vercel "พอ" จริง — ต้องพูดให้ตรง
+#      generateSignal 116 ครั้งใช้ CPU แค่ 0.063 วิ รอบหนึ่งประมาณ 0.3-0.6 วิ
+#      × 730 รอบ ≈ 0.1 ชม./เดือน จาก 4 ชม. เพราะฉะนั้น "CPU ไม่ใช่ตัวที่ทำให้ตัดสินใจ"
+#
+#   2) ตัวที่ทำให้ตัดสินใจคือ **เพดาน maxDuration 60 วิ ที่ไม่มีทางขยาย**
+#      route เดิมสแกนแค่ 3 สัญลักษณ์ (6 คำขอ) ยังต้องตั้ง TIME_BUDGET_MS = 45 วิ กันชน
+#      แปลว่าเส้นทาง Vercel → Yahoo เคยช้ากว่าที่วัดจากเครื่องบ้านมาก
+#      116 คำขอบนเส้นทางนั้นไม่มีระยะปลอดภัยเหลือ และพอชน 60 วิ รอบนั้นถูกฆ่ากลางทาง
+#      ไม่มีกลไกทำต่อจากจุดที่ค้าง — จ็อบบน Actions มีเพดาน 6 ชม. ปัญหานี้หายไปทั้งข้อ
+#
+#   3) โควตา 4 ชม. นั้น **แชร์กับตัวเว็บเอง** และตัวเว็บคือตัวที่เผา 11h57m/4h จนบัญชีถูกระงับ
+#      (Fast Origin Transfer ก็เกิน: 28.21GB/10GB) ทุกโดเมนตอบ 402 อยู่หลายวัน
+#      โทษของการเกินคือ "ระงับบัญชี" ไม่ใช่ "หน่วงความเร็ว" — ระบบล่มทั้งระบบ ไม่ใช่ช้าลง
+#      การเติมงานลงในงบที่พิสูจน์แล้วว่าล้น = เร่งวันที่จะถูกระงับรอบหน้า
+#
+#   4) ข้อมูล 7.79 MB/รอบ × 730 รอบ = 5.7 GB/เดือน ที่ต้องไหลผ่านเครือข่ายของบัญชีที่
+#      โดนระงับเพราะเรื่องปริมาณข้อมูลมาแล้ว — บน runner ของ GitHub ปริมาณนี้ไม่มีค่าใช้จ่าย
+#
+#   ผลพลอยได้: ไฟล์นี้ทำให้ Vercel **ลดงานลง** 720 invocation/เดือน (ตัวที่ scan-markets.yml
+#   เคยยิงรายชั่วโมง) พร้อมกับขยายความครอบคลุมจาก 3 เป็น 58 สัญลักษณ์
+#
+# ── ทำไมไม่ใช้ Supabase Edge Function (แผน Pro ที่จ่ายอยู่แล้ว) ──────────────────
+#   เพราะต้องทำ "สำเนา" indicators.ts + signal-engine.ts เป็น Deno ด้วยมือ
+#   ซึ่งเคยเพี้ยนมาแล้วจนต้องเขียน scripts/check-scan-parity.mjs มาเฝ้า
+#   เส้นทางนี้ import ไฟล์ .ts ตัวจริงตรง ๆ จึงไม่มีสำเนาให้เพี้ยนตั้งแต่แรก
+#   (Edge Function `scan-signals` ที่มีอยู่ยังทำงานของมันต่อไปตามเดิม ไม่ได้ถูกแตะ)
+#
+# ── ทำไมนาทีที่ 25 ไม่ใช่นาทีที่ 0 ───────────────────────────────────────────────
+#   pg_cron บน Supabase ยิง Edge Function `scan-signals` ที่ "นาทีที่ 0" ของทุกชั่วโมง
+#   (supabase/scripts/schedule_scan.sql) ทั้งสองตัวเขียนตาราง signals ใบเดียวกัน
+#   ตัวกันสัญญาณซ้ำเป็นแบบ "อ่านก่อนเขียน" ซึ่งกันไม่อยู่ถ้าสองตัวรันวินาทีเดียวกัน
+#   (อีกตัวยังอ่านไม่เจอของที่เรากำลังจะเขียน) ผลคือได้สัญญาณซ้ำและแจ้งเตือนเด้งสองครั้ง
+#   ซึ่งเรียกคืนไม่ได้ — ห่างกัน 25 นาทีคือวิธีที่ไม่ต้องแก้ schema และไม่มีทางชนกัน
+#
+# ⚠ สองอย่างที่ทำให้ตัวสแกน "หายไปเงียบ ๆ" โดยไม่มี run สีแดงให้เห็น:
+#   1. โควตา Actions หมด → GitHub หยุดรัน workflow เงียบ ๆ ไม่มี notification
+#      เช็คได้ที่ Settings → Billing and plans → Plans and usage
+#   2. repo ไม่มี commit เลยเกิน 60 วัน → GitHub ปิด schedule ให้อัตโนมัติ
+#      ต้องเข้าไปกดเปิดเองที่แท็บ Actions
+#   ทั้งสองกรณีเจ้าของจะเชื่อว่ายังมีตัวสแกนอยู่ทั้งที่ไม่มีแล้ว — วิธีตรวจที่เร็วที่สุดคือ
+#   ดูว่าตาราง market_prices ยังมี updated_at ใหม่ทุกชั่วโมงอยู่ไหม
+#
+# ⚠ schedule มีผลเฉพาะไฟล์ที่อยู่บน branch หลัก — แก้บน branch อื่นแล้วยังไม่มีผล
+# ============================================
+
+on:
+  schedule:
+    # นาทีที่ 25 ของทุกชั่วโมง ทุกวัน (UTC) — ทุกวันเพราะจักรวาลมีคริปโตที่เปิดเสาร์-อาทิตย์
+    # ⚠ GitHub ไม่การันตีว่าตรงเวลา ช่วงคนใช้เยอะดีเลย์ได้ 5-15 นาที — ยอมรับได้
+    #   เพราะสัญญาณผูกกับแท่งเทียนที่ปิดแล้ว ไม่ใช่ราคาวินาทีต่อวินาที
+    - cron: '25 * * * *'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'ซ้อมอย่างเดียว — ไม่เขียน DB ไม่ส่งแจ้งเตือน'
+        type: boolean
+        default: false
+
+# กันรอบใหม่ยิงซ้อนตอนรอบเก่ายังไม่จบ — ถ้าซ้อนกัน ตัวกันสัญญาณซ้ำจะกันไม่อยู่
+# (รอบที่สองอ่านตาราง signals ก่อนรอบแรกเขียนเสร็จ) แล้วแจ้งเตือนจะเด้งสองครั้ง
+concurrency:
+  group: scan-universe
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    # กันจ็อบค้างกินโควตา — วัดจริงจบใน ~16 วิ ตั้ง 5 นาทีคือเผื่อไว้ 18 เท่า
+    # ถ้าชนเพดานนี้แปลว่ามีอะไรผิดปกติจริง ๆ ไม่ใช่แค่ช้า
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ต้อง checkout จริงเพราะสคริปต์อ่าน src/lib/*.ts ตัวจริงมาใช้
+          # ประวัติ commit ไม่ได้ใช้เลย → depth 1 พอ (เร็วกว่าและไม่กินแบนด์วิดท์)
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          # ตรงกับ deploy.yml — จะได้ไม่มีวันที่ "รันผ่านบน CI แต่ build ไม่ผ่าน" เพราะคนละเวอร์ชัน
+          node-version: '20'
+
+      - name: ตรวจว่าตั้ง secret ครบก่อนเสียเวลาไปต่อ
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          # หยุดแบบแดงตั้งแต่ต้น ไม่ใช่ปล่อยให้สแกนจบแล้วค่อยเงียบ ๆ ไม่ส่งแจ้งเตือน
+          # ตั้งที่ Settings → Secrets and variables → Actions (ค่าเดียวกับที่ตั้งบน Vercel)
+          missing=""
+          [ -z "$SUPABASE_URL" ]  && missing="$missing NEXT_PUBLIC_SUPABASE_URL"
+          [ -z "$SERVICE_ROLE" ]  && missing="$missing SUPABASE_SERVICE_ROLE_KEY"
+          [ -z "$VAPID_PUBLIC" ]  && missing="$missing VAPID_PUBLIC_KEY"
+          [ -z "$VAPID_PRIVATE" ] && missing="$missing VAPID_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::ยังไม่ได้ตั้ง secret:$missing — ไปที่ Settings → Secrets and variables → Actions แล้วใส่ค่าเดียวกับที่ตั้งไว้บน Vercel (ดูรายการใน .env.example)"
+            exit 1
+          fi
+
+      - name: ติดตั้งแพ็กเกจที่ตัวสแกนใช้ (4 ตัว ไม่ใช่ทั้งโปรเจกต์)
+        env:
+          PROJECT_PACKAGE_JSON: ${{ github.workspace }}/package.json
+        run: |
+          # ทำไมไม่ `npm ci`: เส้นทางสแกนไม่ได้ใช้ next/react/recharts/framer-motion สักตัว
+          # ลงทั้งชุดจะดันจ็อบข้าม 60 วิ แล้ว GitHub คิดเป็น 2 นาที/รอบ = +730 นาที/เดือนฟรี ๆ
+          #
+          # ลงลงโฟลเดอร์แยกใน $RUNNER_TEMP ไม่ใช่ใน repo — package.json/package-lock.json
+          # ของโปรเจกต์จึงไม่มีทางถูกแตะ และ scripts/scan-universe.mjs ชี้มาที่นี่
+          # ผ่านตัวแปร SCAN_NODE_MODULES
+          set -eu
+          mkdir -p "$RUNNER_TEMP/scandeps"
+          cd "$RUNNER_TEMP/scandeps"
+          echo '{"name":"scan-deps","private":true}' > package.json
+
+          # อ่านช่วงเวอร์ชันจาก package.json ของโปรเจกต์ ไม่ฮาร์ดโค้ดไว้ในไฟล์นี้ —
+          # ไม่งั้นวันไหนโปรเจกต์อัปเกรด web-push ตัวสแกนจะยังใช้ของเก่าโดยไม่มีใครรู้
+          PKGS=$(node -e '
+            const p = require(process.env.PROJECT_PACKAGE_JSON);
+            const all = { ...p.dependencies, ...p.devDependencies };
+            const want = ["typescript", "web-push", "@supabase/supabase-js", "@supabase/ssr"];
+            const missing = want.filter((n) => !all[n]);
+            if (missing.length) {
+              console.error("::error::package.json ไม่มีแพ็กเกจ " + missing.join(", ") + " แล้ว — ตัวสแกนต้องใช้ ไปแก้ scripts/scan-universe.mjs ให้ตรงกับของจริงก่อน");
+              process.exit(1);
+            }
+            console.log(want.map((n) => n + "@" + all[n]).join(" "));
+          ')
+          echo "ติดตั้ง: $PKGS"
+          npm install --no-save --no-audit --no-fund --loglevel=error $PKGS
+
+      - name: สแกนทั้งจักรวาลแล้วแจ้งเตือน
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          # ไม่ใช่ความลับ (ต้องเป็น mailto: หรือ URL ตามสเปก VAPID) แต่ให้ override ได้
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || 'https://trading-ai-ivory.vercel.app' }}
+          SCAN_NODE_MODULES: ${{ runner.temp }}/scandeps/node_modules
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node scripts/scan-universe.mjs --dry-run
+          else
+            node scripts/scan-universe.mjs
+          fi

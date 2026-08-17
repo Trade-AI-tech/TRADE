@@ -2,6 +2,16 @@ import webpush from 'web-push';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Signal } from '@/types';
 import { errorMessage } from './errors';
+import {
+  PUSH_DIGEST_CONFIG,
+  buildPushPayloads,
+  buildSingleSignalPayload,
+  collapseDuplicates,
+  rankSignals,
+  roundThrottleVerdict,
+  throttleVerdict,
+} from './push-digest';
+import type { SpeedScorer } from './push-digest';
 
 /**
  * ตัวส่ง Web Push ฝั่งเซิร์ฟเวอร์ — ยิงแจ้งเตือนเข้าเครื่องผู้ใช้ตรง ๆ
@@ -128,32 +138,415 @@ export async function sendPushToUser(
   return result;
 }
 
-/** ตัวเลขราคาในแจ้งเตือนต้องอ่านออกทั้ง XAUUSD (4 หลัก) และ EURUSD (ทศนิยม 5 ตำแหน่ง) */
-function fmt(n: number): string {
-  if (!Number.isFinite(n)) return '-';
-  if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (Math.abs(n) >= 1) return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
-  return n.toPrecision(4);
-}
-
 /**
  * แปลงสัญญาณเป็นข้อความแจ้งเตือน
  *
- * หน้าจอล็อกของ iPhone ตัดข้อความค่อนข้างสั้น จึงเรียงของสำคัญไว้หน้าสุด:
- * ทิศทาง → สัญลักษณ์ → ราคาเข้า แล้วค่อยตามด้วย SL/TP
+ * ตัวประกอบข้อความจริงย้ายไปอยู่ push-digest.ts แล้ว (ที่นั่นทดสอบด้วย node เปล่าได้
+ * เพราะไม่ผูกกับ web-push) — ตัวนี้เหลือเป็นชื่อเดิมให้ผู้เรียกเก่าไม่ต้องแก้
+ * ผลลัพธ์เหมือนเดิมทุกตัวอักษร มีเทสต์เทียบไว้ใน scripts/test-push-digest.mjs
+ *
+ * ⚠ ไม่มีผู้เรียกในเส้นทางจริงแล้ว — /api/cron/scan-markets เลิกยิงทีละสัญญาณ
+ *   และหันมาเรียก sendPendingSignalsToUser เหมือนตัวสแกนตัวอื่นทั้งหมด
+ *   เหลือไว้ให้เทสต์เทียบข้อความกับฉบับก่อนรีแฟกเตอร์เท่านั้น
  */
 export function signalToPush(signal: Signal): PushPayload {
-  const arrow = signal.action === 'BUY' ? '🟢 ซื้อ' : '🔴 ขาย';
-  const strong = signal.strength === 'very_strong' || signal.strength === 'strong';
+  return buildSingleSignalPayload(signal);
+}
 
+// ────────────────────── สถานะ "แจ้งเตือนแล้วหรือยัง" ของแต่ละสัญญาณ ──────────────────────
+
+/**
+ * ค่าคงที่ฝั่งฐานข้อมูลของการเก็บตกสัญญาณค้าง
+ * (เกณฑ์ฝั่ง "จะรบกวนคนยังไง" อยู่ที่ PUSH_DIGEST_CONFIG ใน push-digest.ts — คนละเรื่องกัน)
+ */
+export const PUSH_STATE_CONFIG = {
+  /**
+   * กวาดสัญญาณค้างมาได้สูงสุดกี่แถวต่อคนต่อรอบ
+   * 50 = เผื่อไว้ ~7 เท่าของค่าสูงสุดที่วัดได้จริง (7 สัญญาณ/รอบ) เอาไว้รับกรณีที่
+   * ส่งไม่ออกติดกันหลายชั่วโมงแล้วค้างสะสม — เกินจากนี้ก็แค่ตกไปตามอายุ ไม่พังอะไร
+   */
+  PENDING_LIMIT: 50,
+
+  /**
+   * สัญญาณค้างที่เก่ากว่านี้ ไม่ต้องเก็บตกแล้ว
+   * ตั้งเท่ากับ TTL ของ push (6 ชม. ใน sendPushToUser) ด้วยเหตุผลเดียวกัน:
+   * ราคาเข้าที่คำนวณไว้เมื่อ 6 ชม.ก่อนไม่ใช่ราคาที่เทรดได้แล้ว การเด้งไปก็หลอกให้เข้าไม้ผิด
+   */
+  PENDING_MAX_AGE_MS: 6 * 3600_000,
+} as const;
+
+/** รหัสของ Postgres เมื่ออ้างถึงคอลัมน์ที่ไม่มีอยู่ (undefined_column) */
+const UNDEFINED_COLUMN = '42703';
+
+/**
+ * error นี้แปลว่า "ยังไม่ได้รัน migration 006" หรือเปล่า
+ *
+ * ต้องแยกให้ออกจาก error อื่น เพราะสองอย่างนี้ต้องทำคนละแบบ:
+ *  - คอลัมน์ยังไม่มี  → ถอยไปใช้พฤติกรรมเดิม แล้วบอกเจ้าของว่าต้องรัน SQL
+ *  - อ่าน DB ไม่ออก   → รายงานเป็นข้อผิดพลาดจริง ห้ามกลบเป็น "ไม่มีสัญญาณค้าง"
+ */
+function isMissingPushColumn(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  if (code === UNDEFINED_COLUMN) return true;
+  const msg = errorMessage(error).toLowerCase();
+  return msg.includes('push_sent') && (msg.includes('column') || msg.includes('does not exist'));
+}
+
+export interface PendingLoad {
+  signals: Signal[];
+  /** true = ตาราง signals ยังไม่มีคอลัมน์ push_sent (ยังไม่ได้รัน migration 006) */
+  columnMissing: boolean;
+  /** ข้อผิดพลาดจริงที่ไม่ใช่เรื่องคอลัมน์หาย — null = ไม่มี */
+  error: string | null;
+}
+
+/**
+ * ตาราง signals มีคอลัมน์ push_sent แล้วหรือยัง
+ *
+ * ตัวสแกนต้องรู้ก่อน insert เพราะถ้าใส่ฟิลด์ที่ไม่มีในตาราง Postgres จะปฏิเสธทั้ง batch
+ * = สัญญาณทั้งรอบหายไปเลย ซึ่งแย่กว่าการไม่มีคอลัมน์เสียอีก
+ *
+ * ตอบไม่ได้ (เน็ตพัง / สิทธิ์ไม่พอ) ให้ตอบ false ไว้ก่อน — ฝั่งที่ตอบ false แล้วผิด
+ * เสียแค่ "ไม่ได้เก็บตกรอบหน้า" (พฤติกรรมเดิม) ส่วนฝั่งที่ตอบ true แล้วผิดคือ insert ล้มทั้งรอบ
+ */
+export async function pushStateColumnAvailable(supabase: SupabaseClient): Promise<boolean> {
+  const { error } = await supabase.from('signals').select('id, push_sent').limit(1);
+  return !error;
+}
+
+/**
+ * ดึง "สัญญาณที่ยัง active และยังไม่เคยแจ้งเตือน" ของผู้ใช้คนหนึ่ง
+ *
+ * นี่คือหัวใจของการแก้บั๊กสัญญาณหายถาวร: ตัวส่งไม่ได้ดูแค่ของที่สแกนเจอรอบนี้
+ * แต่ดูจาก "สถานะในฐานข้อมูล" ว่ายังมีตัวไหนที่บันทึกไว้แล้วแต่ยังไม่ได้บอกเจ้าของ
+ * รอบไหนส่งไม่สำเร็จหรือถูกกันความถี่ไว้ รอบหน้าจึงกวาดมาแจ้งได้เอง โดยไม่ต้องจำอะไรข้ามรอบ
+ * (จำในหน่วยความจำไม่ได้อยู่แล้ว — ตัวสแกนรันบน runner ที่เกิดใหม่ทุกรอบ)
+ */
+export async function loadPendingSignals(
+  supabase: SupabaseClient,
+  userId: string,
+  nowMs: number
+): Promise<PendingLoad> {
+  const since = new Date(nowMs - PUSH_STATE_CONFIG.PENDING_MAX_AGE_MS).toISOString();
+  const nowIso = new Date(nowMs).toISOString();
+
+  const { data, error } = await supabase
+    .from('signals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .eq('push_sent', false)
+    .gte('created_at', since)
+    // แถวที่หมดอายุแล้วแต่ยังไม่ถูกปั๊ม expired (ตัวสแกนปั๊มทีหลังการแจ้งเตือน)
+    // ต้องไม่ถูกกวาดมาแจ้ง ไม่งั้นเจ้าของได้ราคาเข้าที่ใช้ไม่ได้แล้ว
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+    .order('created_at', { ascending: false })
+    .limit(PUSH_STATE_CONFIG.PENDING_LIMIT);
+
+  if (error) {
+    if (isMissingPushColumn(error)) return { signals: [], columnMissing: true, error: null };
+    return { signals: [], columnMissing: false, error: errorMessage(error) };
+  }
+  return { signals: (data ?? []) as Signal[], columnMissing: false, error: null };
+}
+
+/**
+ * ปั๊มว่า "แจ้งเตือนแล้ว" — เรียกหลังส่งถึงเครื่องผู้ใช้สำเร็จเท่านั้น
+ *
+ * ลำดับนี้สำคัญ: ส่งก่อน แล้วค่อยปั๊ม ไม่ใช่ปั๊มก่อนส่ง
+ * ถ้าปั๊มก่อนแล้วส่งล้ม สัญญาณจะหายถาวรแบบเดิมเป๊ะ ๆ
+ * ทางกลับกัน ปั๊มไม่สำเร็จหลังส่งสำเร็จ = รอบหน้าเด้งซ้ำหนึ่งครั้ง ซึ่งรำคาญแต่ไม่เสียหาย
+ * เลือกข้าง "ยอมซ้ำ ดีกว่ายอมหาย" ทุกครั้ง
+ */
+export async function markSignalsNotified(
+  supabase: SupabaseClient,
+  signalIds: string[],
+  nowMs: number
+): Promise<string | null> {
+  if (signalIds.length === 0) return null;
+  const { error } = await supabase
+    .from('signals')
+    .update({ push_sent: true, push_sent_at: new Date(nowMs).toISOString() })
+    .in('id', signalIds);
+  return error ? errorMessage(error) : null;
+}
+
+/**
+ * เวลาที่ "แจ้งเตือนสัญญาณ" ออกไปสำเร็จครั้งล่าสุดของผู้ใช้คนนี้
+ *
+ * ใช้ signals.push_sent_at ไม่ใช่ push_subscriptions.last_used_at ด้วยเหตุผลเดียว:
+ * last_used_at ขยับทุกครั้งที่มี push ออกไป "ชนิดไหนก็ได้" รวมถึงปุ่มทดสอบที่ผู้ใช้กดเอง
+ * ถ้าใช้ตัวนั้นเป็นนาฬิกา กดปุ่มทดสอบตอน 10:20 จะกันแจ้งเตือนสัญญาณจริงของช่วง 10:00
+ * ทิ้งไปทั้งช่อง — ผู้ใช้ทำร้ายตัวเองด้วยการทดสอบว่าระบบทำงานไหม ซึ่งไร้เหตุผลสิ้นดี
+ */
+async function lastSignalNotifiedAtMs(supabase: SupabaseClient, userId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('signals')
+    .select('push_sent_at')
+    .eq('user_id', userId)
+    .not('push_sent_at', 'is', null)
+    .order('push_sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // อ่านไม่ได้ = ไม่รู้ว่าเพิ่งแจ้งไปหรือยัง เลือกข้างที่ "แจ้ง" ไว้ก่อน
+  // เพราะการเงียบเพราะอ่าน DB ไม่ออก คือความล้มเหลวที่ผู้ใช้มองไม่เห็น
+  if (error || !data?.push_sent_at) return null;
+  const ms = new Date(data.push_sent_at as string).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// ────────────────────────── ส่งสัญญาณทั้งรอบเป็นชุดเดียว ──────────────────────────
+
+export interface SignalPushResult extends PushResult {
+  /** จำนวนสัญญาณที่จะแจ้งรอบนี้ (รวมของค้างจากรอบก่อน · ก่อนยุบตัวซ้ำ) */
+  signalCount: number;
+  /** จำนวนแจ้งเตือนที่ยิงจริงในรอบนี้ — คือจำนวนครั้งที่โทรศัพท์จะสั่น */
+  notifications: number;
+  /** true = รวมเป็นชุดเดียว · false = สัญญาณเดี่ยวส่งแบบเดิม */
+  digested: boolean;
+  /** true = ถูกตัวจำกัดความถี่กันไว้ ไม่ได้ส่ง (สัญญาณยังค้างรอรอบหน้า ไม่หาย) */
+  throttled: boolean;
+  /** จำนวนสัญญาณค้างจากรอบก่อนที่กวาดมาแจ้งรอบนี้ */
+  pendingPicked: number;
+  /** false = ตาราง signals ยังไม่มีคอลัมน์ push_sent → ทำงานในโหมดถอย (สัญญาณที่พลาดจะหาย) */
+  pushStateReady: boolean;
+  /** จำนวนแถวที่ปั๊มว่า "แจ้งแล้ว" สำเร็จในรอบนี้ */
+  marked: number;
+  /** เหตุผลภาษาไทยของการตัดสินใจรอบนี้ — ใส่ log ของ cron ได้เลย */
+  reason: string;
+}
+
+/** เผื่อผู้เรียกที่อยากคุมการส่งเอง และเผื่อเทสต์ที่ต้องรันโดยไม่มีเน็ต/ไม่มีกุญแจ VAPID */
+export type PushSender = (payload: PushPayload) => Promise<PushResult>;
+
+export interface SendSignalsOptions {
+  /** เวลาอ้างอิง — ฉีดเข้ามาได้เพื่อให้เทสต์คุมนาฬิกาได้ */
+  now?: number;
+  sender?: PushSender;
+  /** ข้ามตัวจำกัดความถี่ (เช่นปุ่มทดสอบที่ผู้ใช้กดเอง ต้องเด้งทันทีเสมอ) */
+  ignoreThrottle?: boolean;
+  /**
+   * ตัวให้คะแนน "โอกาสจบใน ~1 ชม." จาก src/lib/speed-scorecard.ts
+   * ไม่ส่งมา = เรียงด้วยเกณฑ์คุณภาพเดิม (ระบบต้องทำงานได้แม้ไฟล์นั้นยังไม่มี)
+   */
+  speedScore?: SpeedScorer | null;
+}
+
+export interface SendPendingOptions extends SendSignalsOptions {
+  /**
+   * ตัวกรองตามความชอบของผู้ใช้ (alert_preferences)
+   * ต้องส่งเข้ามาเป็นฟังก์ชัน ไม่ใช่กรองมาก่อนแล้วส่งเฉพาะที่ผ่าน
+   * เพราะของค้างจากรอบก่อนถูกอ่านขึ้นมาข้างในนี้ ผู้เรียกกรองมันล่วงหน้าไม่ได้
+   */
+  filter?: (signal: Signal) => boolean;
+}
+
+function emptyResult(signalCount: number): SignalPushResult {
   return {
-    title: `${arrow} ${signal.symbol} @ ${fmt(signal.entry_price)}`,
-    body:
-      `TP ${fmt(signal.take_profit)} · SL ${fmt(signal.stop_loss)}\n` +
-      `ความมั่นใจ ${signal.confidence}%${strong ? ' · สัญญาณแรง' : ''} · ${signal.timeframe}`,
-    // ผูก tag กับ id ของสัญญาณ ไม่ใช่แค่ symbol — สัญญาณคนละตัวของ symbol เดียวกัน
-    // ต้องเด้งแยกกัน ไม่ใช่ตัวใหม่ไปทับตัวเก่าจนพลาดไปหนึ่งสัญญาณ
-    tag: `signal-${signal.id}`,
-    url: '/signals',
+    sent: 0,
+    failed: 0,
+    pruned: 0,
+    noSubscriptions: false,
+    errors: [],
+    signalCount,
+    notifications: 0,
+    digested: false,
+    throttled: false,
+    pendingPicked: 0,
+    pushStateReady: false,
+    marked: 0,
+    reason: '',
   };
+}
+
+/** ส่ง payload ที่ประกอบเสร็จแล้วออกไป แล้วรวมตัวเลขกลับเข้า result — ใช้ร่วมกันสองเส้นทาง */
+async function deliver(result: SignalPushResult, payloads: PushPayload[], send: PushSender): Promise<void> {
+  for (const payload of payloads) {
+    const res = await send(payload);
+    result.notifications++;
+    result.sent += res.sent;
+    result.failed += res.failed;
+    result.pruned += res.pruned;
+    // ไม่มี subscription เลยแม้แต่ payload เดียว = ผู้ใช้ยังไม่ได้เปิดแจ้งเตือน
+    if (res.noSubscriptions) result.noSubscriptions = true;
+    for (const e of res.errors) if (!result.errors.includes(e)) result.errors.push(e);
+  }
+}
+
+/**
+ * ⚠ เส้นทางเดิม — ใช้เฉพาะโหมดถอย (ยังไม่ได้รัน migration 006) และในเทสต์
+ *   เส้นทางปกติของตัวสแกนคือ sendPendingSignalsToUser
+ *
+ * ส่งเฉพาะสัญญาณที่ผู้เรียกยื่นมา ไม่รู้จักของค้างจากรอบก่อน
+ * ถ้าถูกจำกัดความถี่ = สัญญาณชุดนั้นไม่มีวันได้แจ้งอีกเลย (นี่คือบั๊กที่ migration 006 มาแก้)
+ *
+ * ตั้งแต่รอบแก้ 2026-08-17 ตัวจำกัดความถี่ของเส้นทางนี้ใช้กติกาเดียวกับเส้นทางปกติแล้ว
+ * (ช่องชั่วโมง + ระยะห่างขั้นต่ำ ไม่มีประตูหนีให้ very_strong) เพราะสเปก "ชั่วโมงละ 1 ครั้ง"
+ * ของเจ้าของไม่ได้ยกเว้นโหมดถอยไว้ — รายละเอียดและสิ่งที่ยอมแลกอยู่ที่ throttleVerdict
+ */
+export async function sendSignalsToUser(
+  supabase: SupabaseClient,
+  userId: string,
+  signals: Signal[],
+  options: SendSignalsOptions = {}
+): Promise<SignalPushResult> {
+  const now = options.now ?? Date.now();
+  const send: PushSender = options.sender ?? ((payload) => sendPushToUser(supabase, userId, payload));
+
+  const result = emptyResult(signals.length);
+
+  const ranked = collapseDuplicates(rankSignals(signals, options.speedScore));
+  if (ranked.length === 0) {
+    result.reason = 'ไม่มีสัญญาณให้แจ้ง';
+    return result;
+  }
+
+  if (!options.ignoreThrottle) {
+    const verdict = throttleVerdict({
+      nowMs: now,
+      lastPushAtMs: await lastAnyPushAtMs(supabase, userId),
+      signals: ranked,
+    });
+    if (!verdict.send) {
+      result.throttled = true;
+      result.reason = verdict.reason;
+      return result;
+    }
+    result.reason = verdict.reason;
+  } else {
+    result.reason = 'ข้ามการจำกัดความถี่ตามที่ผู้เรียกสั่ง';
+  }
+
+  // อ่านเกณฑ์จาก config ตัวเดียวกับที่ buildPushPayloads ใช้ — ถ้าฮาร์ดโค้ดไว้ตรงนี้
+  // วันไหนปรับเกณฑ์ในไฟล์เดียว ตัวเลขที่รายงานใน log จะโกหกทันทีโดยไม่มีอะไรจับได้
+  result.digested = ranked.length >= PUSH_DIGEST_CONFIG.DIGEST_MIN_SIGNALS;
+  await deliver(result, buildPushPayloads(ranked, now, options.speedScore), send);
+
+  return result;
+}
+
+/**
+ * นาฬิกาของโหมดถอย: เวลาที่ push ชนิดไหนก็ได้ถึงเครื่องผู้ใช้สำเร็จครั้งล่าสุด
+ *
+ * ข้อจำกัดที่ต้องรู้ (และเป็นเหตุผลที่เส้นทางปกติเลิกใช้ตัวนี้):
+ * นาฬิกาเป็นของ "ผู้ใช้" ไม่ใช่ของ "ชนิดแจ้งเตือน" — ปุ่มทดสอบก็ขยับนาฬิกานี้ด้วย
+ */
+async function lastAnyPushAtMs(supabase: SupabaseClient, userId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('last_used_at')
+    .eq('user_id', userId)
+    .order('last_used_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data?.last_used_at) return null;
+
+  const ms = new Date(data.last_used_at).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * ส่งสัญญาณของผู้ใช้หนึ่งคนเป็นแจ้งเตือน "ครั้งเดียวต่อชั่วโมง" และไม่ทิ้งสัญญาณสักตัว
+ *
+ * นี่คือทางที่ตัวสแกนต้องเรียก (scripts/scan-universe.mjs)
+ * ลำดับการทำงาน และเหตุผลของลำดับ:
+ *   1. กวาดของค้าง (push_sent = false) จาก DB → ผสมกับของที่เพิ่งสแกนเจอรอบนี้
+ *      กวาดก่อนเสมอ ไม่ใช่เฉพาะตอนรอบนี้ไม่มีสัญญาณ — ของค้างกับของใหม่ต้องอยู่ในใบเดียวกัน
+ *      ไม่งั้นจะกลายเป็นสองใบในชั่วโมงเดียว ซึ่งขัดสเปก
+ *   2. กรองตามความชอบผู้ใช้ → จัดลำดับ → ยุบตัวซ้ำ
+ *   3. เช็กว่าชั่วโมงนี้แจ้งไปหรือยัง (ถูกกัน = ไม่ปั๊มอะไรเลย ของค้างอยู่ครบ รอบหน้าเอาใหม่)
+ *   4. ส่ง แล้ว "ถ้าถึงเครื่องจริงอย่างน้อยหนึ่งเครื่อง" จึงปั๊มว่าแจ้งแล้ว
+ *
+ * ⚠ ถ้าตารางยังไม่มีคอลัมน์ push_sent (ยังไม่ได้รัน migration 006) จะถอยไปใช้
+ *   sendSignalsToUser ของเดิมทั้งดุ้น พร้อมติดเหตุผลไว้ใน reason ให้เห็นใน log ของ CI
+ *   โค้ดจะขึ้นก่อนที่เจ้าของจะรัน SQL เสมอ เส้นทางนี้จึงต้องเดินได้จริง ไม่ใช่แค่ไม่พัง
+ */
+export async function sendPendingSignalsToUser(
+  supabase: SupabaseClient,
+  userId: string,
+  freshSignals: Signal[],
+  options: SendPendingOptions = {}
+): Promise<SignalPushResult> {
+  const now = options.now ?? Date.now();
+  const send: PushSender = options.sender ?? ((payload) => sendPushToUser(supabase, userId, payload));
+  const allow = options.filter ?? (() => true);
+
+  const pending = await loadPendingSignals(supabase, userId, now);
+
+  // ── โหมดถอย: ยังไม่ได้รัน migration 006 ─────────────────────────────────────────
+  if (pending.columnMissing) {
+    const legacy = await sendSignalsToUser(supabase, userId, freshSignals.filter(allow), options);
+    legacy.pushStateReady = false;
+    legacy.reason =
+      'ยังไม่ได้รัน supabase/migrations/006_signal_push_state.sql — ' +
+      'ทำงานแบบเดิม (สัญญาณที่ถูกกันความถี่หรือส่งไม่สำเร็จจะไม่ได้เก็บตกรอบหน้า) · ' +
+      legacy.reason;
+    return legacy;
+  }
+
+  const result = emptyResult(0);
+  result.pushStateReady = true;
+  if (pending.error) result.errors.push(`อ่านสัญญาณค้างไม่สำเร็จ: ${pending.error}`);
+
+  // ผสมของค้างกับของใหม่ แล้วตัด id ซ้ำ (ของที่เพิ่ง insert รอบนี้จะโผล่ทั้งสองฝั่ง)
+  const byId = new Map<string, Signal>();
+  for (const s of pending.signals) byId.set(s.id, s);
+  let pickedFromDb = byId.size;
+  for (const s of freshSignals) {
+    if (byId.has(s.id)) pickedFromDb--; // นับเป็น "ของรอบนี้" ไม่ใช่ของค้าง
+    byId.set(s.id, s);
+  }
+
+  const wanted = [...byId.values()].filter(allow);
+  result.signalCount = wanted.length;
+  result.pendingPicked = Math.max(0, pickedFromDb);
+
+  const ranked = collapseDuplicates(rankSignals(wanted, options.speedScore));
+  if (ranked.length === 0) {
+    result.reason = 'ไม่มีสัญญาณให้แจ้ง';
+    return result;
+  }
+
+  if (!options.ignoreThrottle) {
+    const verdict = roundThrottleVerdict({
+      nowMs: now,
+      lastNotifiedAtMs: await lastSignalNotifiedAtMs(supabase, userId),
+      signalCount: ranked.length,
+    });
+    if (!verdict.send) {
+      result.throttled = true;
+      result.reason = verdict.reason;
+      return result;
+    }
+    result.reason = verdict.reason;
+  } else {
+    result.reason = 'ข้ามการจำกัดความถี่ตามที่ผู้เรียกสั่ง';
+  }
+
+  result.digested = ranked.length >= PUSH_DIGEST_CONFIG.DIGEST_MIN_SIGNALS;
+  await deliver(result, buildPushPayloads(ranked, now, options.speedScore), send);
+
+  // ── ปั๊มว่าแจ้งแล้ว เฉพาะเมื่อถึงเครื่องจริง ──────────────────────────────────────
+  //
+  // ปั๊มทุกตัวที่ "อยู่ในใบนี้" รวมถึงตัวที่ถูกยุบเพราะซ้ำ และตัวที่ล้นบรรทัดจนแสดงไม่หมด
+  // (ใบนั้นบอกจำนวนที่เหลือไว้แล้ว และหน้า /signals เรียงลำดับเดียวกันให้กดดูต่อได้)
+  // ถ้าไม่ปั๊มตัวที่แสดงไม่หมด รอบหน้ามันจะกลับมาเป็น "ของค้าง" แล้ววนซ้ำไม่จบ
+  //
+  // ตัวที่ถูกตัวกรองความชอบผู้ใช้คัดออก จะไม่ถูกปั๊ม — ปล่อยค้างไว้ตามอายุแล้วหลุดไปเอง
+  // ถ้าปั๊มมันด้วย แล้ววันหนึ่งผู้ใช้เปลี่ยนใจเปิดรับ BUY อีกครั้ง ของที่เคยถูกคัดจะหายไปแล้ว
+  if (result.sent > 0) {
+    const err = await markSignalsNotified(supabase, wanted.map((s) => s.id), now);
+    if (err) {
+      // ปั๊มไม่ลง = รอบหน้าเด้งซ้ำหนึ่งครั้ง ต้องเห็นใน log ไม่ใช่เงียบ
+      result.errors.push(`ปั๊มสถานะ "แจ้งแล้ว" ไม่สำเร็จ (รอบหน้าอาจเด้งซ้ำ): ${err}`);
+    } else {
+      result.marked = wanted.length;
+    }
+  } else if (result.notifications > 0) {
+    result.reason += ' · ส่งไม่ถึงเครื่องเลย จึงยังไม่ปั๊มว่าแจ้งแล้ว รอบหน้าจะลองใหม่';
+  }
+
+  return result;
 }

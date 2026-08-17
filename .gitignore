@@ -35,3 +35,14 @@ supabase/.temp/
 
 .vercel
 .next-demo/
+
+# คลังข้อมูลวิจัย — ไฟล์ใหญ่หลักร้อย MB สร้างใหม่ได้เสมอด้วย
+# node scripts/research/fetch-universe.mjs จึงไม่ควรอยู่ใน git
+.research-cache/
+
+# ผลผลิตจากการ build ที่ใช้ dist dir อื่น (NEXT_DIST_DIR) — เคยถูก commit เข้ามาโดยไม่ตั้งใจ
+# 220 ไฟล์ ทำให้ทุกครั้งที่ build แล้ว git status เต็มไปด้วยไฟล์ที่ไม่มีใครอ่าน
+# จนรีวิว diff จริงไม่ได้ · ตัวที่ถูก track อยู่แล้วถูกถอดออกด้วย git rm --cached
+.next-build/
+.next-review/
+.next-demo/

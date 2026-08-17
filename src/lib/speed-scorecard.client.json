@@ -1,0 +1,2288 @@
+{
+ "_generatedFrom": "src/lib/speed-scorecard.data.json",
+ "_generatedBy": "node src/lib/speed-scorecard.client.build.mjs",
+ "_note": "ไฟล์นี้ถูกสร้างอัตโนมัติ ห้ามแก้ด้วยมือ · แก้ที่ไฟล์ต้นทางแล้วสั่งคำสั่งข้างบนใหม่",
+ "_sourceSha256": "415f5a9dcbf2f94f93ff35a259ea4c0dc3d37a4af0cc296df51deb525a411c24",
+ "schemaVersion": 1,
+ "measuredAt": "2026-08-17T12:45:13.898Z",
+ "rebuildCommand": "node scripts/build-speed-scorecard.mjs",
+ "method": {
+  "maxHoldBars": 6,
+  "minReliableTrades": 30,
+  "barMinutesByTimeframe": {
+   "1H": 60,
+   "1D": 1440
+  },
+  "caveats": [
+   "ยังไม่หักสเปรด/ค่าคอม/สลิปเพจ (feesR=0) — ผลจริงแย่กว่านี้เสมอ",
+   "แท่งที่แตะทั้ง SL และ TP นับ SL ก่อนเสมอ (OHLC ไม่บอกลำดับราคาในแท่ง)",
+   "winRate/avgR/profitFactor ในไฟล์นี้คิดภายใต้ maxHoldBars=6 เทียบกับ run-backtest.mjs (default 10) ตรง ๆ ไม่ได้",
+   "1D ตอบคำถาม \"จบใน 1 ชั่วโมง\" ไม่ได้ — หนึ่งแท่งคือหนึ่งวัน"
+  ]
+ },
+ "readerPolicy": {
+  "1H": {
+   "usePerPairSpeed": true,
+   "usePerPairProfit": false,
+   "speedMeasurable": true
+  },
+  "1D": {
+   "usePerPairSpeed": false,
+   "usePerPairProfit": false,
+   "speedMeasurable": false
+  }
+ },
+ "scoreReference": {
+  "1H": {
+   "metric": "pTpWithin2",
+   "sortedValues": [
+    0.0101,
+    0.0138,
+    0.0217,
+    0.0219,
+    0.0246,
+    0.0259,
+    0.0286,
+    0.029,
+    0.0294,
+    0.0294,
+    0.0321,
+    0.0367,
+    0.0411,
+    0.0413,
+    0.0425,
+    0.0429,
+    0.0472,
+    0.0536,
+    0.0542,
+    0.0548,
+    0.056,
+    0.0727,
+    0.073,
+    0.0744,
+    0.0758,
+    0.0855,
+    0.0903,
+    0.094,
+    0.0976,
+    0.1083,
+    0.119,
+    0.1338,
+    0.1349,
+    0.1359,
+    0.1395,
+    0.1402,
+    0.1408,
+    0.1429,
+    0.1438,
+    0.1446,
+    0.1472,
+    0.1473,
+    0.1493,
+    0.1534,
+    0.1575,
+    0.1604,
+    0.1653,
+    0.1653,
+    0.1655,
+    0.1661,
+    0.1667,
+    0.1701,
+    0.1704,
+    0.1714,
+    0.1753,
+    0.179,
+    0.1806
+   ]
+  },
+  "1D": {
+   "metric": "pTpWithin2",
+   "sortedValues": [
+    0,
+    0.0198,
+    0.036,
+    0.0367,
+    0.0403,
+    0.0426,
+    0.0467,
+    0.0469,
+    0.049,
+    0.0506,
+    0.0508,
+    0.051,
+    0.0526,
+    0.0526,
+    0.0526,
+    0.0565,
+    0.057,
+    0.0619,
+    0.0655,
+    0.066,
+    0.0674,
+    0.0686,
+    0.0706,
+    0.0709,
+    0.0714,
+    0.0721,
+    0.0811,
+    0.0816,
+    0.0825,
+    0.0879,
+    0.0887,
+    0.0928,
+    0.0932,
+    0.0957,
+    0.0994,
+    0.1,
+    0.1034,
+    0.1039,
+    0.1043,
+    0.1048,
+    0.1064,
+    0.1111,
+    0.1111,
+    0.113,
+    0.1143,
+    0.115,
+    0.1176,
+    0.1224,
+    0.13,
+    0.1354,
+    0.1359,
+    0.1414,
+    0.1491,
+    0.1774,
+    0.1978,
+    0.2049
+   ]
+  }
+ },
+ "validationSummary": {
+  "1H": {
+   "verdict": "partially_holds",
+   "trustPerPairSpeed": true,
+   "trustPerPairProfit": false,
+   "usablePairs": 57,
+   "note": "ความเร็ว (pTp2) รอด out-of-sample · ผลกำไร (avgR) ไม่รอด out-of-sample"
+  },
+  "1D": {
+   "verdict": "does_not_hold",
+   "trustPerPairSpeed": false,
+   "trustPerPairProfit": false,
+   "usablePairs": 44,
+   "note": "ความเร็ว (pTp2) ไม่รอด out-of-sample · ผลกำไร (avgR) ไม่รอด out-of-sample"
+  }
+ },
+ "pooled": {
+  "byMarketTimeframe": {
+   "US_STOCK|1H": {
+    "trades": 1805,
+    "pTpWithin": {
+     "1": 0.1119,
+     "2": 0.1463,
+     "3": 0.1762,
+     "6": 0.2499
+    },
+    "pSlWithin": {
+     "1": 0.0621,
+     "2": 0.1202,
+     "3": 0.1778,
+     "6": 0.3169
+    },
+    "realizedRWithin": {
+     "1": -0.0035,
+     "2": -0.0457,
+     "3": -0.0576,
+     "6": -0.0045
+    }
+   },
+   "CRYPTO|1H": {
+    "trades": 7869,
+    "pTpWithin": {
+     "1": 0.1187,
+     "2": 0.1638,
+     "3": 0.1973,
+     "6": 0.2703
+    },
+    "pSlWithin": {
+     "1": 0.0502,
+     "2": 0.1136,
+     "3": 0.1625,
+     "6": 0.267
+    },
+    "realizedRWithin": {
+     "1": -0.0083,
+     "2": -0.0284,
+     "3": -0.0367,
+     "6": 0.0245
+    }
+   },
+   "TH_STOCK|1H": {
+    "trades": 2288,
+    "pTpWithin": {
+     "1": 0.0651,
+     "2": 0.0905,
+     "3": 0.111,
+     "6": 0.1696
+    },
+    "pSlWithin": {
+     "1": 0.0726,
+     "2": 0.1246,
+     "3": 0.174,
+     "6": 0.2872
+    },
+    "realizedRWithin": {
+     "1": -0.0401,
+     "2": -0.0821,
+     "3": -0.1168,
+     "6": 0.0259
+    }
+   },
+   "FOREX|1H": {
+    "trades": 9290,
+    "pTpWithin": {
+     "1": 0.0183,
+     "2": 0.0325,
+     "3": 0.0489,
+     "6": 0.1013
+    },
+    "pSlWithin": {
+     "1": 0.0011,
+     "2": 0.003,
+     "3": 0.0057,
+     "6": 0.0134
+    },
+    "realizedRWithin": {
+     "1": 0.0018,
+     "2": 0.0049,
+     "3": 0.0083,
+     "6": -0.0106
+    }
+   },
+   "GOLD|1H": {
+    "trades": 1081,
+    "pTpWithin": {
+     "1": 0.0999,
+     "2": 0.1434,
+     "3": 0.1739,
+     "6": 0.2526
+    },
+    "pSlWithin": {
+     "1": 0.0463,
+     "2": 0.0953,
+     "3": 0.1369,
+     "6": 0.2285
+    },
+    "realizedRWithin": {
+     "1": -0.0142,
+     "2": -0.0309,
+     "3": -0.047,
+     "6": 0.0305
+    }
+   },
+   "US_STOCK|1D": {
+    "trades": 1373,
+    "pTpWithin": {
+     "1": 0.0641,
+     "2": 0.0801,
+     "3": 0.1034,
+     "6": 0.1559
+    },
+    "pSlWithin": {
+     "1": 0.1253,
+     "2": 0.2097,
+     "3": 0.2841,
+     "6": 0.4086
+    },
+    "realizedRWithin": {
+     "1": -0.0794,
+     "2": -0.1516,
+     "3": -0.1745,
+     "6": 0.0208
+    }
+   },
+   "CRYPTO|1D": {
+    "trades": 1449,
+    "pTpWithin": {
+     "1": 0.0455,
+     "2": 0.0663,
+     "3": 0.0877,
+     "6": 0.1436
+    },
+    "pSlWithin": {
+     "1": 0.0959,
+     "2": 0.1615,
+     "3": 0.2284,
+     "6": 0.3637
+    },
+    "realizedRWithin": {
+     "1": -0.0718,
+     "2": -0.0911,
+     "3": -0.1014,
+     "6": 0.0488
+    }
+   },
+   "TH_STOCK|1D": {
+    "trades": 1670,
+    "pTpWithin": {
+     "1": 0.0449,
+     "2": 0.0653,
+     "3": 0.082,
+     "6": 0.1467
+    },
+    "pSlWithin": {
+     "1": 0.1138,
+     "2": 0.1952,
+     "3": 0.2563,
+     "6": 0.3838
+    },
+    "realizedRWithin": {
+     "1": -0.0901,
+     "2": -0.1438,
+     "3": -0.1715,
+     "6": 0.0067
+    }
+   },
+   "FOREX|1D": {
+    "trades": 1911,
+    "pTpWithin": {
+     "1": 0.0989,
+     "2": 0.1224,
+     "3": 0.1413,
+     "6": 0.1816
+    },
+    "pSlWithin": {
+     "1": 0.1863,
+     "2": 0.2564,
+     "3": 0.3129,
+     "6": 0.4171
+    },
+    "realizedRWithin": {
+     "1": -0.068,
+     "2": -0.1384,
+     "3": -0.1825,
+     "6": 0.1083
+    }
+   },
+   "GOLD|1D": {
+    "trades": 216,
+    "pTpWithin": {
+     "1": 0.0602,
+     "2": 0.0926,
+     "3": 0.1204,
+     "6": 0.2129
+    },
+    "pSlWithin": {
+     "1": 0.1111,
+     "2": 0.1945,
+     "3": 0.3102,
+     "6": 0.4028
+    },
+    "realizedRWithin": {
+     "1": -0.0629,
+     "2": -0.1279,
+     "3": -0.2249,
+     "6": 0.1199
+    }
+   }
+  },
+  "byTimeframe": {
+   "1H": {
+    "trades": 22333,
+    "pTpWithin": {
+     "1": 0.07,
+     "2": 0.0993,
+     "3": 0.1239,
+     "6": 0.1872
+    },
+    "pSlWithin": {
+     "1": 0.0328,
+     "2": 0.0684,
+     "3": 0.0985,
+     "6": 0.1657
+    },
+    "realizedRWithin": {
+     "1": -0.0073,
+     "2": -0.0216,
+     "3": -0.0284,
+     "6": 0.008
+    }
+   },
+   "1D": {
+    "trades": 6619,
+    "pTpWithin": {
+     "1": 0.0651,
+     "2": 0.086,
+     "3": 0.1061,
+     "6": 0.1601
+    },
+    "pSlWithin": {
+     "1": 0.1331,
+     "2": 0.2085,
+     "3": 0.2741,
+     "6": 0.3948
+    },
+    "realizedRWithin": {
+     "1": -0.0766,
+     "2": -0.1318,
+     "3": -0.1617,
+     "6": 0.0518
+    }
+   }
+  },
+  "gatedByMarketTimeframe": {
+   "US_STOCK|1H": {
+    "trades": 303,
+    "pTpWithin": {
+     "1": 0.0033,
+     "2": 0.0099,
+     "3": 0.0462,
+     "6": 0.132
+    },
+    "pSlWithin": {
+     "1": 0.066,
+     "2": 0.1584,
+     "3": 0.2079,
+     "6": 0.396
+    },
+    "realizedRWithin": {
+     "1": -0.0407,
+     "2": -0.159,
+     "3": -0.0433,
+     "6": 0.1033
+    }
+   },
+   "CRYPTO|1H": {
+    "trades": 1218,
+    "pTpWithin": {
+     "1": 0.0172,
+     "2": 0.0435,
+     "3": 0.0813,
+     "6": 0.1486
+    },
+    "pSlWithin": {
+     "1": 0.0788,
+     "2": 0.1781,
+     "3": 0.2447,
+     "6": 0.3785
+    },
+    "realizedRWithin": {
+     "1": -0.0425,
+     "2": -0.0891,
+     "3": -0.0761,
+     "6": 0.074
+    }
+   },
+   "TH_STOCK|1H": {
+    "trades": 356,
+    "pTpWithin": {
+     "1": 0,
+     "2": 0.0112,
+     "3": 0.0169,
+     "6": 0.0562
+    },
+    "pSlWithin": {
+     "1": 0.0955,
+     "2": 0.1348,
+     "3": 0.1742,
+     "6": 0.323
+    },
+    "realizedRWithin": {
+     "1": -0.0899,
+     "2": -0.1032,
+     "3": -0.1345,
+     "6": 0.0195
+    }
+   },
+   "FOREX|1H": {
+    "trades": 88,
+    "pTpWithin": {
+     "1": 0,
+     "2": 0,
+     "3": 0,
+     "6": 0.0568
+    },
+    "pSlWithin": {
+     "1": 0.0114,
+     "2": 0.0568,
+     "3": 0.1477,
+     "6": 0.2614
+    },
+    "realizedRWithin": {
+     "1": -0.0114,
+     "2": -0.0571,
+     "3": -0.148,
+     "6": -0.0756
+    }
+   },
+   "GOLD|1H": {
+    "trades": 173,
+    "pTpWithin": {
+     "1": 0.0115,
+     "2": 0.052,
+     "3": 0.0751,
+     "6": 0.1445
+    },
+    "pSlWithin": {
+     "1": 0.0578,
+     "2": 0.1445,
+     "3": 0.1965,
+     "6": 0.3006
+    },
+    "realizedRWithin": {
+     "1": -0.0348,
+     "2": -0.0405,
+     "3": -0.0496,
+     "6": 0.1876
+    }
+   },
+   "US_STOCK|1D": {
+    "trades": 227,
+    "pTpWithin": {
+     "1": 0.0044,
+     "2": 0.0132,
+     "3": 0.0485,
+     "6": 0.0969
+    },
+    "pSlWithin": {
+     "1": 0.1057,
+     "2": 0.1938,
+     "3": 0.2687,
+     "6": 0.4582
+    },
+    "realizedRWithin": {
+     "1": -0.0617,
+     "2": -0.1366,
+     "3": -0.1357,
+     "6": 0.0436
+    }
+   },
+   "CRYPTO|1D": {
+    "trades": 180,
+    "pTpWithin": {
+     "1": 0.0167,
+     "2": 0.0444,
+     "3": 0.0778,
+     "6": 0.1667
+    },
+    "pSlWithin": {
+     "1": 0.1278,
+     "2": 0.2167,
+     "3": 0.3222,
+     "6": 0.4444
+    },
+    "realizedRWithin": {
+     "1": -0.0944,
+     "2": -0.0913,
+     "3": -0.0821,
+     "6": 0.2929
+    }
+   },
+   "TH_STOCK|1D": {
+    "trades": 244,
+    "pTpWithin": {
+     "1": 0.0041,
+     "2": 0.0205,
+     "3": 0.0369,
+     "6": 0.0738
+    },
+    "pSlWithin": {
+     "1": 0.1721,
+     "2": 0.2541,
+     "3": 0.3033,
+     "6": 0.459
+    },
+    "realizedRWithin": {
+     "1": -0.1311,
+     "2": -0.1166,
+     "3": -0.1428,
+     "6": -0.0084
+    }
+   },
+   "FOREX|1D": {
+    "trades": 360,
+    "pTpWithin": {
+     "1": 0,
+     "2": 0,
+     "3": 0.0056,
+     "6": 0.0333
+    },
+    "pSlWithin": {
+     "1": 0.35,
+     "2": 0.4278,
+     "3": 0.4917,
+     "6": 0.6194
+    },
+    "realizedRWithin": {
+     "1": -0.0856,
+     "2": -0.1731,
+     "3": -0.2307,
+     "6": -0.1156
+    }
+   },
+   "GOLD|1D": {
+    "trades": 33,
+    "pTpWithin": {
+     "1": 0,
+     "2": 0.0303,
+     "3": 0.0606,
+     "6": 0.2121
+    },
+    "pSlWithin": {
+     "1": 0.0909,
+     "2": 0.1515,
+     "3": 0.2424,
+     "6": 0.303
+    },
+    "realizedRWithin": {
+     "1": -0.0606,
+     "2": -0.0807,
+     "3": -0.14,
+     "6": 0.7163
+    }
+   }
+  },
+  "gatedByTimeframe": {
+   "1H": {
+    "trades": 2138,
+    "pTpWithin": {
+     "1": 0.0112,
+     "2": 0.0323,
+     "3": 0.0617,
+     "6": 0.1268
+    },
+    "pSlWithin": {
+     "1": 0.0753,
+     "2": 0.1604,
+     "3": 0.2198,
+     "6": 0.3606
+    },
+    "realizedRWithin": {
+     "1": -0.0482,
+     "2": -0.0961,
+     "3": -0.082,
+     "6": 0.0721
+    }
+   },
+   "1D": {
+    "trades": 1044,
+    "pTpWithin": {
+     "1": 0.0048,
+     "2": 0.0163,
+     "3": 0.0364,
+     "6": 0.0852
+    },
+    "pSlWithin": {
+     "1": 0.2088,
+     "2": 0.2912,
+     "3": 0.3621,
+     "6": 0.5067
+    },
+    "realizedRWithin": {
+     "1": -0.0918,
+     "2": -0.1349,
+     "3": -0.161,
+     "6": 0.0408
+    }
+   }
+  }
+ },
+ "pairs": [
+  {
+   "symbol": "AAPL",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 97,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0619
+   },
+   "realizedRWithin": {
+    "2": 0.0138
+   }
+  },
+  {
+   "symbol": "ADA",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 168,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0655
+   },
+   "realizedRWithin": {
+    "2": -0.0991
+   }
+  },
+  {
+   "symbol": "ADVANC",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 111,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.036
+   },
+   "realizedRWithin": {
+    "2": -0.145
+   }
+  },
+  {
+   "symbol": "AMD",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 98,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0816
+   },
+   "realizedRWithin": {
+    "2": -0.1845
+   }
+  },
+  {
+   "symbol": "AMZN",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 128,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0469
+   },
+   "realizedRWithin": {
+    "2": -0.2097
+   }
+  },
+  {
+   "symbol": "AOT",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 91,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0879
+   },
+   "realizedRWithin": {
+    "2": -0.0787
+   }
+  },
+  {
+   "symbol": "AUDJPY",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 124,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1774
+   },
+   "realizedRWithin": {
+    "2": -0.1403
+   }
+  },
+  {
+   "symbol": "AUDTHB",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 154,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1039
+   },
+   "realizedRWithin": {
+    "2": -0.1379
+   }
+  },
+  {
+   "symbol": "AUDUSD",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 100,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.13
+   },
+   "realizedRWithin": {
+    "2": -0.1697
+   }
+  },
+  {
+   "symbol": "AVAX",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 150,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0467
+   },
+   "realizedRWithin": {
+    "2": -0.0585
+   }
+  },
+  {
+   "symbol": "BBL",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 97,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0928
+   },
+   "realizedRWithin": {
+    "2": -0.1009
+   }
+  },
+  {
+   "symbol": "BDMS",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 102,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.049
+   },
+   "realizedRWithin": {
+    "2": -0.2142
+   }
+  },
+  {
+   "symbol": "BNB",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 161,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0932
+   },
+   "realizedRWithin": {
+    "2": -0.1048
+   }
+  },
+  {
+   "symbol": "BTC",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 170,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0706
+   },
+   "realizedRWithin": {
+    "2": -0.0646
+   }
+  },
+  {
+   "symbol": "CPALL",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 94,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0426
+   },
+   "realizedRWithin": {
+    "2": -0.165
+   }
+  },
+  {
+   "symbol": "CPN",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 124,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0403
+   },
+   "realizedRWithin": {
+    "2": -0.1432
+   }
+  },
+  {
+   "symbol": "DELTA",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 95,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0526
+   },
+   "realizedRWithin": {
+    "2": -0.1014
+   }
+  },
+  {
+   "symbol": "DOGE",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 158,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0506
+   },
+   "realizedRWithin": {
+    "2": -0.0692
+   }
+  },
+  {
+   "symbol": "ETH",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 141,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0709
+   },
+   "realizedRWithin": {
+    "2": -0.0851
+   }
+  },
+  {
+   "symbol": "EURGBP",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 113,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.115
+   },
+   "realizedRWithin": {
+    "2": -0.0245
+   }
+  },
+  {
+   "symbol": "EURJPY",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 122,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.2049
+   },
+   "realizedRWithin": {
+    "2": -0.0974
+   }
+  },
+  {
+   "symbol": "EURTHB",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 171,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0994
+   },
+   "realizedRWithin": {
+    "2": -0.2184
+   }
+  },
+  {
+   "symbol": "EURUSD",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 97,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0825
+   },
+   "realizedRWithin": {
+    "2": -0.1749
+   }
+  },
+  {
+   "symbol": "GBPJPY",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 115,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1043
+   },
+   "realizedRWithin": {
+    "2": -0.1143
+   }
+  },
+  {
+   "symbol": "GBPTHB",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 185,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0811
+   },
+   "realizedRWithin": {
+    "2": -0.137
+   }
+  },
+  {
+   "symbol": "GBPUSD",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 103,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1359
+   },
+   "realizedRWithin": {
+    "2": -0.1355
+   }
+  },
+  {
+   "symbol": "GOOGL",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 115,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.113
+   },
+   "realizedRWithin": {
+    "2": -0.1474
+   }
+  },
+  {
+   "symbol": "GULF",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 17,
+   "reliable": false,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1176
+   },
+   "realizedRWithin": {
+    "2": 0.0259
+   }
+  },
+  {
+   "symbol": "JPM",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 124,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1048
+   },
+   "realizedRWithin": {
+    "2": -0.2408
+   }
+  },
+  {
+   "symbol": "JPYTHB",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 153,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1176
+   },
+   "realizedRWithin": {
+    "2": -0.1332
+   }
+  },
+  {
+   "symbol": "KBANK",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 98,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1224
+   },
+   "realizedRWithin": {
+    "2": -0.1241
+   }
+  },
+  {
+   "symbol": "KTB",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 90,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1111
+   },
+   "realizedRWithin": {
+    "2": 0.0344
+   }
+  },
+  {
+   "symbol": "LINK",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 175,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0686
+   },
+   "realizedRWithin": {
+    "2": -0.122
+   }
+  },
+  {
+   "symbol": "META",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 118,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0508
+   },
+   "realizedRWithin": {
+    "2": -0.1183
+   }
+  },
+  {
+   "symbol": "MINT",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 98,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.051
+   },
+   "realizedRWithin": {
+    "2": -0.2344
+   }
+  },
+  {
+   "symbol": "MSFT",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 124,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0565
+   },
+   "realizedRWithin": {
+    "2": -0.2144
+   }
+  },
+  {
+   "symbol": "NFLX",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 106,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.066
+   },
+   "realizedRWithin": {
+    "2": -0.1773
+   }
+  },
+  {
+   "symbol": "NVDA",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 116,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1034
+   },
+   "realizedRWithin": {
+    "2": -0.1384
+   }
+  },
+  {
+   "symbol": "NZDUSD",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 90,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1111
+   },
+   "realizedRWithin": {
+    "2": -0.2629
+   }
+  },
+  {
+   "symbol": "OR",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 95,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0526
+   },
+   "realizedRWithin": {
+    "2": -0.093
+   }
+  },
+  {
+   "symbol": "PTT",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 101,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0198
+   },
+   "realizedRWithin": {
+    "2": -0.2529
+   }
+  },
+  {
+   "symbol": "PTTEP",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 114,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0526
+   },
+   "realizedRWithin": {
+    "2": -0.22
+   }
+  },
+  {
+   "symbol": "QQQ",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 114,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1491
+   },
+   "realizedRWithin": {
+    "2": -0.0577
+   }
+  },
+  {
+   "symbol": "SCB",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 81,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0
+   },
+   "realizedRWithin": {
+    "2": -0.1507
+   }
+  },
+  {
+   "symbol": "SCC",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 96,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1354
+   },
+   "realizedRWithin": {
+    "2": -0.1144
+   }
+  },
+  {
+   "symbol": "SOL",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 158,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.057
+   },
+   "realizedRWithin": {
+    "2": -0.1507
+   }
+  },
+  {
+   "symbol": "SPY",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 124,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0887
+   },
+   "realizedRWithin": {
+    "2": -0.204
+   }
+  },
+  {
+   "symbol": "TRUE",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 94,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1064
+   },
+   "realizedRWithin": {
+    "2": -0.1149
+   }
+  },
+  {
+   "symbol": "TSLA",
+   "market": "US_STOCK",
+   "timeframe": "1D",
+   "trades": 109,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0367
+   },
+   "realizedRWithin": {
+    "2": -0.0968
+   }
+  },
+  {
+   "symbol": "TTB",
+   "market": "TH_STOCK",
+   "timeframe": "1D",
+   "trades": 89,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0674
+   },
+   "realizedRWithin": {
+    "2": -0.1892
+   }
+  },
+  {
+   "symbol": "USDCAD",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 94,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0957
+   },
+   "realizedRWithin": {
+    "2": -0.087
+   }
+  },
+  {
+   "symbol": "USDCHF",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 91,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1978
+   },
+   "realizedRWithin": {
+    "2": -0.1412
+   }
+  },
+  {
+   "symbol": "USDJPY",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 100,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1
+   },
+   "realizedRWithin": {
+    "2": -0.1555
+   }
+  },
+  {
+   "symbol": "USDTHB",
+   "market": "FOREX",
+   "timeframe": "1D",
+   "trades": 99,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1414
+   },
+   "realizedRWithin": {
+    "2": -0.069
+   }
+  },
+  {
+   "symbol": "XAGUSD",
+   "market": "GOLD",
+   "timeframe": "1D",
+   "trades": 111,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0721
+   },
+   "realizedRWithin": {
+    "2": -0.1127
+   }
+  },
+  {
+   "symbol": "XAUUSD",
+   "market": "GOLD",
+   "timeframe": "1D",
+   "trades": 105,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1143
+   },
+   "realizedRWithin": {
+    "2": -0.1439
+   }
+  },
+  {
+   "symbol": "XRP",
+   "market": "CRYPTO",
+   "timeframe": "1D",
+   "trades": 168,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0714
+   },
+   "realizedRWithin": {
+    "2": -0.0631
+   }
+  },
+  {
+   "symbol": "AAPL",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 140,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1714
+   },
+   "realizedRWithin": {
+    "2": 0.23
+   }
+  },
+  {
+   "symbol": "ADA",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 867,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1753
+   },
+   "realizedRWithin": {
+    "2": -0.0385
+   }
+  },
+  {
+   "symbol": "ADVANC",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 126,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.119
+   },
+   "realizedRWithin": {
+    "2": -0.0296
+   }
+  },
+  {
+   "symbol": "AMD",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 132,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0758
+   },
+   "realizedRWithin": {
+    "2": -0.1115
+   }
+  },
+  {
+   "symbol": "AMZN",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 144,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1806
+   },
+   "realizedRWithin": {
+    "2": -0.106
+   }
+  },
+  {
+   "symbol": "AOT",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 110,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0727
+   },
+   "realizedRWithin": {
+    "2": -0.0581
+   }
+  },
+  {
+   "symbol": "AUDJPY",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 581,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0413
+   },
+   "realizedRWithin": {
+    "2": 0.0075
+   }
+  },
+  {
+   "symbol": "AUDTHB",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 644,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0217
+   },
+   "realizedRWithin": {
+    "2": 0.0061
+   }
+  },
+  {
+   "symbol": "AUDUSD",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 597,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0536
+   },
+   "realizedRWithin": {
+    "2": 0.0104
+   }
+  },
+  {
+   "symbol": "AVAX",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 873,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1604
+   },
+   "realizedRWithin": {
+    "2": -0.0557
+   }
+  },
+  {
+   "symbol": "BBL",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 126,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1349
+   },
+   "realizedRWithin": {
+    "2": -0.0408
+   }
+  },
+  {
+   "symbol": "BDMS",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 142,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1408
+   },
+   "realizedRWithin": {
+    "2": -0.2799
+   }
+  },
+  {
+   "symbol": "BNB",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 843,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1661
+   },
+   "realizedRWithin": {
+    "2": 0.0035
+   }
+  },
+  {
+   "symbol": "BTC",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 842,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1473
+   },
+   "realizedRWithin": {
+    "2": -0.0104
+   }
+  },
+  {
+   "symbol": "CPALL",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 120,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1083
+   },
+   "realizedRWithin": {
+    "2": -0.0972
+   }
+  },
+  {
+   "symbol": "CPN",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 134,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1493
+   },
+   "realizedRWithin": {
+    "2": -0.087
+   }
+  },
+  {
+   "symbol": "DELTA",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 103,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1359
+   },
+   "realizedRWithin": {
+    "2": 0.0029
+   }
+  },
+  {
+   "symbol": "DOGE",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 906,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1446
+   },
+   "realizedRWithin": {
+    "2": -0.0332
+   }
+  },
+  {
+   "symbol": "ETH",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 892,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1704
+   },
+   "realizedRWithin": {
+    "2": -0.0072
+   }
+  },
+  {
+   "symbol": "EURGBP",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 593,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0219
+   },
+   "realizedRWithin": {
+    "2": 0.0055
+   }
+  },
+  {
+   "symbol": "EURJPY",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 545,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0367
+   },
+   "realizedRWithin": {
+    "2": 0.0088
+   }
+  },
+  {
+   "symbol": "EURTHB",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 650,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0138
+   },
+   "realizedRWithin": {
+    "2": 0.0024
+   }
+  },
+  {
+   "symbol": "EURUSD",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 518,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0425
+   },
+   "realizedRWithin": {
+    "2": 0.0053
+   }
+  },
+  {
+   "symbol": "GBPJPY",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 545,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0294
+   },
+   "realizedRWithin": {
+    "2": 0.0042
+   }
+  },
+  {
+   "symbol": "GBPTHB",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 646,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0294
+   },
+   "realizedRWithin": {
+    "2": 0.0056
+   }
+  },
+  {
+   "symbol": "GBPUSD",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 560,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0429
+   },
+   "realizedRWithin": {
+    "2": 0.0061
+   }
+  },
+  {
+   "symbol": "GOOGL",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 163,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1472
+   },
+   "realizedRWithin": {
+    "2": -0.0764
+   }
+  },
+  {
+   "symbol": "GULF",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 119,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1429
+   },
+   "realizedRWithin": {
+    "2": -0.0708
+   }
+  },
+  {
+   "symbol": "JPM",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 145,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1655
+   },
+   "realizedRWithin": {
+    "2": 0.0346
+   }
+  },
+  {
+   "symbol": "JPYTHB",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 560,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0321
+   },
+   "realizedRWithin": {
+    "2": -0.0026
+   }
+  },
+  {
+   "symbol": "KBANK",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 123,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0976
+   },
+   "realizedRWithin": {
+    "2": -0.0693
+   }
+  },
+  {
+   "symbol": "KTB",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 146,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0548
+   },
+   "realizedRWithin": {
+    "2": -0.1003
+   }
+  },
+  {
+   "symbol": "LINK",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 916,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.179
+   },
+   "realizedRWithin": {
+    "2": -0.029
+   }
+  },
+  {
+   "symbol": "META",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 147,
+   "reliable": true,
+   "medianHoldBarsWin": 4,
+   "pTpWithin": {
+    "2": 0.1701
+   },
+   "realizedRWithin": {
+    "2": -0.1835
+   }
+  },
+  {
+   "symbol": "MINT",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 122,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0246
+   },
+   "realizedRWithin": {
+    "2": -0.0829
+   }
+  },
+  {
+   "symbol": "MSFT",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 144,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0903
+   },
+   "realizedRWithin": {
+    "2": -0.0966
+   }
+  },
+  {
+   "symbol": "NFLX",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 146,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1575
+   },
+   "realizedRWithin": {
+    "2": -0.0317
+   }
+  },
+  {
+   "symbol": "NVDA",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 146,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1438
+   },
+   "realizedRWithin": {
+    "2": -0.0866
+   }
+  },
+  {
+   "symbol": "NZDUSD",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 572,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0542
+   },
+   "realizedRWithin": {
+    "2": 0.0048
+   }
+  },
+  {
+   "symbol": "OR",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 125,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.056
+   },
+   "realizedRWithin": {
+    "2": -0.1615
+   }
+  },
+  {
+   "symbol": "PTT",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 152,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0855
+   },
+   "realizedRWithin": {
+    "2": -0.0033
+   }
+  },
+  {
+   "symbol": "PTTEP",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 117,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.094
+   },
+   "realizedRWithin": {
+    "2": -0.0195
+   }
+  },
+  {
+   "symbol": "QQQ",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 162,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1667
+   },
+   "realizedRWithin": {
+    "2": -0.0175
+   }
+  },
+  {
+   "symbol": "SCB",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 137,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.073
+   },
+   "realizedRWithin": {
+    "2": -0.018
+   }
+  },
+  {
+   "symbol": "SCC",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 121,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0744
+   },
+   "realizedRWithin": {
+    "2": -0.0897
+   }
+  },
+  {
+   "symbol": "SOL",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 877,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1653
+   },
+   "realizedRWithin": {
+    "2": -0.039
+   }
+  },
+  {
+   "symbol": "SPY",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 172,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1395
+   },
+   "realizedRWithin": {
+    "2": -0.0164
+   }
+  },
+  {
+   "symbol": "TRUE",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 127,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0472
+   },
+   "realizedRWithin": {
+    "2": -0.1065
+   }
+  },
+  {
+   "symbol": "TSLA",
+   "market": "US_STOCK",
+   "timeframe": "1H",
+   "trades": 164,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1402
+   },
+   "realizedRWithin": {
+    "2": -0.0826
+   }
+  },
+  {
+   "symbol": "TTB",
+   "market": "TH_STOCK",
+   "timeframe": "1H",
+   "trades": 138,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.029
+   },
+   "realizedRWithin": {
+    "2": -0.1327
+   }
+  },
+  {
+   "symbol": "USDCAD",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 594,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0101
+   },
+   "realizedRWithin": {
+    "2": 0.0036
+   }
+  },
+  {
+   "symbol": "USDCHF",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 560,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0286
+   },
+   "realizedRWithin": {
+    "2": 0.0063
+   }
+  },
+  {
+   "symbol": "USDJPY",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 541,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0259
+   },
+   "realizedRWithin": {
+    "2": 0.0024
+   }
+  },
+  {
+   "symbol": "USDTHB",
+   "market": "FOREX",
+   "timeframe": "1H",
+   "trades": 584,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.0411
+   },
+   "realizedRWithin": {
+    "2": 0.0016
+   }
+  },
+  {
+   "symbol": "XAGUSD",
+   "market": "GOLD",
+   "timeframe": "1H",
+   "trades": 528,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1534
+   },
+   "realizedRWithin": {
+    "2": -0.0575
+   }
+  },
+  {
+   "symbol": "XAUUSD",
+   "market": "GOLD",
+   "timeframe": "1H",
+   "trades": 553,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1338
+   },
+   "realizedRWithin": {
+    "2": -0.0056
+   }
+  },
+  {
+   "symbol": "XRP",
+   "market": "CRYPTO",
+   "timeframe": "1H",
+   "trades": 853,
+   "reliable": true,
+   "medianHoldBarsWin": 5,
+   "pTpWithin": {
+    "2": 0.1653
+   },
+   "realizedRWithin": {
+    "2": -0.0447
+   }
+  }
+ ]
+}

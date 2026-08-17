@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchChart } from '@/lib/market-data';
 import { generateSignal } from '@/lib/signal-engine';
 import { sendSignalAlert } from '@/lib/telegram';
-import { sendPushToUser, signalToPush } from '@/lib/push-server';
+import { sendPendingSignalsToUser } from '@/lib/push-server';
 import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { Signal, MarketPrice, AlertPreferences, CandleData } from '@/types';
@@ -10,6 +10,54 @@ import { errorMessage } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+/**
+ * ⚠ route นี้ไม่มีตัวจับเวลายิงอัตโนมัติแล้ว — เหลือไว้ให้ "กดเรียกเอง" อย่างเดียว
+ *
+ * ที่เอา cron ออกจาก vercel.json (เดิม `{path:'/api/cron/scan-markets', schedule:'0 1 * * *'}`)
+ * ไม่ใช่เพราะ route พัง แต่เพราะมีตัวสแกนที่ทำงานจริงอยู่แล้วคือ .github/workflows/scan-universe.yml
+ * (รายชั่วโมง นาทีที่ 25 · สแกนทั้งจักรวาล ∪ watchlist) และการมีตัวสแกนสองตัวเขียนตาราง
+ * signals ใบเดียวกันมีผลข้างเคียงที่วัดได้จริงสองข้อ:
+ *   1. ตัวกันสัญญาณซ้ำเป็นแบบ "อ่านก่อนเขียน" — สองตัวที่รันใกล้กันกันซ้ำไม่อยู่
+ *      (เหตุผลเดียวกับที่ .github/workflows/scan-markets.yml ปิด schedule ไปแล้วเมื่อ 2026-08-17)
+ *   2. ตอนนี้ฐานข้อมูลยังไม่ได้รัน migration 006 (วัดจริง: signals.push_sent ตอบ 42703)
+ *      = ทำงานในโหมดถอยที่ "รอบที่ถูกกันความถี่ไม่ได้เก็บตก" รอบ 01:00 ของ Vercel
+ *      จะกินโควตาแจ้งเตือนของชั่วโมงนั้นไป แล้วรอบ 01:25 ที่สแกนกว้างกว่าจะเงียบทั้งรอบ
+ *
+ * กดเรียกเองได้เหมือนเดิมทุกอย่าง (ใช้ไล่ปัญหา):
+ *   curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/scan-markets
+ *   หรือกด Run workflow ที่ .github/workflows/scan-markets.yml
+ * อยากได้ตัวจับเวลาฝั่ง Vercel กลับ: ใส่บล็อก crons กลับใน vercel.json แล้วปิด scan-universe.yml ก่อน
+ */
+
+/**
+ * ตัวให้คะแนน "โอกาสจบใน ~1 ชม." — ต้องเป็นชุดเดียวกับที่หน้า /signals ใช้
+ *
+ * ทำไมต้องพยายามโหลดให้ได้ทั้งที่ route นี้เป็นทางไล่ปัญหา: เจ้าของสั่งไว้ว่าลำดับในแจ้งเตือน
+ * ต้องตรงกับลำดับบนเว็บ ถ้า route นี้ยิงใบที่เรียงคนละกติกา ก็จะเจอภาพเดิมที่เขาบ่นมา
+ *
+ * ทำไมไม่ import ตรง ๆ: src/lib/speed-scorecard.ts เป็นไฟล์ของงานวิจัยที่ทำขนานอยู่
+ * ถ้าวันไหนมันหายไป (หรือยังไม่ถูกสร้าง) การ import ตรง ๆ จะทำให้ทั้งโปรเจกต์ build ไม่ผ่าน
+ * = ทั้งเว็บล่ม ไม่ใช่แค่ลำดับเพี้ยน · require.context ให้ผลเป็น "ชุดว่าง" แทนที่จะเป็น error
+ * (วิธีเดียวกับที่ src/app/signals/page.tsx ใช้อยู่ — ตัวยึด ^...$ จำเป็น ไม่งั้นจะไปจับ
+ *  speed-scorecard.data.json ซึ่งเป็นไฟล์ข้อมูล ไม่ใช่ตัวให้คะแนน)
+ */
+type WebpackRequireContext = { keys(): string[]; (id: string): unknown };
+declare const require: { context(dir: string, useSubdirectories: boolean, regExp: RegExp): WebpackRequireContext };
+
+function loadSpeedScorer(): ((signal: Signal) => unknown) | null {
+  try {
+    const ctx = require.context('../../../../lib', false, /^\.\/speed-scorecard(\.tsx?)?$/);
+    for (const key of ctx.keys()) {
+      const mod = ctx(key) as Record<string, unknown> | null;
+      const fn = mod?.speedScore ?? mod?.default;
+      if (typeof fn === 'function') return fn as (signal: Signal) => unknown;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * ไม่สร้างสัญญาณซ้ำของ user+symbol+action+timeframe เดิมภายในกี่ชั่วโมง
@@ -26,10 +74,13 @@ const DEDUPE_HOURS_1H = 4;
 const TIME_BUDGET_MS = 45_000;
 
 /**
- * Daily cron: สแกน watchlist ของผู้ใช้ทุกคน → สร้างสัญญาณ → บันทึก → ส่ง Telegram
+ * สแกน watchlist ของผู้ใช้ทุกคน → สร้างสัญญาณ → บันทึก → แจ้งเตือน (Web Push + Telegram)
  *
  * ทำงานโดยไม่มี session จึงใช้ service-role client
  * ป้องกันด้วย CRON_SECRET header
+ *
+ * ⚠ ไม่มีตัวจับเวลาเรียกอัตโนมัติแล้ว (ดูเหตุผลในคอมเมนต์ข้างบน) — เป็นเครื่องมือไล่ปัญหา
+ *   กดเรียกเมื่อไหร่ก็ได้ ตัวจำกัดความถี่ฝั่งแจ้งเตือนกันไม่ให้สั่นเกินชั่วโมงละครั้งเอง
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -203,7 +254,24 @@ export async function GET(req: NextRequest) {
     let pushSent = 0;
     let pushFailed = 0;
     let pushPruned = 0;
+    /** จำนวน "ครั้งที่โทรศัพท์สั่น" ทั้งรอบ — ตัวเลขที่ต้องจับตา ไม่ใช่จำนวนสัญญาณ */
+    let pushNotifications = 0;
+    let pushThrottled = 0;
     const pushErrors: string[] = [];
+    /** เหตุผลภาษาไทยของการตัดสินใจแจ้งเตือนรายคน — ไว้ไล่ปัญหาโดยไม่ต้องเปิด log ของ Vercel */
+    const pushReasons: string[] = [];
+    // โหลดครั้งเดียวต่อรอบ แล้วห่อกัน error กลางการเรียง (push-digest ห่อไว้อีกชั้นแล้ว
+    // แต่ที่นี่ห่อไว้ด้วยเพราะเราเป็นคนเรียกไฟล์ของคนอื่นเข้ามาเอง)
+    const rawSpeedScorer = loadSpeedScorer();
+    const speedScore = rawSpeedScorer
+      ? (signal: Signal) => {
+          try {
+            return rawSpeedScorer(signal) as never;
+          } catch {
+            return null;
+          }
+        }
+      : null;
     const userIds = [...new Set(signalsToInsert.map(s => s.user_id))];
 
     for (const userId of userIds) {
@@ -217,23 +285,39 @@ export async function GET(req: NextRequest) {
       // การเงียบเพราะ profile หายไปคือความล้มเหลวที่ผู้ใช้มองไม่เห็น
       const prefs = (profile?.alert_preferences ?? {}) as AlertPreferences;
 
-      const mine = signalsToInsert.filter(s => s.user_id === userId).filter(signal => {
+      /** ตัวกรองตามความชอบผู้ใช้ — ส่งเป็นฟังก์ชันให้ตัวส่งกลางใช้กับของค้างจากรอบก่อนด้วย */
+      const allow = (signal: Signal) => {
         if (signal.action === 'BUY' && prefs.buy_signals === false) return false;
         if (signal.action === 'SELL' && prefs.sell_signals === false) return false;
         if (prefs.strong_signals_only && signal.strength !== 'strong' && signal.strength !== 'very_strong') return false;
         return true;
-      });
+      };
+      const mine = signalsToInsert.filter(s => s.user_id === userId).filter(allow);
 
       // 5a. Push เข้าเครื่อง — ทำก่อนเสมอ ไม่ขึ้นกับสถานะ Telegram
-      for (const signal of mine) {
-        const res = await sendPushToUser(supabase, userId, signalToPush(signal));
-        pushSent += res.sent;
-        pushFailed += res.failed;
-        pushPruned += res.pruned;
-        // เก็บเหตุผลไว้ใน response ของ cron ให้ไล่ปัญหาได้โดยไม่ต้องเปิด log ของ Vercel
-        // (จำกัดจำนวนกันยาวเกิน — สาเหตุมักซ้ำกันทุกแถวอยู่แล้ว)
-        for (const e of res.errors) if (pushErrors.length < 5 && !pushErrors.includes(e)) pushErrors.push(e);
+      //
+      // ⚠ เดิมตรงนี้วนยิงทีละสัญญาณ (`for (const signal of mine) sendPushToUser(...)`)
+      //   watchlist 3 แถวจึงเด้งได้ 3 ครั้งติดในรอบเดียว ซึ่งขัดสเปก "ชั่วโมงละ 1 ครั้ง" ตรง ๆ
+      //   และเป็นพฤติกรรมที่ iOS ลงโทษด้วยการตัดสิทธิ์ push เงียบ ๆ
+      //
+      //   ตอนนี้ยกให้ sendPendingSignalsToUser ตัดสินทั้งหมด: รวมของค้างจากรอบก่อน + ของรอบนี้
+      //   → จัดลำดับ → ยุบตัวซ้ำ → ยิง "ใบเดียว" ต่อคนต่อชั่วโมง แล้วปั๊มว่าแจ้งแล้ว
+      //   ตรรกะเดียวกับที่ scripts/scan-universe.mjs ใช้ = ไม่มีทางเถียงกันเอง
+      //
+      // ⚠ รอบที่ไม่มีสัญญาณใหม่เลยจะไม่เข้าลูปนี้ (userIds มาจาก signalsToInsert)
+      //   ของค้างจึงถูกเก็บตกโดยตัวสแกนหลักรายชั่วโมง ไม่ใช่โดยการกดเรียก route นี้เอง
+      const pushRes = await sendPendingSignalsToUser(supabase, userId, mine, { filter: allow, speedScore });
+      pushSent += pushRes.sent;
+      pushFailed += pushRes.failed;
+      pushPruned += pushRes.pruned;
+      pushNotifications += pushRes.notifications;
+      if (pushRes.throttled) pushThrottled++;
+      if (pushRes.reason && pushReasons.length < 5 && !pushReasons.includes(pushRes.reason)) {
+        pushReasons.push(pushRes.reason);
       }
+      // เก็บเหตุผลไว้ใน response ของ cron ให้ไล่ปัญหาได้โดยไม่ต้องเปิด log ของ Vercel
+      // (จำกัดจำนวนกันยาวเกิน — สาเหตุมักซ้ำกันทุกแถวอยู่แล้ว)
+      for (const e of pushRes.errors) if (pushErrors.length < 5 && !pushErrors.includes(e)) pushErrors.push(e);
 
       // 5b. Telegram — เฉพาะคนที่ตั้งค่าไว้ครบ
       if (!profile?.telegram_enabled || !profile.telegram_bot_token || !profile.telegram_chat_id) continue;
@@ -282,6 +366,11 @@ export async function GET(req: NextRequest) {
       pushSent,
       pushFailed,
       pushPruned,
+      // จำนวนใบแจ้งเตือนที่ยิงจริงทั้งรอบ = จำนวนครั้งที่โทรศัพท์สั่น (ควรเป็น 0 หรือ 1 ต่อคน)
+      pushNotifications,
+      // จำนวนคนที่ถูกกันเพราะชั่วโมงนี้แจ้งไปแล้ว — ไม่ใช่ความผิดพลาด แต่ต้องเห็น
+      pushThrottled,
+      pushReasons,
       pushErrors,
       timestamp: new Date().toISOString(),
     });

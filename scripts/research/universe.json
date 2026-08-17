@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-17",
+  "purpose": "จักรวาลสัญลักษณ์สำหรับงานวิจัยสัญญาณ — ใช้เป็นแหล่งความจริงเดียวของ scripts/research/fetch-universe.mjs",
+
+  "designNotes": {
+    "whySoWide": "674 ไม้จาก 6 สัญลักษณ์แยกไม่ออกว่า 'มี edge' หรือ 'โชคดี' — ต้องการกลุ่มตัวอย่างที่ใหญ่พอและหลากหลายพอ ก่อนจะเชื่อตัวเลขใด ๆ",
+    "whyNotOnlyWinners": "ถ้าเลือกแต่ NVDA/BTC ผลที่ได้จะตอบได้แค่ 'ระบบนี้เก่งตอนขาขึ้นไหม' ไม่ใช่ 'ระบบนี้มี edge ไหม' — จึงจงใจใส่ตัวที่ลงหนัก ตัวที่ออกข้าง และตัวที่พังจริง (EA ร่วงจากคดีปี 2024, INTC, PYPL, BA, TLT, IVL, DOT, BCH)",
+    "whyDelistedMatters": "ของที่หลุดออกจากกระดานแล้ว Yahoo ลบทิ้ง (เช่น WBA ถูกซื้อออกจากตลาดปี 2025 → v8 ตอบ 404) เราจึงยัง **หนี survivorship bias ได้ไม่หมด** แม้เลือกดีแค่ไหน ข้อจำกัดนี้ต้องติดไปกับทุกผลวิจัยที่ใช้ชุดนี้",
+    "roleFieldIsIntentNotFact": "ฟิลด์ role คือ 'เหตุผลที่เลือกเข้ามา' ไม่ใช่ข้อเท็จจริงที่วัดแล้ว — ตัวเลขผลตอบแทนจริงของแต่ละตัวถูกวัดตอนดึงข้อมูล แล้วเขียนไว้ใน .research-cache/quality-report.json (หัวข้อ regimeAudit)",
+    "symbolConverterIsShared": "ช่อง symbol เก็บสัญลักษณ์ 'ภายในระบบ' ไม่ใช่ของ Yahoo — fetch-universe.mjs ดึงฟังก์ชัน toYahooSymbol ออกจาก src/lib/market-data.ts มาใช้จริง เพื่อกันไม่ให้วิจัยกับระบบจริงชี้คนละตัว"
+  },
+
+  "groups": [
+    {
+      "market": "GOLD",
+      "rationale": "ทองคือแกนหลักที่เจ้าของเทรด แต่ทองอย่างเดียวคือกลุ่มตัวอย่างขนาด 1 — จึงพ่วงโลหะอื่นที่เดินคนละจังหวะ: เงินผันผวนแรงกว่าทองมาก ทองแดงเดินตามวัฏจักรอุตสาหกรรม (ขึ้น-ลงเป็นรอบ) แพลเลเดียมขึ้นสุดขั้วแล้วร่วงยาวหลายปี = ตัวอย่างขาลงชัด ๆ ที่ระบบต้องผ่านให้ได้",
+      "symbols": [
+        { "symbol": "XAUUSD", "name": "Gold Futures", "role": "แกนหลักที่ใช้จริง — ขาขึ้นระยะยาว" },
+        { "symbol": "XAGUSD", "name": "Silver Futures", "role": "ผันผวนสูงกว่าทอง ทดสอบว่า ATR-based SL/TP ทนความผันผวนไหม" },
+        { "symbol": "PL=F", "name": "Platinum Futures", "role": "ออกข้างยาวหลายปี — กับดักของระบบตามเทรนด์" },
+        { "symbol": "PA=F", "name": "Palladium Futures", "role": "ขึ้นสุดขั้วแล้วร่วงยาว — ตัวอย่างขาลงรุนแรง" },
+        { "symbol": "HG=F", "name": "Copper Futures", "role": "วัฏจักรอุตสาหกรรม ขึ้น-ลงเป็นรอบ ไม่ใช่เทรนด์เดียว" }
+      ]
+    },
+    {
+      "market": "FOREX",
+      "rationale": "ค่าเงินเป็นคู่ ฝั่งหนึ่งขึ้นอีกฝั่งลงเสมอ จึงเป็นสนามที่ 'ปลอด survivorship bias โดยธรรมชาติ' ที่สุดในห้าตลาด — เลือกทั้งคู่ที่มีเทรนด์ยาวจริง (USDJPY, USDMXN, USDZAR) และคู่ที่ออกข้างเป็นสิบปี (EURUSD, USDCHF) รวม USDTHB เพราะเป็นสกุลบ้านของเจ้าของ",
+      "symbols": [
+        { "symbol": "EURUSD", "name": "EUR/USD", "role": "สภาพคล่องสูงสุด ออกข้างเป็นช่วงยาว" },
+        { "symbol": "GBPUSD", "name": "GBP/USD", "role": "มีเหตุการณ์ช็อกจริง (Brexit) ทดสอบการรับ gap" },
+        { "symbol": "USDJPY", "name": "USD/JPY", "role": "เทรนด์ยาวชัดที่สุดในกลุ่ม — ฝั่งที่ระบบตามเทรนด์ควรทำได้ดี" },
+        { "symbol": "AUDUSD", "name": "AUD/USD", "role": "ผูกกับสินค้าโภคภัณฑ์ ขาลงยาว" },
+        { "symbol": "USDCHF", "name": "USD/CHF", "role": "ออกข้างและมี SNB shock ปี 2015" },
+        { "symbol": "USDCAD", "name": "USD/CAD", "role": "ช่วงแคบ ผันผวนต่ำ — ทดสอบว่าระบบเทรดถี่เกินไปไหม" },
+        { "symbol": "NZDUSD", "name": "NZD/USD", "role": "สภาพคล่องรองลงมา สเปรดกว้างกว่าในโลกจริง" },
+        { "symbol": "EURJPY", "name": "EUR/JPY", "role": "cross ไม่มี USD — ลดความสัมพันธ์กับกลุ่มอื่น" },
+        { "symbol": "GBPJPY", "name": "GBP/JPY", "role": "ผันผวนสูงสุดในกลุ่ม cross" },
+        { "symbol": "USDTHB", "name": "USD/THB", "role": "สกุลบ้านของเจ้าของ ตลาดบาง มีวันหยุดไทย" },
+        { "symbol": "USDMXN", "name": "USD/MXN", "role": "ตลาดเกิดใหม่ ดอกเบี้ยต่างสูง เทรนด์ยาว" },
+        { "symbol": "USDZAR", "name": "USD/ZAR", "role": "ผันผวนสูง มีช่วงพุ่งแรงเป็นครั้งคราว" }
+      ]
+    },
+    {
+      "market": "TH_STOCK",
+      "rationale": "SET เป็นตลาดที่ 'ไม่ขึ้น' มาหลายปี — เป็นยาแก้ survivorship bias ชั้นดี เพราะถ้าวัดแต่หุ้นสหรัฐจะได้ผลบวกจากตลาดขาขึ้นล้วน ๆ · เลือกให้ครบทุกหมวดใหญ่ (พลังงาน ธนาคาร ค้าปลีก สื่อสาร วัสดุ โรงพยาบาล อาหาร อิเล็กทรอนิกส์ ท่องเที่ยว ปิโตรเคมี) และจงใจใส่ EA ที่ราคาพังจากคดีปี 2024 กับ IVL/SCC ที่ลงยาว",
+      "symbols": [
+        { "symbol": "PTT", "name": "PTT PCL", "role": "พลังงาน หุ้นใหญ่สุดของ SET ลงยาวหลายปี" },
+        { "symbol": "PTTEP", "name": "PTT Exploration and Production", "role": "ผูกราคาน้ำมัน ขึ้นลงเป็นรอบ" },
+        { "symbol": "AOT", "name": "Airports of Thailand", "role": "พังตอนโควิดแล้วฟื้นไม่สุด — ทดสอบการรับ regime shift" },
+        { "symbol": "CPALL", "name": "CP ALL", "role": "ค้าปลีก ออกข้างกรอบกว้าง" },
+        { "symbol": "KBANK", "name": "Kasikornbank", "role": "ธนาคาร ลงยาวแล้วเด้งแรงเป็นช่วง" },
+        { "symbol": "BBL", "name": "Bangkok Bank", "role": "ธนาคาร ผันผวนต่ำ ปันผลสูง" },
+        { "symbol": "ADVANC", "name": "Advanced Info Service", "role": "สื่อสาร เป็นตัวที่ยังขึ้นได้ในตลาดที่ลง" },
+        { "symbol": "SCC", "name": "Siam Cement", "role": "วัสดุก่อสร้าง ลงหนักหลายปี" },
+        { "symbol": "BDMS", "name": "Bangkok Dusit Medical", "role": "โรงพยาบาล ป้องกันความเสี่ยงเชิงหมวด" },
+        { "symbol": "CPF", "name": "Charoen Pokphand Foods", "role": "อาหาร วัฏจักรราคาหมู/ไก่" },
+        { "symbol": "DELTA", "name": "Delta Electronics Thailand", "role": "ขึ้นแรงมากจากกระแส AI — ขั้วตรงข้ามของ EA ในชุดเดียวกัน" },
+        { "symbol": "MINT", "name": "Minor International", "role": "ท่องเที่ยว พังตอนโควิดแล้วฟื้นบางส่วน" },
+        { "symbol": "IVL", "name": "Indorama Ventures", "role": "ปิโตรเคมี ขาลงยาวต่อเนื่อง" },
+        { "symbol": "EA", "name": "Energy Absolute", "role": "ร่วงหนักจากคดีปี 2024 — ตัวอย่างหายนะจริงที่ระบบต้องไม่ทำกำไรปลอมจากมัน" }
+      ]
+    },
+    {
+      "market": "US_STOCK",
+      "rationale": "ตลาดสหรัฐมีประวัติยาวที่สุดที่ Yahoo ให้ (บางตัวถึงปี 1962) จึงเป็นแหล่งจำนวนแท่งหลักของงานวิจัย · แต่เพราะดัชนีสหรัฐขึ้นตลอด 15 ปี การเลือกแบบมักง่ายจะได้แต่ผู้ชนะ — จึงถ่วงด้วยผู้แพ้ระยะยาวจริง (INTC, PYPL, BA, NKE, CVS, PFE, T) ตัวออกข้าง (KO, F, XOM) ดัชนีที่ไม่ใช่เมกะแคป (IWM) และ TLT ที่เป็นขาลงยาวที่สุดตัวหนึ่งในตลาด",
+      "symbols": [
+        { "symbol": "AAPL", "name": "Apple Inc.", "role": "ประวัติยาวถึงปี 1980 มี split หลายครั้ง — ใช้ตรวจว่า Yahoo ปรับราคาย้อนหลังจริงไหม" },
+        { "symbol": "MSFT", "name": "Microsoft Corp.", "role": "ขาขึ้นยาว ประวัติตั้งแต่ปี 1986" },
+        { "symbol": "NVDA", "name": "NVIDIA Corp.", "role": "ขึ้นแรงสุดขั้ว + split 10:1 ปี 2024 — ตัวตรวจ split adjustment ที่ชัดที่สุด" },
+        { "symbol": "INTC", "name": "Intel Corp.", "role": "ผู้แพ้ระยะยาวชัดเจน ขั้วตรงข้ามของ NVDA ในอุตสาหกรรมเดียวกัน" },
+        { "symbol": "PFE", "name": "Pfizer Inc.", "role": "พุ่งช่วงโควิดแล้วลงยาว — regime เปลี่ยนกลางทาง" },
+        { "symbol": "KO", "name": "Coca-Cola Co.", "role": "ผันผวนต่ำ ออกข้าง ปันผลสูง (มี dividend gap ให้ตรวจ)" },
+        { "symbol": "XOM", "name": "ExxonMobil", "role": "วัฏจักรพลังงาน ขึ้นลงเป็นรอบใหญ่" },
+        { "symbol": "T", "name": "AT&T Inc.", "role": "ลงยาว + มี spin-off ปี 2022 ที่ทำให้ราคากระโดด" },
+        { "symbol": "BA", "name": "Boeing Co.", "role": "พังจากวิกฤตของตัวเองตั้งแต่ปี 2019 ยังไม่ฟื้น" },
+        { "symbol": "NKE", "name": "Nike Inc.", "role": "ขึ้นยาวแล้วกลับเป็นขาลงหนักหลังปี 2021" },
+        { "symbol": "CVS", "name": "CVS Health", "role": "ผู้แพ้ระยะยาวในหมวดสุขภาพ" },
+        { "symbol": "F", "name": "Ford Motor Co.", "role": "ออกข้างหลายสิบปี ราคาต่ำ tick หยาบเมื่อเทียบราคา" },
+        { "symbol": "DIS", "name": "Walt Disney Co.", "role": "ลงจากจุดสูงสุดปี 2021 มากกว่าครึ่ง" },
+        { "symbol": "PYPL", "name": "PayPal Holdings", "role": "ร่วงกว่า 80% จากจุดสูงสุด — drawdown สุดขั้ว" },
+        { "symbol": "SPY", "name": "SPDR S&P 500 ETF", "role": "เกณฑ์อ้างอิงตลาด ผันผวนต่ำสุดในกลุ่ม" },
+        { "symbol": "IWM", "name": "iShares Russell 2000 ETF", "role": "หุ้นเล็ก ออกข้างยาวตั้งแต่ปี 2021 ต่างจาก SPY ชัด" },
+        { "symbol": "TLT", "name": "iShares 20+ Year Treasury Bond ETF", "role": "พันธบัตรยาว ขาลงต่อเนื่องหลายปี — สินทรัพย์คนละชนิด ลดความสัมพันธ์กับหุ้น" }
+      ]
+    },
+    {
+      "market": "CRYPTO",
+      "rationale": "คริปโตเทรด 24/7 ไม่มีวันหยุด จึงเป็นชุดเดียวที่ 'ช่องว่างของวันที่' แปลว่าข้อมูลหายจริง ๆ (ตลาดอื่นแยกยากจากวันหยุด) · จงใจไม่ใส่แต่ BTC/SOL ที่ขึ้น — ใส่ LTC/BCH/ADA/DOT/XRP ที่ราคายังต่ำกว่ายอดเดิมหลายปี",
+      "symbols": [
+        { "symbol": "BTC", "name": "Bitcoin", "role": "ขาขึ้นระยะยาว สภาพคล่องสูงสุด" },
+        { "symbol": "ETH", "name": "Ethereum", "role": "ขึ้นแล้วออกข้างยาวหลายปี" },
+        { "symbol": "XRP", "name": "XRP", "role": "ออกข้าง/ลง นานหลายปีแล้วพุ่งเป็นครั้งคราว" },
+        { "symbol": "LTC", "name": "Litecoin", "role": "ขาลงยาวเทียบ BTC — ผู้แพ้ที่ยังไม่ถูกลบออกจากกระดาน" },
+        { "symbol": "ADA", "name": "Cardano", "role": "ร่วงหนักจากยอดปี 2021" },
+        { "symbol": "DOGE", "name": "Dogecoin", "role": "ขับเคลื่อนด้วยกระแส ผันผวนสุดขั้ว ไร้เทรนด์ที่อธิบายได้" },
+        { "symbol": "BCH", "name": "Bitcoin Cash", "role": "ผู้แพ้ระยะยาวชัดเจนตั้งแต่ปี 2017" },
+        { "symbol": "SOL", "name": "Solana", "role": "ร่วงเกือบหมดตัวปี 2022 แล้วฟื้นแรง — regime สลับขั้วสองรอบ" },
+        { "symbol": "DOT", "name": "Polkadot", "role": "ขาลงเกือบตลอดอายุ" },
+        { "symbol": "LINK", "name": "Chainlink", "role": "ผันผวนสูง ออกข้างกรอบกว้าง" }
+      ]
+    }
+  ],
+
+  "known": {
+    "removedSymbols": [
+      {
+        "symbol": "WBA",
+        "market": "US_STOCK",
+        "reason": "Yahoo v8 ตอบ HTTP 404 — Walgreens ถูกซื้อออกจากตลาดปี 2025 ข้อมูลถูกลบ · เป็นหลักฐานตรง ๆ ว่าชุดข้อมูลนี้ยังมี survivorship bias เหลืออยู่"
+      },
+      {
+        "symbol": "SET",
+        "market": "TH_STOCK",
+        "reason": "SET.BK ตอบ 200 แต่ไม่มีแท่งเลย (0 timestamp) — Yahoo ไม่ให้ข้อมูลดัชนี SET ผ่าน endpoint นี้"
+      }
+    ]
+  }
+}
