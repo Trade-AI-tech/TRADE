@@ -62,8 +62,9 @@ export default function LoginPage() {
   const handleVerifyOtp = async () => {
     setError('');
     const code = otpCode.trim();
-    if (!/^\d{6}$/.test(code)) {
-      setError('รหัสต้องเป็นตัวเลข 6 หลักตามที่อยู่ในอีเมล');
+    // Supabase ออกรหัสยาว 6-8 หลักแล้วแต่ที่มา (อีเมลปกติ 6 หลัก, ที่ออกจากฝั่งผู้ดูแล 8 หลัก)
+    if (!/^\d{6,8}$/.test(code)) {
+      setError('รหัสต้องเป็นตัวเลข 6-8 หลักตามที่ได้รับ');
       return;
     }
     setLoading(true);
@@ -219,23 +220,23 @@ export default function LoginPage() {
             <div className="space-y-2 rounded-xl border border-accent-glow/30 bg-accent-glow/5 p-3">
               <label className="text-xs text-accent-glow flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5" />
-                รหัส 6 หลักจากอีเมล
+                รหัสเข้าระบบ (6-8 หลัก)
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={6}
+                  maxLength={8}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  className="input-field font-mono text-center tracking-[0.5em]"
-                  placeholder="000000"
+                  className="input-field font-mono text-center tracking-[0.3em]"
+                  placeholder="รหัสจากอีเมล"
                 />
                 <button
                   type="button"
                   onClick={handleVerifyOtp}
-                  disabled={loading || otpCode.length !== 6}
+                  disabled={loading || otpCode.length < 6}
                   className="btn-primary px-5 flex-shrink-0 disabled:opacity-40"
                 >
                   ยืนยัน
@@ -285,7 +286,7 @@ export default function LoginPage() {
               onClick={() => { setOtpSent(true); setError(''); }}
               className="w-full text-xs text-gray-400 hover:text-accent-glow transition-colors"
             >
-              มีรหัส 6 หลักอยู่แล้ว? กรอกที่นี่
+              มีรหัสอยู่แล้ว? กรอกที่นี่
             </button>
           )}
           <p className="text-[11px] text-gray-500 text-center">
