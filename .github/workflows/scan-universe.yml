@@ -123,8 +123,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # ตรงกับ deploy.yml — จะได้ไม่มีวันที่ "รันผ่านบน CI แต่ build ไม่ผ่าน" เพราะคนละเวอร์ชัน
-          node-version: '20'
+          # ⚠ ต้องเป็น 22 ขึ้นไป ห้ามลดกลับเป็น 20 ให้ "ตรงกับ deploy.yml"
+          #
+          # @supabase/supabase-js สร้าง RealtimeClient ตั้งแต่ตอน createClient()
+          # แม้เส้นทางนี้จะใช้แต่ REST ไม่เคย subscribe อะไรเลย
+          # และ RealtimeClient ต้องการ WebSocket ระดับ global ซึ่ง Node เพิ่งมีให้ใน 22
+          #
+          # อาการตอนเป็น 20 (เจอจริงใน run 32041562932 · ล้มใน 23 วินาที):
+          #   Error: Node.js 20 detected without native WebSocket support.
+          # ล้มตั้งแต่บรรทัดแรกที่ต่อฐานข้อมูล = ไม่ได้สแกนอะไรเลยสักตัว
+          #
+          # ทำไมตอนรันในเครื่องไม่เจอ: เครื่องเจ้าของเป็น Node 24
+          # นี่คือกรณีคลาสสิกของ "รันในเครื่องผ่าน แต่ CI ล้ม" ที่เกิดจากเวอร์ชันไม่ตรงกัน
+          #
+          # deploy.yml ยังใช้ 20 ต่อไปได้ เพราะมันแค่ lint/build ไม่ได้ต่อ Supabase ตอนรัน
+          node-version: '22'
 
       - name: ตรวจว่าตั้ง secret ครบก่อนเสียเวลาไปต่อ
         env:
