@@ -91,7 +91,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { ROOT } from '../load-src-modules.mjs';
 import {
@@ -1679,7 +1679,18 @@ async function main() {
     ledger: IN,
     argv: process.argv.slice(2),
     volatileFields: ['generatedAt', 'elapsedMs', 'opt.outDir', 'opt.rerunProbe', 'opt.determinismRuns', 'provenance', 'touches'],
-    volatileReportLines: ['^สร้างโดย `scripts/research/experiments/fx-magnitude', '^ที่มา: sha', '^ใช้เวลา ', '^สมุดบันทึกการแตะ validation'],
+    // ⚠ ต้องตรงกับ "บรรทัดที่พิมพ์จริง" ไม่ใช่บรรทัดที่คิดว่าพิมพ์
+    //   บรรทัดสมุดบันทึกขึ้นต้นด้วย "· " (อยู่ในรายการข้อจำกัด) ถ้า anchor เป็น ^สมุดบันทึก จะไม่ match
+    //   แล้วตัวตรวจจะแดงเพราะจำนวนครั้งที่แตะเพิ่มขึ้นทุกรอบ ซึ่งเป็นเรื่องที่ตั้งใจให้เปลี่ยน
+    volatileReportLines: [
+      '^สร้างโดย `scripts/research/experiments/fx-magnitude',
+      '^ที่มา: sha',
+      '^ใช้เวลา ',
+      // บรรทัดนี้พิมพ์ argv ซึ่งมี --out-dir ที่ต่างกันทุกรอบเวลาตัวตรวจเรียก
+      // (การเทียบ .md จับข้อนี้ได้ทันทีที่เปิดใช้ — ตอนเทียบแต่ .json มองไม่เห็น)
+      '^node .*argv:',
+      'สมุดบันทึกการแตะ validation: วิจัย',
+    ],
   });
 
   writeReport({ OUT, cellMap, popStats, decomp, bucketOut, icOut, ruleOut, sizingOut, alt, meterRows, dropped, spillStat, t0 });
@@ -2276,8 +2287,13 @@ function runDeterminismSelfCheck(n) {
     }
     const j = JSON.parse(fs.readFileSync(path.join(out, 'exp-fx-magnitude.json'), 'utf8'));
     const stripped = stripPaths(j, j.provenance.volatileFields);
-    const canon = canonicalJson(stripped);
-    raws.push(stripped);
+    // เทียบ .md ด้วย ไม่ใช่แค่ .json — รายงานที่คนอ่านคือ .md ถ้ามันเปลี่ยนแต่ .json ไม่เปลี่ยน
+    // ก็ยังเป็นเครื่องมือที่ "รันซ้ำได้คนละคำตอบ" อยู่ดี (กรองเฉพาะบรรทัดที่สคริปต์ประกาศเอง)
+    const md = fs.readFileSync(path.join(out, 'exp-fx-magnitude.md'), 'utf8');
+    const res = j.provenance.volatileReportLines.map((p) => new RegExp(p));
+    const mdNorm = md.split('\n').filter((line) => !res.some((r) => r.test(line))).join('\n');
+    const canon = `${canonicalJson(stripped)}\n@@MD@@\n${mdNorm}`;
+    raws.push({ json: stripped, mdLines: mdNorm.split('\n') });
     digests.push(canon);
     process.stdout.write(`\rรอบ ${k + 1}/${n} เสร็จ   `);
   }
@@ -2288,7 +2304,7 @@ function runDeterminismSelfCheck(n) {
     uniq.get(d).push(i);
   });
   if (uniq.size === 1) {
-    console.log(`✓ ${n} รอบ ให้ผลเหมือนกันทุกไบต์`);
+    console.log(`✓ ${n} รอบ ให้ผลเหมือนกันทุกไบต์ (ทั้ง .json และ .md)`);
     fs.rmSync(tmp, { recursive: true, force: true });
     return 0;
   }
@@ -2418,14 +2434,25 @@ function runLeakProof() {
  *   ก3 ตัวเลขถูกเขียนทับหลังคำนวณเสร็จ จนอัตลักษณ์ทางคณิตศาสตร์พัง
  */
 function runSelfTest() {
-  const tmpDir = path.join(path.dirname(SCRIPT_PATH), '.self-test-tmp');
-  fs.mkdirSync(tmpDir, { recursive: true });
+  /**
+   * ⚠ สำเนาชั่วคราวต้องอยู่ **นอก git worktree** เสมอ
+   *
+   * รอบแรกเขียนไว้ใน scripts/research/experiments/.self-test-tmp/ ซึ่งดูปลอดภัยเพราะลบทิ้งทุกครั้ง
+   * แต่ในเครื่องที่มีเอเจนต์อื่นทำงานพร้อมกัน มีจังหวะที่ `git add` ของอีกฝ่ายกวาดไฟล์
+   * ชั่วคราวเหล่านี้เข้า repo ไปแล้วจริง ๆ ระหว่างช่วง 45 วินาทีที่ไฟล์ยังอยู่
+   * ไฟล์ชั่วคราวในโฟลเดอร์ที่ git มองเห็น = อุบัติเหตุที่รอเกิด ไม่ใช่ความเสี่ยงทางทฤษฎี
+   *
+   * ย้ายมาไว้ที่ os.tmpdir() แล้วชี้ import ไปที่ไฟล์จริงด้วย URL แบบเต็ม
+   * (pathToFileURL จำเป็นบน Windows — เส้นทาง C:\... ใช้เป็น specifier ของ ESM ตรง ๆ ไม่ได้)
+   */
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fxmag-selftest-src-'));
   const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fxmag-selftest-'));
   const src = fs.readFileSync(SCRIPT_PATH, 'utf8');
-  // สำเนาอยู่ลึกลงไปหนึ่งชั้น จึงต้องขยับเส้นทาง import ให้ยังหาเจอ
+  const RESEARCH_DIR = path.dirname(path.dirname(SCRIPT_PATH));
+  const urlOf = (rel) => pathToFileURL(path.join(RESEARCH_DIR, rel)).href;
   const fixImports = (s) => s
-    .replace("from '../load-src-modules.mjs'", "from '../../load-src-modules.mjs'")
-    .replace("from '../repro.mjs'", "from '../../repro.mjs'");
+    .replace("from '../load-src-modules.mjs'", `from '${urlOf('load-src-modules.mjs')}'`)
+    .replace("from '../repro.mjs'", `from '${urlOf('repro.mjs')}'`);
   const ANCHOR = '  // ── ด่านตรวจตัวเอง: ถ้าเจอ = หยุดรอบนี้ ไม่พิมพ์ตัวเลขออกมา ──';
   const inject = (code) => {
     const s = src.replace(ANCHOR, `${code}${ANCHOR}`);
