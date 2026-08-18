@@ -1,0 +1,3244 @@
+{
+  "generatedAt": "2026-08-18T06:56:15.404Z",
+  "opt": {
+    "bootstrap": 2000,
+    "seed": 20260819,
+    "alpha": 0.05,
+    "truncFrac": 0.2,
+    "trainOnly": false,
+    "useLab": true
+  },
+  "gate": {
+    "cellsTotal": 2368,
+    "bySource": {
+      "feat-volume": 1056,
+      "feat-cross": 900,
+      "feat-time": 412
+    },
+    "byMarket": {
+      "CRYPTO": {
+        "cells": 252,
+        "strict": 0,
+        "loose": 0
+      },
+      "FOREX": {
+        "cells": 393,
+        "strict": 0,
+        "loose": 3
+      },
+      "GOLD": {
+        "cells": 344,
+        "strict": 0,
+        "loose": 0
+      },
+      "TH_STOCK": {
+        "cells": 886,
+        "strict": 0,
+        "loose": 0
+      },
+      "US_STOCK": {
+        "cells": 493,
+        "strict": 18,
+        "loose": 39
+      }
+    },
+    "survivors": [
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "vwapDist20",
+        "h": 3,
+        "edgeBps": 20.218185425310807,
+        "feeBps": 5.000000000010233,
+        "netBps": 15.218185425300511,
+        "moneyP": 1.2841238697829568e-7,
+        "icP": 9.603336254230332e-10
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "vwapDist20",
+        "h": 6,
+        "edgeBps": 24.830963568999532,
+        "feeBps": 5.000000000010233,
+        "netBps": 19.830963568989358,
+        "moneyP": 0.00011702477795538036,
+        "icP": 2.3556799997190408e-7
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "clv",
+        "h": 6,
+        "edgeBps": 16.202894416531837,
+        "feeBps": 5.000000000010233,
+        "netBps": 11.20289441652168,
+        "moneyP": 0.0002224023532596468,
+        "icP": 1.1664462997877408e-31
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 3,
+        "edgeBps": 18.813844340996162,
+        "feeBps": 5.000000000010233,
+        "netBps": 13.813844340986009,
+        "moneyP": 9.622598872480997e-7,
+        "icP": 2.9138750545230075e-24
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 6,
+        "edgeBps": 26.36468084703439,
+        "feeBps": 5.000000000010233,
+        "netBps": 21.364680847024104,
+        "moneyP": 0.000006422010089385783,
+        "icP": 3.879790795902811e-19
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "effRatioSigned10",
+        "h": 3,
+        "edgeBps": 18.31342353798333,
+        "feeBps": 5.000000000010233,
+        "netBps": 13.31342353797312,
+        "moneyP": 0.000003960999905521401,
+        "icP": 6.071130809520315e-11
+      },
+      {
+        "src": "feat-volume",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "effRatioSigned10",
+        "h": 6,
+        "edgeBps": 24.27410124910296,
+        "feeBps": 5.000000000010233,
+        "netBps": 19.27410124909278,
+        "moneyP": 0.00015028133214778719,
+        "icP": 4.768376771674974e-7
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom1",
+        "h": 6,
+        "edgeBps": -7.233141607911745,
+        "feeBps": 5,
+        "netBps": 2.2331416079117448,
+        "moneyP": 3.762333592749023e-8,
+        "icP": 1.09012439894522e-9
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom1",
+        "h": 10,
+        "edgeBps": -7.348702111663249,
+        "feeBps": 5,
+        "netBps": 2.3487021116632487,
+        "moneyP": 0.000003511698732033357,
+        "icP": 0.000003285944565493451
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5",
+        "h": 3,
+        "edgeBps": -7.057961161323341,
+        "feeBps": 5,
+        "netBps": 2.057961161323341,
+        "moneyP": 4.945038521300676e-7,
+        "icP": 1.287885950743133e-8
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5",
+        "h": 6,
+        "edgeBps": -10.796356835679843,
+        "feeBps": 5,
+        "netBps": 5.796356835679843,
+        "moneyP": 0.000008685763651550314,
+        "icP": 9.095341971180825e-8
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5",
+        "h": 10,
+        "edgeBps": -12.216075588573531,
+        "feeBps": 5,
+        "netBps": 7.216075588573531,
+        "moneyP": 0.00003866111409224559,
+        "icP": 0.0000593217130223332
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom1@lag1",
+        "h": 3,
+        "edgeBps": -7.245648971283029,
+        "feeBps": 5,
+        "netBps": 2.245648971283029,
+        "moneyP": 3.14426836427478e-13,
+        "icP": 2.779526903431527e-17
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom1@lag1",
+        "h": 6,
+        "edgeBps": -9.32317999971988,
+        "feeBps": 5,
+        "netBps": 4.32317999971988,
+        "moneyP": 6.762620795473969e-11,
+        "icP": 2.443642801466115e-14
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom1@lag1",
+        "h": 10,
+        "edgeBps": -9.958242320168603,
+        "feeBps": 5,
+        "netBps": 4.958242320168603,
+        "moneyP": 4.5454888654917725e-9,
+        "icP": 2.562372326597186e-9
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5@lag1",
+        "h": 3,
+        "edgeBps": -7.514191437274934,
+        "feeBps": 5,
+        "netBps": 2.514191437274934,
+        "moneyP": 2.7053904318218435e-7,
+        "icP": 2.442158297100557e-9
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5@lag1",
+        "h": 6,
+        "edgeBps": -10.233440574101284,
+        "feeBps": 5,
+        "netBps": 5.233440574101284,
+        "moneyP": 0.000031005349995588574,
+        "icP": 0.0000030501383468292493
+      },
+      {
+        "src": "feat-cross",
+        "group": "US_STOCK",
+        "tf": "1D",
+        "feature": "xsMom5@lag1",
+        "h": 10,
+        "edgeBps": -11.099708058156601,
+        "feeBps": 5,
+        "netBps": 6.099708058156601,
+        "moneyP": 0.00025768220708294423,
+        "icP": 0.00045261909422115353
+      }
+    ],
+    "looseCount": 42,
+    "thaiStrict": 0,
+    "thaiLoose": 0,
+    "thaiClosest": [
+      {
+        "src": "feat-volume",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "vwapDist20",
+        "h": 10,
+        "edgeBps": 153.2714553596997,
+        "feeBps": 121.44993403073425,
+        "netBps": 31.82152132896568,
+        "moneyP": 0.3945563033803961,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "breadth20",
+        "h": 10,
+        "edgeBps": 132.87398134190838,
+        "feeBps": 103.59432308609142,
+        "netBps": 29.279658255816955,
+        "moneyP": 0.000008007905031976326,
+        "moneyHolm": true,
+        "icHolm": false,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-volume",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "updownImb20",
+        "h": 10,
+        "edgeBps": 149.9062627600003,
+        "feeBps": 121.44993403073425,
+        "netBps": 28.456328729265923,
+        "moneyP": 0.5059100715308278,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-volume",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "obvRatio10",
+        "h": 10,
+        "edgeBps": 142.96158232483143,
+        "feeBps": 121.44993403073425,
+        "netBps": 21.511648294097345,
+        "moneyP": 0.532541774406304,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-volume",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "mfi14",
+        "h": 10,
+        "edgeBps": 126.75861734239511,
+        "feeBps": 121.44993403073425,
+        "netBps": 5.3086833116608485,
+        "moneyP": 0.8808652127367759,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-volume",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "effRatioSigned10",
+        "h": 10,
+        "edgeBps": 121.54663441529334,
+        "feeBps": 121.44993403073425,
+        "netBps": 0.0967003845591034,
+        "moneyP": 0.9978805345320528,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 10,
+        "edgeBps": 71.5418351308579,
+        "feeBps": 88.04363776998531,
+        "netBps": -16.501802639127355,
+        "moneyP": 0.1536541351383527,
+        "moneyHolm": false,
+        "icHolm": true,
+        "leakyUniverse": false
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 6,
+        "edgeBps": 68.40146487184359,
+        "feeBps": 88.04363776998531,
+        "netBps": -19.642172898141652,
+        "moneyP": 0.018685650015591557,
+        "moneyHolm": true,
+        "icHolm": true,
+        "leakyUniverse": false
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "breadth20",
+        "h": 6,
+        "edgeBps": 82.05618222201274,
+        "feeBps": 103.59432308609142,
+        "netBps": -21.538140864078684,
+        "moneyP": 0.000012741146060749174,
+        "moneyHolm": true,
+        "icHolm": false,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "xsMom60",
+        "h": 10,
+        "edgeBps": 81.8833762110905,
+        "feeBps": 103.59432308609142,
+        "netBps": -21.710946875000914,
+        "moneyP": 0.000141993721739475,
+        "moneyHolm": true,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "xsMom60@lag1",
+        "h": 10,
+        "edgeBps": 81.77267745176773,
+        "feeBps": 103.59432308609142,
+        "netBps": -21.821645634323687,
+        "moneyP": 0.00012295378448013968,
+        "moneyHolm": true,
+        "icHolm": true,
+        "leakyUniverse": true
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER",
+        "tf": "1D",
+        "feature": "xsRelPx60@lag1",
+        "h": 10,
+        "edgeBps": 77.33822309614293,
+        "feeBps": 103.59432308609142,
+        "netBps": -26.256099989948495,
+        "moneyP": 0.00003787966510858277,
+        "moneyHolm": true,
+        "icHolm": true,
+        "leakyUniverse": true
+      }
+    ],
+    "thaiCleanClosest": [
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "breadth20",
+        "h": 10,
+        "edgeBps": 120.24742680846472,
+        "feeBps": 97.63452105156485,
+        "netBps": 22.612905756899877,
+        "moneyP": 0.000445762558202108,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 0.8119468635872044
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 10,
+        "edgeBps": 71.5418351308579,
+        "feeBps": 88.04363776998531,
+        "netBps": -16.501802639127355,
+        "moneyP": 0.1536541351383527,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.2306594820910561
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "xsMom60",
+        "h": 10,
+        "edgeBps": 79.3806935797334,
+        "feeBps": 97.63452105156485,
+        "netBps": -18.253827471831443,
+        "moneyP": 0.005606198737936539,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.229952985400619
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "xsMom60@lag1",
+        "h": 10,
+        "edgeBps": 78.45253448185566,
+        "feeBps": 97.63452105156485,
+        "netBps": -19.18198656970918,
+        "moneyP": 0.0059882188480108334,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.24450435790759
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 6,
+        "edgeBps": 68.40146487184359,
+        "feeBps": 88.04363776998531,
+        "netBps": -19.642172898141652,
+        "moneyP": 0.018685650015591557,
+        "moneyHolm": true,
+        "edgeMultiplierToBreakEven": 1.2871601205462944
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "breadth20",
+        "h": 6,
+        "edgeBps": 74.19818804624948,
+        "feeBps": 97.63452105156485,
+        "netBps": -23.436333005315362,
+        "moneyP": 0.0009386143724732558,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.3158612578343145
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "xsRelPx60@lag1",
+        "h": 10,
+        "edgeBps": 58.972335765585136,
+        "feeBps": 97.63452105156485,
+        "netBps": -38.66218528597971,
+        "moneyP": 0.01570783647752151,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.6555986766347832
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv",
+        "h": 10,
+        "edgeBps": 48.495781933682295,
+        "feeBps": 88.04363776998531,
+        "netBps": -39.54785583630299,
+        "moneyP": 0.0000029418061715818727,
+        "moneyHolm": true,
+        "edgeMultiplierToBreakEven": 1.815490631543677
+      },
+      {
+        "src": "feat-cross",
+        "group": "RUNNER_PIT",
+        "tf": "1D",
+        "feature": "xsRelPx60",
+        "h": 10,
+        "edgeBps": 58.04635975840467,
+        "feeBps": 97.63452105156485,
+        "netBps": -39.58816129316018,
+        "moneyP": 0.016024038343324696,
+        "moneyHolm": false,
+        "edgeMultiplierToBreakEven": 1.6820093707500428
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "clv5",
+        "h": 3,
+        "edgeBps": 43.44961599146283,
+        "feeBps": 88.04363776998531,
+        "netBps": -44.59402177852253,
+        "moneyP": 1.570482899047129e-19,
+        "moneyHolm": true,
+        "edgeMultiplierToBreakEven": 2.0263386858766372
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "wickImb",
+        "h": 10,
+        "edgeBps": 42.48264708850272,
+        "feeBps": 88.04363776998531,
+        "netBps": -45.56099068148252,
+        "moneyP": 9.179722388419795e-9,
+        "moneyHolm": true,
+        "edgeMultiplierToBreakEven": 2.0724612001358307
+      },
+      {
+        "src": "feat-volume",
+        "group": "SET50",
+        "tf": "1D",
+        "feature": "squeeze5_20",
+        "h": 10,
+        "edgeBps": 42.35945099474418,
+        "feeBps": 88.04363776998531,
+        "netBps": -45.68418677524124,
+        "moneyP": 0.005611483875804639,
+        "moneyHolm": true,
+        "edgeMultiplierToBreakEven": 2.0784886419068433
+      }
+    ]
+  },
+  "meter": {
+    "atrParity": {
+      "checked": 5160,
+      "maxErr": 0
+    },
+    "icRecheck": [
+      {
+        "feature": "vwapDist20",
+        "h": 3,
+        "src": "feat-volume",
+        "icReported": -0.02398955008376058,
+        "icHere": -0.0334035860862007,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "vwapDist20",
+        "h": 6,
+        "src": "feat-volume",
+        "icReported": -0.02777740338854844,
+        "icHere": -0.03337268033011604,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "clv",
+        "h": 6,
+        "src": "feat-volume",
+        "icReported": -0.03234111574685924,
+        "icHere": -0.038274580998767085,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "clv5",
+        "h": 3,
+        "src": "feat-volume",
+        "icReported": -0.039720039503857024,
+        "icHere": -0.053154061364911395,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "clv5",
+        "h": 6,
+        "src": "feat-volume",
+        "icReported": -0.044090966573829216,
+        "icHere": -0.054505185241220215,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "effRatioSigned10",
+        "h": 3,
+        "src": "feat-volume",
+        "icReported": -0.025593503060746474,
+        "icHere": -0.034602343993073055,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "effRatioSigned10",
+        "h": 6,
+        "src": "feat-volume",
+        "icReported": -0.0263558476350789,
+        "icHere": -0.03278719628965657,
+        "sameSign": true,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom1",
+        "h": 6,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.016645767802231884,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom1",
+        "h": 10,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.013320726691364118,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5",
+        "h": 3,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.02435334592857747,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5",
+        "h": 6,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.027248139999585405,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5",
+        "h": 10,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.021216124215115012,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom1@lag1",
+        "h": 3,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.024626338442208434,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom1@lag1",
+        "h": 6,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.022216219743445304,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom1@lag1",
+        "h": 10,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.01770453151328151,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5@lag1",
+        "h": 3,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.024958465240722958,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5@lag1",
+        "h": 6,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.023915377248689158,
+        "sameSign": null,
+        "n": 122851
+      },
+      {
+        "feature": "xsMom5@lag1",
+        "h": 10,
+        "src": "feat-cross",
+        "icReported": null,
+        "icHere": -0.018283018444636437,
+        "sameSign": null,
+        "n": 122851
+      }
+    ],
+    "labParity": {
+      "ran": true,
+      "checked": 12211,
+      "slErr": 0,
+      "tpErr": 0,
+      "exitErr": 0,
+      "reasonMismatch": 0,
+      "holdMismatch": 0,
+      "noBar": 0
+    }
+  },
+  "leak": {
+    "cross": {
+      "compared": 776560,
+      "mismatch": 0,
+      "perFeature": {
+        "xsMom1": {
+          "compared": 194140,
+          "mismatch": 0
+        },
+        "xsMom5": {
+          "compared": 194140,
+          "mismatch": 0
+        },
+        "xsMom1@lag1": {
+          "compared": 194140,
+          "mismatch": 0
+        },
+        "xsMom5@lag1": {
+          "compared": 194140,
+          "mismatch": 0
+        }
+      },
+      "leakCompared": 134267,
+      "leakChanged": 134267,
+      "cutG": 11420,
+      "fullG": 14276
+    },
+    "symbol": {
+      "compared": 584848,
+      "mismatch": 0,
+      "perFeature": {
+        "clv": {
+          "compared": 146212,
+          "mismatch": 0
+        },
+        "clv5": {
+          "compared": 146212,
+          "mismatch": 0
+        },
+        "vwapDist20": {
+          "compared": 146212,
+          "mismatch": 0
+        },
+        "effRatioSigned10": {
+          "compared": 146212,
+          "mismatch": 0
+        }
+      }
+    }
+  },
+  "model": {
+    "targetCell": "US_STOCK|1D",
+    "features": [
+      "clv",
+      "clv5",
+      "effRatioSigned10",
+      "vwapDist20",
+      "xsMom1",
+      "xsMom1@lag1",
+      "xsMom5",
+      "xsMom5@lag1"
+    ],
+    "survivorCellsInTarget": 18,
+    "pool": {
+      "symbols": [
+        "AAPL",
+        "BA",
+        "CVS",
+        "DIS",
+        "F",
+        "INTC",
+        "IWM",
+        "KO",
+        "MSFT",
+        "NKE",
+        "NVDA",
+        "PFE",
+        "PYPL",
+        "SPY",
+        "TLT",
+        "T",
+        "XOM"
+      ],
+      "nSym": 17,
+      "gridSteps": 14276,
+      "minPool": 8,
+      "trainEnd": "2016-02-17T00:00:00.000Z",
+      "validationEnd": "2021-08-06T13:30:00.000Z"
+    },
+    "frozen": {
+      "3": {
+        "lambda": 1,
+        "standardizer": {
+          "clv": {
+            "mean": 0.017702312948396387,
+            "sd": 0.6353085864169873
+          },
+          "clv5": {
+            "mean": 0.017468156766161504,
+            "sd": 0.2985888161400576
+          },
+          "effRatioSigned10": {
+            "mean": 0.04775123327630466,
+            "sd": 0.3844584338649151
+          },
+          "vwapDist20": {
+            "mean": 0.27773970751574284,
+            "sd": 1.6066917828791918
+          },
+          "xsMom1": {
+            "mean": 0.000021255873874080837,
+            "sd": 0.3104547560530773
+          },
+          "xsMom1@lag1": {
+            "mean": 0.000010028283709402764,
+            "sd": 0.3104522370069649
+          },
+          "xsMom5": {
+            "mean": 0.00002719342793900195,
+            "sd": 0.3106522360752119
+          },
+          "xsMom5@lag1": {
+            "mean": 0.000012177069343830925,
+            "sd": 0.3106509755809549
+          }
+        },
+        "weights": {
+          "clv": -0.0003846346031528293,
+          "clv5": -0.000525158826702949,
+          "effRatioSigned10": -0.00020588881394366143,
+          "vwapDist20": -0.00007817583607787676,
+          "xsMom1": 0.000007180183832721377,
+          "xsMom1@lag1": -0.00027248533976408475,
+          "xsMom5": -0.00006752929852487773,
+          "xsMom5@lag1": -0.0001849500755011709
+        },
+        "signs": {
+          "clv": -1,
+          "clv5": -1,
+          "effRatioSigned10": -1,
+          "vwapDist20": -1,
+          "xsMom1": -1,
+          "xsMom1@lag1": -1,
+          "xsMom5": -1,
+          "xsMom5@lag1": -1
+        },
+        "cutsRidge": {
+          "lo": -0.0010186288803814055,
+          "hi": 0.0010048548181493956
+        },
+        "cutsEqw": {
+          "lo": -0.580671543625479,
+          "hi": 0.5788944079384465
+        }
+      },
+      "6": {
+        "lambda": 1,
+        "standardizer": {
+          "clv": {
+            "mean": 0.017702312948396387,
+            "sd": 0.6353085864169873
+          },
+          "clv5": {
+            "mean": 0.017468156766161504,
+            "sd": 0.2985888161400576
+          },
+          "effRatioSigned10": {
+            "mean": 0.04775123327630466,
+            "sd": 0.3844584338649151
+          },
+          "vwapDist20": {
+            "mean": 0.27773970751574284,
+            "sd": 1.6066917828791918
+          },
+          "xsMom1": {
+            "mean": 0.000021255873874080837,
+            "sd": 0.3104547560530773
+          },
+          "xsMom1@lag1": {
+            "mean": 0.000010028283709402764,
+            "sd": 0.3104522370069649
+          },
+          "xsMom5": {
+            "mean": 0.00002719342793900195,
+            "sd": 0.3106522360752119
+          },
+          "xsMom5@lag1": {
+            "mean": 0.000012177069343830925,
+            "sd": 0.3106509755809549
+          }
+        },
+        "weights": {
+          "clv": -0.0005051529758671019,
+          "clv5": -0.0007390852607885416,
+          "effRatioSigned10": -0.00020572249677134756,
+          "vwapDist20": -0.00006396631631430761,
+          "xsMom1": -0.00011131386566596028,
+          "xsMom1@lag1": -0.00034115447100053505,
+          "xsMom5": -0.00016257728915151847,
+          "xsMom5@lag1": -0.00025391636040778285
+        },
+        "signs": {
+          "clv": -1,
+          "clv5": -1,
+          "effRatioSigned10": -1,
+          "vwapDist20": -1,
+          "xsMom1": -1,
+          "xsMom1@lag1": -1,
+          "xsMom5": -1,
+          "xsMom5@lag1": -1
+        },
+        "cutsRidge": {
+          "lo": -0.001392666592886353,
+          "hi": 0.0013776663451765504
+        },
+        "cutsEqw": {
+          "lo": -0.580671543625479,
+          "hi": 0.5788944079384465
+        }
+      },
+      "10": {
+        "lambda": 1,
+        "standardizer": {
+          "clv": {
+            "mean": 0.017702312948396387,
+            "sd": 0.6353085864169873
+          },
+          "clv5": {
+            "mean": 0.017468156766161504,
+            "sd": 0.2985888161400576
+          },
+          "effRatioSigned10": {
+            "mean": 0.04775123327630466,
+            "sd": 0.3844584338649151
+          },
+          "vwapDist20": {
+            "mean": 0.27773970751574284,
+            "sd": 1.6066917828791918
+          },
+          "xsMom1": {
+            "mean": 0.000021255873874080837,
+            "sd": 0.3104547560530773
+          },
+          "xsMom1@lag1": {
+            "mean": 0.000010028283709402764,
+            "sd": 0.3104522370069649
+          },
+          "xsMom5": {
+            "mean": 0.00002719342793900195,
+            "sd": 0.3106522360752119
+          },
+          "xsMom5@lag1": {
+            "mean": 0.000012177069343830925,
+            "sd": 0.3106509755809549
+          }
+        },
+        "weights": {
+          "clv": -0.0006264428844125422,
+          "clv5": -0.0006907944680533866,
+          "effRatioSigned10": 0.000019587416098611568,
+          "vwapDist20": 0.000012530277100706818,
+          "xsMom1": -0.00008929916488847756,
+          "xsMom1@lag1": -0.00035479300125064884,
+          "xsMom5": -0.0002223465979643866,
+          "xsMom5@lag1": -0.00028379231916640587
+        },
+        "signs": {
+          "clv": -1,
+          "clv5": -1,
+          "effRatioSigned10": -1,
+          "vwapDist20": -1,
+          "xsMom1": -1,
+          "xsMom1@lag1": -1,
+          "xsMom5": -1,
+          "xsMom5@lag1": -1
+        },
+        "cutsRidge": {
+          "lo": -0.0013182252609252995,
+          "hi": 0.0013032463474784135
+        },
+        "cutsEqw": {
+          "lo": -0.580671543625479,
+          "hi": 0.5788944079384465
+        }
+      }
+    }
+  },
+  "train": {
+    "3": {
+      "nRows": 122851,
+      "icRidge": 0.05367405325553885,
+      "icEqw": 0.04473576704790556,
+      "cvBest": {
+        "lambda": 1,
+        "meanIC": 0.04400319752805016,
+        "folds": 5,
+        "ics": [
+          0.045105575336833535,
+          0.04496310862902391,
+          0.03678510106697727,
+          0.03449471428315818,
+          0.058667488324257895
+        ]
+      },
+      "cvGrid": [
+        {
+          "lambda": 0.001,
+          "meanIC": 0.042587671927800955,
+          "folds": 5
+        },
+        {
+          "lambda": 0.01,
+          "meanIC": 0.04277123547553184,
+          "folds": 5
+        },
+        {
+          "lambda": 0.1,
+          "meanIC": 0.043621840154778616,
+          "folds": 5
+        },
+        {
+          "lambda": 1,
+          "meanIC": 0.04400319752805016,
+          "folds": 5
+        },
+        {
+          "lambda": 10,
+          "meanIC": 0.043369918489442064,
+          "folds": 5
+        }
+      ],
+      "weights": {
+        "clv": -0.0003846346031528293,
+        "clv5": -0.000525158826702949,
+        "effRatioSigned10": -0.00020588881394366143,
+        "vwapDist20": -0.00007817583607787676,
+        "xsMom1": 0.000007180183832721377,
+        "xsMom1@lag1": -0.00027248533976408475,
+        "xsMom5": -0.00006752929852487773,
+        "xsMom5@lag1": -0.0001849500755011709
+      },
+      "signs": {
+        "clv": -1,
+        "clv5": -1,
+        "effRatioSigned10": -1,
+        "vwapDist20": -1,
+        "xsMom1": -1,
+        "xsMom1@lag1": -1,
+        "xsMom5": -1,
+        "xsMom5@lag1": -1
+      },
+      "ridge": {
+        "label": "ridge",
+        "n": 21574,
+        "grossBps": 19.682779815283293,
+        "feeBps": 5,
+        "netBps": 14.68277981528327,
+        "netSe": 2.8466170828936552,
+        "netT": 5.157975023587602,
+        "netP": 3.814258035071233e-7,
+        "netCI": [
+          9.183309884425586,
+          20.23318689718596
+        ],
+        "clusters": 432,
+        "winRate": 0.49907295819041436,
+        "dirAccuracy": 0.5107536849911931,
+        "longShare": 0.49582831185686477,
+        "avgHold": 2.7959117456197276,
+        "byReason": {
+          "time_exit": 16608,
+          "gap_stop": 461,
+          "gap_target": 116,
+          "take_profit": 570,
+          "stop_loss": 3819
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 20893,
+        "grossBps": 13.937570125992828,
+        "feeBps": 5,
+        "netBps": 8.937570125992789,
+        "netSe": 2.7258720627406667,
+        "netT": 3.2787929588326716,
+        "netP": 0.001127023506539256,
+        "netCI": [
+          3.4627722012863797,
+          14.283887395542575
+        ],
+        "clusters": 432,
+        "winRate": 0.49533336524194704,
+        "dirAccuracy": 0.5072033695496099,
+        "longShare": 0.49681711578040494,
+        "avgHold": 2.790073230268511,
+        "byReason": {
+          "time_exit": 15980,
+          "gap_target": 100,
+          "gap_stop": 444,
+          "stop_loss": 3840,
+          "take_profit": 529
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 32257,
+        "grossBps": 15.360021760549078,
+        "feeBps": 5,
+        "netBps": 10.360021760549053,
+        "netSe": 3.56051745723042,
+        "netT": 2.909695538638838,
+        "netP": 0.003805133886873156,
+        "netCI": [
+          3.0995272526990045,
+          17.546468477408176
+        ],
+        "clusters": 432,
+        "winRate": 0.5005735189261246,
+        "dirAccuracy": 0.5117958892643457,
+        "longShare": 1,
+        "avgHold": 2.809901726756983,
+        "byReason": {
+          "time_exit": 24815,
+          "gap_stop": 713,
+          "gap_target": 170,
+          "take_profit": 910,
+          "stop_loss": 5649
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 32376,
+        "grossBps": -15.048312429037818,
+        "feeBps": 5,
+        "netBps": -20.04831242903779,
+        "netSe": 3.1482301827569286,
+        "netT": -6.36812153661564,
+        "netP": 4.91087796613699e-10,
+        "netCI": [
+          -26.195250575973162,
+          -13.973161977813755
+        ],
+        "clusters": 432,
+        "winRate": 0.4534840622683469,
+        "dirAccuracy": 0.4664875216209538,
+        "longShare": 0,
+        "avgHold": 2.7952186805040773,
+        "byReason": {
+          "gap_stop": 792,
+          "time_exit": 24502,
+          "take_profit": 718,
+          "gap_target": 129,
+          "stop_loss": 6235
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 21574,
+        "grossBps": 249.03603646111083,
+        "feeBps": 5,
+        "netBps": 244.03603646111065,
+        "netSe": 5.163280033381072,
+        "netT": 47.26376157856936,
+        "netP": 1.3166592638837793e-172,
+        "netCI": [
+          234.07686762391583,
+          254.31615407705888
+        ],
+        "clusters": 432,
+        "winRate": 0.9494298692871048,
+        "dirAccuracy": 0.9722814498933902,
+        "longShare": 0.5209047928061555,
+        "avgHold": 2.9574487809400205,
+        "byReason": {
+          "time_exit": 20087,
+          "gap_target": 219,
+          "take_profit": 1165,
+          "stop_loss": 102,
+          "gap_stop": 1
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 32257,
+        "grossBps": 242.82039348595072,
+        "feeBps": 5,
+        "netBps": 237.82039348595097,
+        "netSe": 4.505344389675795,
+        "netT": 52.78628511305982,
+        "netP": 3.007966262578931e-190,
+        "netCI": [
+          229.0907695467671,
+          246.6825741129663
+        ],
+        "clusters": 432,
+        "winRate": 0.9510493846296928,
+        "dirAccuracy": 0.9749821744117556,
+        "longShare": 0.525715348606504,
+        "avgHold": 2.960721703816226,
+        "byReason": {
+          "time_exit": 30095,
+          "gap_target": 307,
+          "take_profit": 1717,
+          "stop_loss": 136,
+          "gap_stop": 2
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 432,
+        "mean": 3.7167579575155543,
+        "se": 4.382621221564711,
+        "t": 0.8480673481950087,
+        "p": 0.39687118761113627,
+        "ci": [
+          -4.87317963675128,
+          12.306695551782388
+        ]
+      },
+      "vsEqw": {
+        "G": 432,
+        "mean": 5.605226259770284,
+        "se": 1.7926135795646063,
+        "t": 3.1268458097543217,
+        "p": 0.001886592525654922,
+        "ci": [
+          2.091703643823656,
+          9.118748875716912
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 12990,
+        "grossBps": -1.9016488304022658,
+        "feeBps": 5,
+        "netBps": -6.901648830402234,
+        "netSe": 3.5130501676020423,
+        "netT": -1.9645745153457916,
+        "netP": 0.04996654039100824,
+        "netCI": [
+          -13.561597767597359,
+          0.022519199018895843
+        ],
+        "clusters": 551,
+        "winRate": 0.4237875288683603,
+        "dirAccuracy": 0.42848344880677447,
+        "longShare": 0.5836027713625866,
+        "avgHold": 3.2414164742109315,
+        "byReason": {
+          "stop_loss": 4688,
+          "take_profit": 1606,
+          "time_exit": 5683,
+          "gap_stop": 631,
+          "gap_target": 382
+        },
+        "firstTime": "1970-04-02T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      }
+    },
+    "6": {
+      "nRows": 122851,
+      "icRidge": 0.0541179638336329,
+      "icEqw": 0.04635002878811212,
+      "cvBest": {
+        "lambda": 1,
+        "meanIC": 0.04641376687140492,
+        "folds": 5,
+        "ics": [
+          0.03523391972637526,
+          0.0489947555636856,
+          0.04156477452728148,
+          0.03698409511916779,
+          0.06929128942051446
+        ]
+      },
+      "cvGrid": [
+        {
+          "lambda": 0.001,
+          "meanIC": 0.04440625998190005,
+          "folds": 5
+        },
+        {
+          "lambda": 0.01,
+          "meanIC": 0.04462533525126084,
+          "folds": 5
+        },
+        {
+          "lambda": 0.1,
+          "meanIC": 0.04572790222859006,
+          "folds": 5
+        },
+        {
+          "lambda": 1,
+          "meanIC": 0.04641376687140492,
+          "folds": 5
+        },
+        {
+          "lambda": 10,
+          "meanIC": 0.0454683160481264,
+          "folds": 5
+        }
+      ],
+      "weights": {
+        "clv": -0.0005051529758671019,
+        "clv5": -0.0007390852607885416,
+        "effRatioSigned10": -0.00020572249677134756,
+        "vwapDist20": -0.00006396631631430761,
+        "xsMom1": -0.00011131386566596028,
+        "xsMom1@lag1": -0.00034115447100053505,
+        "xsMom5": -0.00016257728915151847,
+        "xsMom5@lag1": -0.00025391636040778285
+      },
+      "signs": {
+        "clv": -1,
+        "clv5": -1,
+        "effRatioSigned10": -1,
+        "vwapDist20": -1,
+        "xsMom1": -1,
+        "xsMom1@lag1": -1,
+        "xsMom5": -1,
+        "xsMom5@lag1": -1
+      },
+      "ridge": {
+        "label": "ridge",
+        "n": 15970,
+        "grossBps": 28.198007214926818,
+        "feeBps": 5,
+        "netBps": 23.19800721492677,
+        "netSe": 4.18808087308806,
+        "netT": 5.539054263253001,
+        "netP": 5.2991881220812146e-8,
+        "netCI": [
+          15.015831473805655,
+          31.318563050148935
+        ],
+        "clusters": 432,
+        "winRate": 0.47726988102692547,
+        "dirAccuracy": 0.48403256105197245,
+        "longShare": 0.4899185973700689,
+        "avgHold": 4.869881026925485,
+        "byReason": {
+          "gap_target": 232,
+          "time_exit": 8917,
+          "gap_stop": 635,
+          "take_profit": 1372,
+          "stop_loss": 4814
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 15635,
+        "grossBps": 22.14207482596111,
+        "feeBps": 5,
+        "netBps": 17.142074825961146,
+        "netSe": 4.163363555106785,
+        "netT": 4.117361983662144,
+        "netP": 0.00004594360388885928,
+        "netCI": [
+          8.886350962928454,
+          25.335889981602435
+        ],
+        "clusters": 432,
+        "winRate": 0.4712503997441637,
+        "dirAccuracy": 0.4775183882315318,
+        "longShare": 0.4942756635753118,
+        "avgHold": 4.863703229932843,
+        "byReason": {
+          "gap_target": 208,
+          "stop_loss": 4836,
+          "gap_stop": 620,
+          "time_exit": 8688,
+          "take_profit": 1283
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 20956,
+        "grossBps": 28.691432637445228,
+        "feeBps": 5,
+        "netBps": 23.691432637445043,
+        "netSe": 5.888632182461185,
+        "netT": 4.023248846821858,
+        "netP": 0.00006778772284612182,
+        "netCI": [
+          12.276090669376854,
+          35.476148921102656
+        ],
+        "clusters": 432,
+        "winRate": 0.48305974422599735,
+        "dirAccuracy": 0.48907234205000955,
+        "longShare": 1,
+        "avgHold": 4.864477953807978,
+        "byReason": {
+          "gap_target": 305,
+          "time_exit": 11613,
+          "gap_stop": 852,
+          "take_profit": 1879,
+          "stop_loss": 6307
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 21197,
+        "grossBps": -25.96016433208286,
+        "feeBps": 5,
+        "netBps": -30.96016433208262,
+        "netSe": 5.360014781325034,
+        "netT": -5.776134133053463,
+        "netP": 1.4656149725329058e-8,
+        "netCI": [
+          -40.96575323259249,
+          -20.77096050906142
+        ],
+        "clusters": 432,
+        "winRate": 0.4210501486059348,
+        "dirAccuracy": 0.42855121007689767,
+        "longShare": 0,
+        "avgHold": 4.79681086946266,
+        "byReason": {
+          "gap_stop": 966,
+          "time_exit": 11287,
+          "stop_loss": 7188,
+          "gap_target": 234,
+          "take_profit": 1522
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 15970,
+        "grossBps": 320.4935357408439,
+        "feeBps": 5,
+        "netBps": 315.4935357408439,
+        "netSe": 6.166776732567722,
+        "netT": 51.16020076982401,
+        "netP": 3.394463669380635e-185,
+        "netCI": [
+          303.57046524414835,
+          328.05261351601854
+        ],
+        "clusters": 432,
+        "winRate": 0.8971822166562304,
+        "dirAccuracy": 0.9112711333750783,
+        "longShare": 0.536568566061365,
+        "avgHold": 5.548278021289919,
+        "byReason": {
+          "gap_target": 418,
+          "time_exit": 12369,
+          "take_profit": 2637,
+          "gap_stop": 10,
+          "stop_loss": 536
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 20956,
+        "grossBps": 316.6421844218592,
+        "feeBps": 5,
+        "netBps": 311.64218442185927,
+        "netSe": 5.884431152796875,
+        "netT": 52.96046063411507,
+        "netP": 8.786915811466019e-191,
+        "netCI": [
+          300.4363007934291,
+          323.71643237955027
+        ],
+        "clusters": 432,
+        "winRate": 0.9003626646306547,
+        "dirAccuracy": 0.9131036457339187,
+        "longShare": 0.5359324298530254,
+        "avgHold": 5.559744225997328,
+        "byReason": {
+          "gap_target": 521,
+          "time_exit": 16356,
+          "take_profit": 3429,
+          "gap_stop": 12,
+          "stop_loss": 638
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 432,
+        "mean": -2.797707863280443,
+        "se": 6.81088479851135,
+        "t": -0.41077010491969207,
+        "p": 0.6814452577969881,
+        "ci": [
+          -16.147042068362687,
+          10.551626341801802
+        ]
+      },
+      "vsEqw": {
+        "G": 432,
+        "mean": 5.051045761526179,
+        "se": 2.6844951576091955,
+        "t": 1.881562627225831,
+        "p": 0.06056912652343959,
+        "ci": [
+          -0.2105647473878438,
+          10.312656270440202
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 12990,
+        "grossBps": -1.9016488304022658,
+        "feeBps": 5,
+        "netBps": -6.901648830402234,
+        "netSe": 3.5130501676020423,
+        "netT": -1.9645745153457916,
+        "netP": 0.04996654039100824,
+        "netCI": [
+          -13.718196470906852,
+          0.20605201244636068
+        ],
+        "clusters": 551,
+        "winRate": 0.4237875288683603,
+        "dirAccuracy": 0.42848344880677447,
+        "longShare": 0.5836027713625866,
+        "avgHold": 3.2414164742109315,
+        "byReason": {
+          "stop_loss": 4688,
+          "take_profit": 1606,
+          "time_exit": 5683,
+          "gap_stop": 631,
+          "gap_target": 382
+        },
+        "firstTime": "1970-04-02T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      }
+    },
+    "10": {
+      "nRows": 122851,
+      "icRidge": 0.04096820637201039,
+      "icEqw": 0.03352927873333481,
+      "cvBest": {
+        "lambda": 1,
+        "meanIC": 0.031530783971328566,
+        "folds": 5,
+        "ics": [
+          0.010530446287522357,
+          0.0455511053166668,
+          0.03432095306030851,
+          0.027477848469567898,
+          0.03977356672257724
+        ]
+      },
+      "cvGrid": [
+        {
+          "lambda": 0.001,
+          "meanIC": 0.029076837104667,
+          "folds": 5
+        },
+        {
+          "lambda": 0.01,
+          "meanIC": 0.029215226020002677,
+          "folds": 5
+        },
+        {
+          "lambda": 0.1,
+          "meanIC": 0.030042663268922364,
+          "folds": 5
+        },
+        {
+          "lambda": 1,
+          "meanIC": 0.031530783971328566,
+          "folds": 5
+        },
+        {
+          "lambda": 10,
+          "meanIC": 0.03145943841260933,
+          "folds": 5
+        }
+      ],
+      "weights": {
+        "clv": -0.0006264428844125422,
+        "clv5": -0.0006907944680533866,
+        "effRatioSigned10": 0.000019587416098611568,
+        "vwapDist20": 0.000012530277100706818,
+        "xsMom1": -0.00008929916488847756,
+        "xsMom1@lag1": -0.00035479300125064884,
+        "xsMom5": -0.0002223465979643866,
+        "xsMom5@lag1": -0.00028379231916640587
+      },
+      "signs": {
+        "clv": -1,
+        "clv5": -1,
+        "effRatioSigned10": -1,
+        "vwapDist20": -1,
+        "xsMom1": -1,
+        "xsMom1@lag1": -1,
+        "xsMom5": -1,
+        "xsMom5@lag1": -1
+      },
+      "ridge": {
+        "label": "ridge",
+        "n": 12961,
+        "grossBps": 26.84521695690789,
+        "feeBps": 5,
+        "netBps": 21.845216956907763,
+        "netSe": 5.346090745309169,
+        "netT": 4.086203919392026,
+        "netP": 0.000052301112125145214,
+        "netCI": [
+          11.612366736614335,
+          32.600781536136935
+        ],
+        "clusters": 432,
+        "winRate": 0.4411696628346578,
+        "dirAccuracy": 0.44541316256461694,
+        "longShare": 0.47843530591775324,
+        "avgHold": 6.821618702260628,
+        "byReason": {
+          "gap_target": 330,
+          "gap_stop": 695,
+          "stop_loss": 5103,
+          "take_profit": 2015,
+          "time_exit": 4818
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 12844,
+        "grossBps": 16.308284474817782,
+        "feeBps": 5,
+        "netBps": 11.308284474817862,
+        "netSe": 5.340321518440156,
+        "netT": 2.117528773458733,
+        "netP": 0.034787058325215225,
+        "netCI": [
+          0.7895796088169678,
+          22.09877373387155
+        ],
+        "clusters": 432,
+        "winRate": 0.42930551230146374,
+        "dirAccuracy": 0.4331983805668016,
+        "longShare": 0.4810806602304578,
+        "avgHold": 6.763858611024603,
+        "byReason": {
+          "gap_target": 320,
+          "stop_loss": 5254,
+          "gap_stop": 664,
+          "time_exit": 4690,
+          "take_profit": 1916
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 15767,
+        "grossBps": 41.1552214677904,
+        "feeBps": 5,
+        "netBps": 36.155221467790255,
+        "netSe": 7.827349856985562,
+        "netT": 4.619088469071473,
+        "netP": 0.0000050966060572370065,
+        "netCI": [
+          20.716898871427464,
+          51.394462796474855
+        ],
+        "clusters": 432,
+        "winRate": 0.461787277224583,
+        "dirAccuracy": 0.4653389991754931,
+        "longShare": 1,
+        "avgHold": 6.798566626498383,
+        "byReason": {
+          "gap_target": 412,
+          "gap_stop": 863,
+          "stop_loss": 6029,
+          "take_profit": 2592,
+          "time_exit": 5871
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 16138,
+        "grossBps": -32.660490345562565,
+        "feeBps": 5,
+        "netBps": -37.66049034556274,
+        "netSe": 7.078693076768434,
+        "netT": -5.320260383821517,
+        "netP": 1.6690086888180195e-7,
+        "netCI": [
+          -51.8130846426336,
+          -24.287181401683608
+        ],
+        "clusters": 432,
+        "winRate": 0.38331887470566367,
+        "dirAccuracy": 0.3867889453463874,
+        "longShare": 0,
+        "avgHold": 6.615070021068286,
+        "byReason": {
+          "gap_stop": 1006,
+          "time_exit": 5579,
+          "stop_loss": 7125,
+          "gap_target": 316,
+          "take_profit": 2112
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 12961,
+        "grossBps": 357.54265812940014,
+        "feeBps": 5,
+        "netBps": 352.5426581294008,
+        "netSe": 6.802713863715016,
+        "netT": 51.82382578368135,
+        "netP": 2.850483564867887e-187,
+        "netCI": [
+          339.31591744003873,
+          366.34027833437057
+        ],
+        "clusters": 432,
+        "winRate": 0.8284854563691073,
+        "dirAccuracy": 0.836046601342489,
+        "longShare": 0.5495717922999769,
+        "avgHold": 8.126842064655506,
+        "byReason": {
+          "gap_target": 584,
+          "time_exit": 7319,
+          "stop_loss": 1220,
+          "take_profit": 3820,
+          "gap_stop": 18
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 15767,
+        "grossBps": 360.88385135072895,
+        "feeBps": 5,
+        "netBps": 355.8838513507292,
+        "netSe": 6.884550559734326,
+        "netT": 51.69311319059623,
+        "netP": 7.282333070084411e-187,
+        "netCI": [
+          342.9313571144621,
+          370.7776835837939
+        ],
+        "clusters": 432,
+        "winRate": 0.8302784296315089,
+        "dirAccuracy": 0.8373818735333292,
+        "longShare": 0.5614257626688653,
+        "avgHold": 8.158051626815501,
+        "byReason": {
+          "gap_target": 695,
+          "time_exit": 9002,
+          "stop_loss": 1457,
+          "take_profit": 4582,
+          "gap_stop": 31
+        },
+        "firstTime": "1980-03-25T14:30:00.000Z",
+        "lastTime": "2016-02-12T14:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 432,
+        "mean": -17.35770330015121,
+        "se": 8.796689431698919,
+        "t": -1.9732086070474002,
+        "p": 0.04911026668647302,
+        "ci": [
+          -34.59921458628109,
+          -0.11619201402132973
+        ]
+      },
+      "vsEqw": {
+        "G": 432,
+        "mean": 9.138712023492591,
+        "se": 4.50273369407076,
+        "t": 2.02959194222979,
+        "p": 0.04301191296881556,
+        "ci": [
+          0.3133539831139007,
+          17.964070063871283
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 12990,
+        "grossBps": -1.9016488304022658,
+        "feeBps": 5,
+        "netBps": -6.901648830402234,
+        "netSe": 3.5130501676020423,
+        "netT": -1.9645745153457916,
+        "netP": 0.04996654039100824,
+        "netCI": [
+          -13.49681226684484,
+          -0.3711411668051393
+        ],
+        "clusters": 551,
+        "winRate": 0.4237875288683603,
+        "dirAccuracy": 0.42848344880677447,
+        "longShare": 0.5836027713625866,
+        "avgHold": 3.2414164742109315,
+        "byReason": {
+          "stop_loss": 4688,
+          "take_profit": 1606,
+          "time_exit": 5683,
+          "gap_stop": 631,
+          "gap_target": 382
+        },
+        "firstTime": "1970-04-02T14:30:00.000Z",
+        "lastTime": "2016-02-16T14:30:00.000Z"
+      }
+    }
+  },
+  "validation": {
+    "3": {
+      "nRows": 23426,
+      "icRidge": 0.02469059361275025,
+      "icEqw": 0.015530933913828126,
+      "ridge": {
+        "label": "ridge",
+        "n": 3956,
+        "grossBps": 5.320830345207018,
+        "feeBps": 5,
+        "netBps": 0.32083034520701853,
+        "netSe": 6.028186616506854,
+        "netT": 0.0532217009222136,
+        "netP": 0.9577160326285069,
+        "netCI": [
+          -11.282652346756603,
+          12.339064458241623
+        ],
+        "clusters": 67,
+        "winRate": 0.4828109201213347,
+        "dirAccuracy": 0.4914054600606673,
+        "longShare": 0.45601617795753285,
+        "avgHold": 2.7846309403437814,
+        "byReason": {
+          "time_exit": 2980,
+          "stop_loss": 692,
+          "gap_stop": 135,
+          "gap_target": 39,
+          "take_profit": 110
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 3879,
+        "grossBps": -2.721621102273009,
+        "feeBps": 5,
+        "netBps": -7.721621102273003,
+        "netSe": 4.9423845304823155,
+        "netT": -1.5623270618968752,
+        "netP": 0.12299355106910748,
+        "netCI": [
+          -18.056681570140665,
+          1.2842019919441134
+        ],
+        "clusters": 67,
+        "winRate": 0.47666924465068317,
+        "dirAccuracy": 0.48672338231502965,
+        "longShare": 0.4617169373549884,
+        "avgHold": 2.7641144624903324,
+        "byReason": {
+          "time_exit": 2881,
+          "stop_loss": 720,
+          "gap_stop": 136,
+          "gap_target": 39,
+          "take_profit": 103
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 6183,
+        "grossBps": 15.610356910896966,
+        "feeBps": 5,
+        "netBps": 10.610356910896941,
+        "netSe": 10.81963716597197,
+        "netT": 0.9806573684621125,
+        "netP": 0.3303429016824285,
+        "netCI": [
+          -12.372434356661104,
+          28.414965934100962
+        ],
+        "clusters": 67,
+        "winRate": 0.5325893579168688,
+        "dirAccuracy": 0.5424551188743328,
+        "longShare": 1,
+        "avgHold": 2.794921559113699,
+        "byReason": {
+          "time_exit": 4780,
+          "stop_loss": 979,
+          "gap_stop": 228,
+          "gap_target": 55,
+          "take_profit": 141
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 6179,
+        "grossBps": -21.64659438018064,
+        "feeBps": 5,
+        "netBps": -26.64659438018063,
+        "netSe": 7.843767494384778,
+        "netT": -3.3971678022399927,
+        "netP": 0.0011577152671584275,
+        "netCI": [
+          -41.145539260160845,
+          -11.416311523419827
+        ],
+        "clusters": 67,
+        "winRate": 0.4282246318174462,
+        "dirAccuracy": 0.43858229486972,
+        "longShare": 0,
+        "avgHold": 2.7964071856287425,
+        "byReason": {
+          "time_exit": 4588,
+          "stop_loss": 1088,
+          "take_profit": 200,
+          "gap_target": 52,
+          "gap_stop": 251
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 3956,
+        "grossBps": 198.32621028877324,
+        "feeBps": 5,
+        "netBps": 193.32621028877335,
+        "netSe": 12.791476066861675,
+        "netT": 15.113674862716996,
+        "netP": 4.0990831386798377e-23,
+        "netCI": [
+          171.71583576868724,
+          220.75537949359867
+        ],
+        "clusters": 67,
+        "winRate": 0.9608190091001011,
+        "dirAccuracy": 0.9792719919110212,
+        "longShare": 0.5497977755308392,
+        "avgHold": 2.9496966632962587,
+        "byReason": {
+          "time_exit": 3636,
+          "gap_target": 74,
+          "take_profit": 228,
+          "stop_loss": 18
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 6183,
+        "grossBps": 199.7905473607406,
+        "feeBps": 5,
+        "netBps": 194.79054736074087,
+        "netSe": 14.260840691346928,
+        "netT": 13.659120915566655,
+        "netP": 6.6118466502267135e-21,
+        "netCI": [
+          172.21456106492926,
+          225.34440294693374
+        ],
+        "clusters": 67,
+        "winRate": 0.9558466763706939,
+        "dirAccuracy": 0.977680737506065,
+        "longShare": 0.5524826136179848,
+        "avgHold": 2.950994662785056,
+        "byReason": {
+          "time_exit": 5694,
+          "take_profit": 340,
+          "gap_target": 117,
+          "stop_loss": 32
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 67,
+        "mean": -12.689837627356596,
+        "se": 13.565540731175787,
+        "t": -0.9354465021945875,
+        "p": 0.3529684188898987,
+        "ci": [
+          -39.27829746046113,
+          13.898622205747944
+        ]
+      },
+      "vsEqw": {
+        "G": 67,
+        "mean": 8.017843224700078,
+        "se": 7.106114632278816,
+        "t": 1.1283019821098617,
+        "p": 0.2632772288603503,
+        "ci": [
+          -5.9101414545664,
+          21.945827903966556
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 2219,
+        "grossBps": 5.980999275486517,
+        "feeBps": 5,
+        "netBps": 0.980999275486519,
+        "netSe": 6.202484913172938,
+        "netT": 0.15816229933958514,
+        "netP": 0.8748118407177672,
+        "netCI": [
+          -11.515756740681512,
+          13.058028100835035
+        ],
+        "clusters": 67,
+        "winRate": 0.44073907165389814,
+        "dirAccuracy": 0.44614691302388465,
+        "longShare": 0.597566471383506,
+        "avgHold": 3.125281658404687,
+        "byReason": {
+          "take_profit": 310,
+          "time_exit": 960,
+          "stop_loss": 674,
+          "gap_stop": 162,
+          "gap_target": 113
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      }
+    },
+    "6": {
+      "nRows": 23426,
+      "icRidge": 0.024809847363306537,
+      "icEqw": 0.016035207879777125,
+      "ridge": {
+        "label": "ridge",
+        "n": 3001,
+        "grossBps": 12.290694048875507,
+        "feeBps": 5,
+        "netBps": 7.290694048875488,
+        "netSe": 9.205975595131045,
+        "netT": 0.7919523545914534,
+        "netP": 0.43122570685911954,
+        "netCI": [
+          -10.120468474830936,
+          26.71437938129398
+        ],
+        "clusters": 67,
+        "winRate": 0.4591802732422526,
+        "dirAccuracy": 0.4668443852049317,
+        "longShare": 0.457514161946018,
+        "avgHold": 4.817727424191936,
+        "byReason": {
+          "time_exit": 1634,
+          "stop_loss": 891,
+          "gap_stop": 169,
+          "take_profit": 237,
+          "gap_target": 70
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 2937,
+        "grossBps": 8.752318747546406,
+        "feeBps": 5,
+        "netBps": 3.7523187475464064,
+        "netSe": 8.701891274071507,
+        "netT": 0.43120726625566574,
+        "netP": 0.6677228580010715,
+        "netCI": [
+          -13.500718460932072,
+          20.772608135667724
+        ],
+        "clusters": 67,
+        "winRate": 0.449438202247191,
+        "dirAccuracy": 0.45692883895131087,
+        "longShare": 0.4606741573033708,
+        "avgHold": 4.758937691521961,
+        "byReason": {
+          "time_exit": 1579,
+          "stop_loss": 895,
+          "gap_stop": 170,
+          "take_profit": 219,
+          "gap_target": 74
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 4011,
+        "grossBps": 29.78268352350381,
+        "feeBps": 5,
+        "netBps": 24.78268352350379,
+        "netSe": 16.28684735695188,
+        "netT": 1.5216378578586938,
+        "netP": 0.13287679936424024,
+        "netCI": [
+          -8.042591284517512,
+          55.41546284418492
+        ],
+        "clusters": 67,
+        "winRate": 0.5078534031413613,
+        "dirAccuracy": 0.5143355771628023,
+        "longShare": 1,
+        "avgHold": 4.848666168037896,
+        "byReason": {
+          "stop_loss": 1052,
+          "time_exit": 2293,
+          "take_profit": 334,
+          "gap_stop": 248,
+          "gap_target": 84
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 4105,
+        "grossBps": -31.177911184497297,
+        "feeBps": 5,
+        "netBps": -36.17791118449732,
+        "netSe": 12.712202528042218,
+        "netT": -2.8459199815839473,
+        "netP": 0.005893904767183409,
+        "netCI": [
+          -59.231726896993294,
+          -11.317056616081823
+        ],
+        "clusters": 67,
+        "winRate": 0.3912302070645554,
+        "dirAccuracy": 0.39658952496954936,
+        "longShare": 0,
+        "avgHold": 4.720097442143727,
+        "byReason": {
+          "time_exit": 2081,
+          "stop_loss": 1308,
+          "take_profit": 331,
+          "gap_target": 92,
+          "gap_stop": 293
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 3001,
+        "grossBps": 260.7230387596939,
+        "feeBps": 5,
+        "netBps": 255.72303875969385,
+        "netSe": 14.532116858767969,
+        "netT": 17.59709485169761,
+        "netP": 1.2821225499392935e-26,
+        "netCI": [
+          231.04064092513704,
+          287.02360941588466
+        ],
+        "clusters": 67,
+        "winRate": 0.9013662112629124,
+        "dirAccuracy": 0.9163612129290236,
+        "longShare": 0.5684771742752416,
+        "avgHold": 5.49083638787071,
+        "byReason": {
+          "time_exit": 2276,
+          "gap_target": 133,
+          "take_profit": 473,
+          "stop_loss": 116,
+          "gap_stop": 3
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 4011,
+        "grossBps": 265.8937659121089,
+        "feeBps": 5,
+        "netBps": 260.89376591210896,
+        "netSe": 18.923532649035472,
+        "netT": 13.786736903239188,
+        "netP": 4.187318055950177e-21,
+        "netCI": [
+          230.4169103245789,
+          305.20060596913925
+        ],
+        "clusters": 67,
+        "winRate": 0.9052605335327848,
+        "dirAccuracy": 0.9169783096484667,
+        "longShare": 0.5597107953128896,
+        "avgHold": 5.468461730241835,
+        "byReason": {
+          "time_exit": 3023,
+          "take_profit": 670,
+          "gap_target": 173,
+          "stop_loss": 145
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 67,
+        "mean": -27.337287803755608,
+        "se": 17.87150512840709,
+        "t": -1.5296578328090833,
+        "p": 0.13088052789190896,
+        "ci": [
+          -62.365437855433505,
+          7.69086224792229
+        ]
+      },
+      "vsEqw": {
+        "G": 67,
+        "mean": 1.1124187870294455,
+        "se": 4.63294907393921,
+        "t": 0.24011029892102842,
+        "p": 0.8109889628124884,
+        "ci": [
+          -7.968161397891405,
+          10.192998971950297
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 2219,
+        "grossBps": 5.980999275486517,
+        "feeBps": 5,
+        "netBps": 0.980999275486519,
+        "netSe": 6.202484913172938,
+        "netT": 0.15816229933958514,
+        "netP": 0.8748118407177672,
+        "netCI": [
+          -11.566601275881572,
+          12.662901290117668
+        ],
+        "clusters": 67,
+        "winRate": 0.44073907165389814,
+        "dirAccuracy": 0.44614691302388465,
+        "longShare": 0.597566471383506,
+        "avgHold": 3.125281658404687,
+        "byReason": {
+          "take_profit": 310,
+          "time_exit": 960,
+          "stop_loss": 674,
+          "gap_stop": 162,
+          "gap_target": 113
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      }
+    },
+    "10": {
+      "nRows": 23426,
+      "icRidge": 0.02940636510736585,
+      "icEqw": 0.019568996617764924,
+      "ridge": {
+        "label": "ridge",
+        "n": 2453,
+        "grossBps": 20.066361170929298,
+        "feeBps": 5,
+        "netBps": 15.066361170929309,
+        "netSe": 14.998426585399148,
+        "netT": 1.0045294474819308,
+        "netP": 0.31879224969054365,
+        "netCI": [
+          -11.151073866438031,
+          46.27808560455158
+        ],
+        "clusters": 67,
+        "winRate": 0.4280472890338361,
+        "dirAccuracy": 0.430900937627395,
+        "longShare": 0.45046881369751324,
+        "avgHold": 6.699959233591521,
+        "byReason": {
+          "time_exit": 879,
+          "stop_loss": 938,
+          "gap_stop": 174,
+          "take_profit": 363,
+          "gap_target": 99
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "eqw": {
+        "label": "สัญญาณเท่ากันทุกตัว",
+        "n": 2473,
+        "grossBps": -1.8640945602806673,
+        "feeBps": 5,
+        "netBps": -6.864094560280669,
+        "netSe": 10.489428025534266,
+        "netT": -0.6543821592151164,
+        "netP": 0.5151395463968838,
+        "netCI": [
+          -28.505311987560273,
+          13.47328910681317
+        ],
+        "clusters": 67,
+        "winRate": 0.3978972907399919,
+        "dirAccuracy": 0.4003234937323089,
+        "longShare": 0.4427820460978569,
+        "avgHold": 6.559239789729074,
+        "byReason": {
+          "take_profit": 321,
+          "stop_loss": 990,
+          "gap_stop": 202,
+          "time_exit": 856,
+          "gap_target": 104
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysLong": {
+        "label": "ซื้อทุกแท่ง",
+        "n": 3047,
+        "grossBps": 46.39189618771943,
+        "feeBps": 5,
+        "netBps": 41.39189618771943,
+        "netSe": 17.681270747191398,
+        "netT": 2.3410023396816304,
+        "netP": 0.02226242505159861,
+        "netCI": [
+          4.809705527276171,
+          73.3904630722044
+        ],
+        "clusters": 67,
+        "winRate": 0.48473908762717427,
+        "dirAccuracy": 0.4893337709222186,
+        "longShare": 1,
+        "avgHold": 6.7230062356416145,
+        "byReason": {
+          "stop_loss": 1042,
+          "take_profit": 456,
+          "time_exit": 1184,
+          "gap_stop": 241,
+          "gap_target": 124
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "alwaysShort": {
+        "label": "ขายทุกแท่ง",
+        "n": 3139,
+        "grossBps": -43.82885573223043,
+        "feeBps": 5,
+        "netBps": -48.82885573223047,
+        "netSe": 15.034329212747878,
+        "netT": -3.2478240326696857,
+        "netP": 0.0018299393724807858,
+        "netCI": [
+          -75.51434669213232,
+          -19.185134261270868
+        ],
+        "clusters": 67,
+        "winRate": 0.35489009238611025,
+        "dirAccuracy": 0.35903153870659443,
+        "longShare": 0,
+        "avgHold": 6.47754061803122,
+        "byReason": {
+          "time_exit": 1035,
+          "stop_loss": 1291,
+          "gap_target": 105,
+          "take_profit": 392,
+          "gap_stop": 316
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-04T13:30:00.000Z"
+      },
+      "ceilingOnRidgeBars": {
+        "label": "เพดานบนแท่งเดียวกับ ridge",
+        "n": 2453,
+        "grossBps": 308.8971015623059,
+        "feeBps": 5,
+        "netBps": 303.897101562306,
+        "netSe": 21.84390037002928,
+        "netT": 13.91221789215195,
+        "netP": 2.6776355656425445e-21,
+        "netCI": [
+          267.39176536305587,
+          351.0014764043039
+        ],
+        "clusters": 67,
+        "winRate": 0.8414186710150836,
+        "dirAccuracy": 0.8471259682022014,
+        "longShare": 0.5650224215246636,
+        "avgHold": 8.01182225845903,
+        "byReason": {
+          "time_exit": 1361,
+          "gap_target": 188,
+          "take_profit": 677,
+          "stop_loss": 221,
+          "gap_stop": 6
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "ceilingOnAllBars": {
+        "label": "เพดานบนทุกแท่ง",
+        "n": 3047,
+        "grossBps": 306.2672383281985,
+        "feeBps": 5,
+        "netBps": 301.2672383281986,
+        "netSe": 21.269277681267823,
+        "netT": 14.164432043384775,
+        "netP": 1.096715138300757e-21,
+        "netCI": [
+          266.0647099559725,
+          347.8059508049902
+        ],
+        "clusters": 67,
+        "winRate": 0.8378733180177224,
+        "dirAccuracy": 0.8473908762717427,
+        "longShare": 0.5763045618641287,
+        "avgHold": 7.917952084017066,
+        "byReason": {
+          "time_exit": 1685,
+          "take_profit": 853,
+          "gap_target": 213,
+          "stop_loss": 289,
+          "gap_stop": 7
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      },
+      "vsAlwaysLong": {
+        "G": 67,
+        "mean": -40.16044995391682,
+        "se": 23.24513653015106,
+        "t": -1.7276925821375604,
+        "p": 0.08872027944309198,
+        "ci": [
+          -85.7209175530129,
+          5.400017645179261
+        ]
+      },
+      "vsEqw": {
+        "G": 67,
+        "mean": 16.994188723377114,
+        "se": 10.198299569905034,
+        "t": 1.6663747330512437,
+        "p": 0.10037829442834856,
+        "ci": [
+          -2.9944784336367505,
+          36.98285588039098
+        ]
+      },
+      "engine": {
+        "label": "เครื่องยนต์ปัจจุบัน",
+        "n": 2219,
+        "grossBps": 5.980999275486517,
+        "feeBps": 5,
+        "netBps": 0.980999275486519,
+        "netSe": 6.202484913172938,
+        "netT": 0.15816229933958514,
+        "netP": 0.8748118407177672,
+        "netCI": [
+          -11.13111752277807,
+          13.526190645257774
+        ],
+        "clusters": 67,
+        "winRate": 0.44073907165389814,
+        "dirAccuracy": 0.44614691302388465,
+        "longShare": 0.597566471383506,
+        "avgHold": 3.125281658404687,
+        "byReason": {
+          "take_profit": 310,
+          "time_exit": 960,
+          "stop_loss": 674,
+          "gap_stop": 162,
+          "gap_target": 113
+        },
+        "firstTime": "2016-02-17T14:30:00.000Z",
+        "lastTime": "2021-08-05T13:30:00.000Z"
+      }
+    }
+  },
+  "tests": [
+    {
+      "family": "TRAIN",
+      "id": "train|ridge|h3",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 3 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 14.68277981528327,
+      "ci": [
+        9.183309884425586,
+        20.23318689718596
+      ],
+      "p": 3.814258035071233e-7,
+      "n": 21574,
+      "G": 432,
+      "holmThreshold": 0.01,
+      "holmPass": true,
+      "idx": 1
+    },
+    {
+      "family": "TRAIN",
+      "id": "train|eqw|h3",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 3 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 8.937570125992789,
+      "ci": [
+        3.4627722012863797,
+        14.283887395542575
+      ],
+      "p": 0.001127023506539256,
+      "n": 20893,
+      "G": 432,
+      "holmThreshold": 0.025,
+      "holmPass": true,
+      "idx": 2
+    },
+    {
+      "family": "TRAIN",
+      "id": "train|ridge|h6",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 6 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 23.19800721492677,
+      "ci": [
+        15.015831473805655,
+        31.318563050148935
+      ],
+      "p": 5.2991881220812146e-8,
+      "n": 15970,
+      "G": 432,
+      "holmThreshold": 0.008333333333333333,
+      "holmPass": true,
+      "idx": 3
+    },
+    {
+      "family": "TRAIN",
+      "id": "train|eqw|h6",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 6 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 17.142074825961146,
+      "ci": [
+        8.886350962928454,
+        25.335889981602435
+      ],
+      "p": 0.00004594360388885928,
+      "n": 15635,
+      "G": 432,
+      "holmThreshold": 0.0125,
+      "holmPass": true,
+      "idx": 4
+    },
+    {
+      "family": "TRAIN",
+      "id": "train|ridge|h10",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 10 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 21.845216956907763,
+      "ci": [
+        11.612366736614335,
+        32.600781536136935
+      ],
+      "p": 0.000052301112125145214,
+      "n": 12961,
+      "G": 432,
+      "holmThreshold": 0.016666666666666666,
+      "holmPass": true,
+      "idx": 5
+    },
+    {
+      "family": "TRAIN",
+      "id": "train|eqw|h10",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 10 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 11.308284474817862,
+      "ci": [
+        0.7895796088169678,
+        22.09877373387155
+      ],
+      "p": 0.034787058325215225,
+      "n": 12844,
+      "G": 432,
+      "holmThreshold": 0.05,
+      "holmPass": true,
+      "idx": 6
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|ridge|h3",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 3 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 0.32083034520701853,
+      "ci": [
+        -11.282652346756603,
+        12.339064458241623
+      ],
+      "p": 0.9577160326285069,
+      "n": 3956,
+      "G": 67,
+      "holmThreshold": 0.05,
+      "holmPass": false,
+      "idx": 7
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|eqw|h3",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 3 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": -7.721621102273003,
+      "ci": [
+        -18.056681570140665,
+        1.2842019919441134
+      ],
+      "p": 0.12299355106910748,
+      "n": 3879,
+      "G": 67,
+      "holmThreshold": 0.008333333333333333,
+      "holmPass": false,
+      "idx": 8
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|ridge|h6",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 6 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 7.290694048875488,
+      "ci": [
+        -10.120468474830936,
+        26.71437938129398
+      ],
+      "p": 0.43122570685911954,
+      "n": 3001,
+      "G": 67,
+      "holmThreshold": 0.0125,
+      "holmPass": false,
+      "idx": 9
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|eqw|h6",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 6 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 3.7523187475464064,
+      "ci": [
+        -13.500718460932072,
+        20.772608135667724
+      ],
+      "p": 0.6677228580010715,
+      "n": 2937,
+      "G": 67,
+      "holmThreshold": 0.025,
+      "holmPass": false,
+      "idx": 10
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|ridge|h10",
+      "question": "กำไรสุทธิต่อไม้ของโมเดล ridge ที่ถือ 10 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 15.066361170929309,
+      "ci": [
+        -11.151073866438031,
+        46.27808560455158
+      ],
+      "p": 0.31879224969054365,
+      "n": 2453,
+      "G": 67,
+      "holmThreshold": 0.01,
+      "holmPass": false,
+      "idx": 11
+    },
+    {
+      "family": "VALIDATION",
+      "id": "val|eqw|h10",
+      "question": "กำไรสุทธิต่อไม้ของโมเดลเครื่องหมายล้วน ถือ 10 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": -6.864094560280669,
+      "ci": [
+        -28.505311987560273,
+        13.47328910681317
+      ],
+      "p": 0.5151395463968838,
+      "n": 2473,
+      "G": 67,
+      "holmThreshold": 0.016666666666666666,
+      "holmPass": false,
+      "idx": 12
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "train|ridge-minus-long|h3",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 3 แท่ง (train · จับคู่รายเดือน)",
+      "estimate": 3.7167579575155543,
+      "ci": [
+        -4.87317963675128,
+        12.306695551782388
+      ],
+      "p": 0.39687118761113627,
+      "n": 432,
+      "G": 432,
+      "holmThreshold": 0.025,
+      "holmPass": false,
+      "idx": 13
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "val|ridge-minus-long|h3",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 3 แท่ง (validation · จับคู่รายเดือน)",
+      "estimate": -12.689837627356596,
+      "ci": [
+        -39.27829746046113,
+        13.898622205747944
+      ],
+      "p": 0.3529684188898987,
+      "n": 67,
+      "G": 67,
+      "holmThreshold": 0.016666666666666666,
+      "holmPass": false,
+      "idx": 14
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "train|ridge-minus-long|h6",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 6 แท่ง (train · จับคู่รายเดือน)",
+      "estimate": -2.797707863280443,
+      "ci": [
+        -16.147042068362687,
+        10.551626341801802
+      ],
+      "p": 0.6814452577969881,
+      "n": 432,
+      "G": 432,
+      "holmThreshold": 0.05,
+      "holmPass": false,
+      "idx": 15
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "val|ridge-minus-long|h6",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 6 แท่ง (validation · จับคู่รายเดือน)",
+      "estimate": -27.337287803755608,
+      "ci": [
+        -62.365437855433505,
+        7.69086224792229
+      ],
+      "p": 0.13088052789190896,
+      "n": 67,
+      "G": 67,
+      "holmThreshold": 0.0125,
+      "holmPass": false,
+      "idx": 16
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "train|ridge-minus-long|h10",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 10 แท่ง (train · จับคู่รายเดือน)",
+      "estimate": -17.35770330015121,
+      "ci": [
+        -34.59921458628109,
+        -0.11619201402132973
+      ],
+      "p": 0.04911026668647302,
+      "n": 432,
+      "G": 432,
+      "holmThreshold": 0.008333333333333333,
+      "holmPass": false,
+      "idx": 17
+    },
+    {
+      "family": "VS-BASELINE",
+      "id": "val|ridge-minus-long|h10",
+      "question": "ridge ดีกว่า \"ซื้อทุกแท่ง\" ไหม ถือ 10 แท่ง (validation · จับคู่รายเดือน)",
+      "estimate": -40.16044995391682,
+      "ci": [
+        -85.7209175530129,
+        5.400017645179261
+      ],
+      "p": 0.08872027944309198,
+      "n": 67,
+      "G": 67,
+      "holmThreshold": 0.01,
+      "holmPass": false,
+      "idx": 18
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|long|h3",
+      "question": "ซื้อทุกแท่งถือ 3 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 10.360021760549053,
+      "ci": [
+        3.0995272526990045,
+        17.546468477408176
+      ],
+      "p": 0.003805133886873156,
+      "n": 32257,
+      "G": 432,
+      "holmThreshold": 0.01,
+      "holmPass": true,
+      "idx": 19
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|short|h3",
+      "question": "ขายทุกแท่งถือ 3 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": -20.04831242903779,
+      "ci": [
+        -26.195250575973162,
+        -13.973161977813755
+      ],
+      "p": 4.91087796613699e-10,
+      "n": 32376,
+      "G": 432,
+      "holmThreshold": 0.004166666666666667,
+      "holmPass": true,
+      "idx": 20
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|long|h3",
+      "question": "ซื้อทุกแท่งถือ 3 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 10.610356910896941,
+      "ci": [
+        -12.372434356661104,
+        28.414965934100962
+      ],
+      "p": 0.3303429016824285,
+      "n": 6183,
+      "G": 67,
+      "holmThreshold": 0.05,
+      "holmPass": false,
+      "idx": 21
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|short|h3",
+      "question": "ขายทุกแท่งถือ 3 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": -26.64659438018063,
+      "ci": [
+        -41.145539260160845,
+        -11.416311523419827
+      ],
+      "p": 0.0011577152671584275,
+      "n": 6179,
+      "G": 67,
+      "holmThreshold": 0.0071428571428571435,
+      "holmPass": true,
+      "idx": 22
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|long|h6",
+      "question": "ซื้อทุกแท่งถือ 6 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 23.691432637445043,
+      "ci": [
+        12.276090669376854,
+        35.476148921102656
+      ],
+      "p": 0.00006778772284612182,
+      "n": 20956,
+      "G": 432,
+      "holmThreshold": 0.00625,
+      "holmPass": true,
+      "idx": 23
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|short|h6",
+      "question": "ขายทุกแท่งถือ 6 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": -30.96016433208262,
+      "ci": [
+        -40.96575323259249,
+        -20.77096050906142
+      ],
+      "p": 1.4656149725329058e-8,
+      "n": 21197,
+      "G": 432,
+      "holmThreshold": 0.004545454545454546,
+      "holmPass": true,
+      "idx": 24
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|long|h6",
+      "question": "ซื้อทุกแท่งถือ 6 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 24.78268352350379,
+      "ci": [
+        -8.042591284517512,
+        55.41546284418492
+      ],
+      "p": 0.13287679936424024,
+      "n": 4011,
+      "G": 67,
+      "holmThreshold": 0.025,
+      "holmPass": false,
+      "idx": 25
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|short|h6",
+      "question": "ขายทุกแท่งถือ 6 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": -36.17791118449732,
+      "ci": [
+        -59.231726896993294,
+        -11.317056616081823
+      ],
+      "p": 0.005893904767183409,
+      "n": 4105,
+      "G": 67,
+      "holmThreshold": 0.0125,
+      "holmPass": true,
+      "idx": 26
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|long|h10",
+      "question": "ซื้อทุกแท่งถือ 10 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": 36.155221467790255,
+      "ci": [
+        20.716898871427464,
+        51.394462796474855
+      ],
+      "p": 0.0000050966060572370065,
+      "n": 15767,
+      "G": 432,
+      "holmThreshold": 0.005555555555555556,
+      "holmPass": true,
+      "idx": 27
+    },
+    {
+      "family": "BASELINE",
+      "id": "train|short|h10",
+      "question": "ขายทุกแท่งถือ 10 แท่ง (train) ต่างจากศูนย์ไหม",
+      "estimate": -37.66049034556274,
+      "ci": [
+        -51.8130846426336,
+        -24.287181401683608
+      ],
+      "p": 1.6690086888180195e-7,
+      "n": 16138,
+      "G": 432,
+      "holmThreshold": 0.005,
+      "holmPass": true,
+      "idx": 28
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|long|h10",
+      "question": "ซื้อทุกแท่งถือ 10 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": 41.39189618771943,
+      "ci": [
+        4.809705527276171,
+        73.3904630722044
+      ],
+      "p": 0.02226242505159861,
+      "n": 3047,
+      "G": 67,
+      "holmThreshold": 0.016666666666666666,
+      "holmPass": false,
+      "idx": 29
+    },
+    {
+      "family": "BASELINE",
+      "id": "val|short|h10",
+      "question": "ขายทุกแท่งถือ 10 แท่ง (validation) ต่างจากศูนย์ไหม",
+      "estimate": -48.82885573223047,
+      "ci": [
+        -75.51434669213232,
+        -19.185134261270868
+      ],
+      "p": 0.0018299393724807858,
+      "n": 3139,
+      "G": 67,
+      "holmThreshold": 0.008333333333333333,
+      "holmPass": true,
+      "idx": 30
+    }
+  ],
+  "ledger": {
+    "registeredThisRound": 30,
+    "families": [
+      {
+        "family": "TRAIN",
+        "n": 6
+      },
+      {
+        "family": "VALIDATION",
+        "n": 6
+      },
+      {
+        "family": "VS-BASELINE",
+        "n": 6
+      },
+      {
+        "family": "BASELINE",
+        "n": 12
+      }
+    ],
+    "reHolmedFromFeatTime": 412,
+    "priorRounds": {
+      "ceiling": 192,
+      "featVolume": 1968,
+      "featTime": 636,
+      "featCross": 1736
+    }
+  },
+  "ceilingRef": {
+    "RUNNER|1": {
+      "pStar": 0.7683366499796684,
+      "pFair": 0.49528754603797875,
+      "accTax": 0.2730491039416897,
+      "perfectNetBps": 194.85119481230382,
+      "dirNetBps": 101.21165781355487,
+      "feeBps": 119.29272572471476,
+      "engineAcc": 0.5031000885739593
+    },
+    "SET50|1": {
+      "pStar": 0.7748879632490298,
+      "pFair": 0.4968183290068899,
+      "accTax": 0.2780696342421399,
+      "perfectNetBps": 139.10123574856965,
+      "dirNetBps": 72.23846102553534,
+      "feeBps": 89.23255604411432,
+      "engineAcc": 0.46786355475763014
+    },
+    "FOREX|1": {
+      "pStar": 0.5640973359659163,
+      "pFair": 0.5171892575369504,
+      "accTax": 0.04690807842896583,
+      "perfectNetBps": 84.77214322421507,
+      "dirNetBps": 29.88213271845716,
+      "feeBps": 3.215656936367227,
+      "engineAcc": 0.4856757667677789
+    },
+    "US_STOCK|1": {
+      "pStar": 0.5197470751991519,
+      "pFair": 0.5001049959050182,
+      "accTax": 0.01964207929413364,
+      "perfectNetBps": 192.35901614442116,
+      "dirNetBps": 122.25104012900981,
+      "feeBps": 5.00000000000014,
+      "engineAcc": 0.5077067669172932
+    },
+    "RUNNER|5": {
+      "pStar": 0.6197742569473272,
+      "pFair": 0.475989227093909,
+      "accTax": 0.14378502985341823,
+      "perfectNetBps": 669.2370278094072,
+      "dirNetBps": 319.80600001347676,
+      "feeBps": 120.93688052276335,
+      "engineAcc": 0.4995990376904571
+    },
+    "SET50|5": {
+      "pStar": 0.6213853712436116,
+      "pFair": 0.4791520628172415,
+      "accTax": 0.1422333084263701,
+      "perfectNetBps": 480.30204921567434,
+      "dirNetBps": 238.06214864380306,
+      "feeBps": 89.43227345419123,
+      "engineAcc": 0.4806201550387597
+    },
+    "FOREX|5": {
+      "pStar": 0.5241740053603013,
+      "pFair": 0.5088272706419686,
+      "accTax": 0.0153467347183327,
+      "perfectNetBps": 217.6206214860633,
+      "dirNetBps": 98.79533678809032,
+      "feeBps": 3.1864291614484714,
+      "engineAcc": 0.5201021059349075
+    },
+    "US_STOCK|5": {
+      "pStar": 0.5040918034708926,
+      "pFair": 0.495018371478984,
+      "accTax": 0.009073431991908576,
+      "perfectNetBps": 488.5401841880987,
+      "dirNetBps": 273.27487381365466,
+      "feeBps": 5.000000000000102,
+      "engineAcc": 0.4946507237256136
+    },
+    "RUNNER|10": {
+      "pStar": 0.5961052112597766,
+      "pFair": 0.47075422565539105,
+      "accTax": 0.1253509856043855,
+      "perfectNetBps": 1042.4691728724097,
+      "dirNetBps": 392.45809031078716,
+      "feeBps": 121.8015428778244,
+      "engineAcc": 0.5058548009367682
+    },
+    "SET50|10": {
+      "pStar": 0.598103609963201,
+      "pFair": 0.47394608047068987,
+      "accTax": 0.12415752949251113,
+      "perfectNetBps": 735.4815749784,
+      "dirNetBps": 289.83826304717593,
+      "feeBps": 89.53950218125344,
+      "engineAcc": 0.48733375554148195
+    },
+    "FOREX|10": {
+      "pStar": 0.5209314203081765,
+      "pFair": 0.508440486554678,
+      "accTax": 0.012490933753498523,
+      "perfectNetBps": 327.5094799941756,
+      "dirNetBps": 122.17499285672315,
+      "feeBps": 3.185514155591651,
+      "engineAcc": 0.5214194373401535
+    },
+    "US_STOCK|10": {
+      "pStar": 0.5057510319326317,
+      "pFair": 0.4978335122777135,
+      "accTax": 0.007917519654918215,
+      "perfectNetBps": 703.6875710218173,
+      "dirNetBps": 312.12361295519673,
+      "feeBps": 5.000000000000102,
+      "engineAcc": 0.5028648164726948
+    },
+    "RUNNER|20": {
+      "pStar": 0.5846175176412136,
+      "pFair": 0.4628701985808345,
+      "accTax": 0.12174731906037911,
+      "perfectNetBps": 1624.715240449173,
+      "dirNetBps": 417.6134355859069,
+      "feeBps": 122.40120454155932,
+      "engineAcc": 0.5011476664116297
+    },
+    "SET50|20": {
+      "pStar": 0.5966948582891904,
+      "pFair": 0.47246024069269926,
+      "accTax": 0.12423461759649118,
+      "perfectNetBps": 1111.040990226373,
+      "dirNetBps": 290.87365032545364,
+      "feeBps": 89.60108111636698,
+      "engineAcc": 0.49765258215962443
+    },
+    "FOREX|20": {
+      "pStar": 0.527246653171396,
+      "pFair": 0.5153657055260684,
+      "accTax": 0.011880947645327544,
+      "perfectNetBps": 495.7716603544581,
+      "dirNetBps": 126.75816469798326,
+      "feeBps": 3.1856085810864685,
+      "engineAcc": 0.5116501755505904
+    },
+    "US_STOCK|20": {
+      "pStar": 0.5047312963804482,
+      "pFair": 0.49669260332462806,
+      "accTax": 0.008038693055820167,
+      "perfectNetBps": 1010.3348938798351,
+      "dirNetBps": 308.0530007679437,
+      "feeBps": 5.000000000000109,
+      "engineAcc": 0.5090439276485789
+    }
+  },
+  "touches": {
+    "combineSweeps": 32,
+    "labRuns": 1,
+    "notes": [
+      "combine.mjs อ่านแท่ง validation หลังโมเดลถูกแช่แข็งแล้วทุกค่า (นับจากสมุดบันทึก ไม่ใช่เลขตายตัว)",
+      "lab.mjs รันบน validation หนึ่งครั้ง เพื่อเอาไม้ของเครื่องยนต์ปัจจุบันมาเทียบ"
+    ],
+    "logFile": "C:\\Users\\ASUS\\Desktop\\TIKTOK\\scripts\\research\\report\\combine\\VALIDATION-TOUCHES.md"
+  },
+  "elapsedMs": 11483
+}
