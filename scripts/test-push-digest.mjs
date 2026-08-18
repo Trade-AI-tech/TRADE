@@ -747,8 +747,11 @@ async function main() {
 
   console.log('\n═══ 6. tag และกติกา "ชั่วโมงละ 1 ครั้ง" ═══\n');
 
-  check('ชุดในชั่วโมงเดียวกันใช้ tag เดียวกัน → กดสั่งรันเองซ้ำ ๆ ไม่ค้างเป็นตับ', () => {
-    assertEqual(digestTag(T0), digestTag(T0 + 20 * MINUTE), 'ห่างกัน 20 นาทีในชั่วโมงเดียวกันต้อง tag เดียวกัน');
+  // ช่อง tag แคบลงเหลือ 10 นาทีตอนเปลี่ยนเป็น "แจ้งทันที" — ใบที่ยิงซ้ำในช่องเดียวกัน
+  // ยังทับกันบนจอล็อกเหมือนเดิม ซึ่งเป็นหน้าที่เดียวที่ช่องนี้เหลืออยู่
+  // (เดิมช่องนี้ทำสองหน้าที่พร้อมกัน: จัดกลุ่ม tag + ตัดสินว่าจะส่งไหม — แยกออกจากกันแล้ว)
+  check('ชุดในช่วง tag เดียวกันใช้ tag เดียวกัน → ยิงซ้ำแล้วไม่ค้างเป็นตับ', () => {
+    assertEqual(digestTag(T0), digestTag(T0 + 2 * MINUTE), 'ห่างกัน 2 นาทีในช่องเดียวกันต้อง tag เดียวกัน');
   });
 
   check('ชุดคนละชั่วโมงใช้คนละ tag → ไม่มีทางทับกันจนพลาดสัญญาณ', () => {
@@ -757,17 +760,25 @@ async function main() {
     assertEqual(tags.size, 24, 'สแกน 24 รอบต้องได้ 24 tag ไม่ซ้ำกัน');
   });
 
-  check('ชั่วโมงใหม่ → แจ้งได้ · ชั่วโมงเดิม → กันไว้ พร้อมบอกว่าสัญญาณไม่หาย', () => {
+  // ⚠ เทสต์นี้กลับข้างจากฉบับก่อนโดยตั้งใจ
+  //   เดิมยืนยันว่า "ชั่วโมงเดียวกันต้องถูกกัน" ตามสเปก "ชั่วโมงละ 1 ครั้ง"
+  //   2026-08-18 เจ้าของสั่งว่า "ให้แจ้งเตือนทันทีที่มีของให้เทรด"
+  //   ของใหม่ที่มาใน 20 นาทีจึงต้องเด้ง ไม่ใช่ถูกกลืนรอรอบหน้า
+  //   สิ่งที่ยังต้องถูกกันเหลือกรณีเดียว: รอบเดิมที่ถูกยิงซ้ำภายในไม่กี่นาที
+  check('แจ้งทันที: ของใหม่มาเมื่อไรก็เด้ง · ยิงซ้ำติด ๆ ถึงจะถูกกัน', () => {
     const fresh = roundThrottleVerdict({ nowMs: T0, lastNotifiedAtMs: null, signalCount: 3 });
     assertEqual(fresh.send, true, fresh.reason);
 
-    const nextHour = roundThrottleVerdict({ nowMs: T0 + HOUR, lastNotifiedAtMs: T0, signalCount: 3 });
-    assertEqual(nextHour.send, true, 'ข้ามชั่วโมงต้องแจ้งได้');
+    const later20 = roundThrottleVerdict({ nowMs: T0 + 20 * MINUTE, lastNotifiedAtMs: T0, signalCount: 3 });
+    assertEqual(later20.send, true, 'ห่าง 20 นาทีต้องแจ้งได้ทันที ไม่ต้องรอชั่วโมงใหม่');
 
-    const same = roundThrottleVerdict({ nowMs: T0 + 20 * MINUTE, lastNotifiedAtMs: T0, signalCount: 3 });
-    assertEqual(same.send, false, 'ชั่วโมงเดียวกันต้องถูกกัน');
-    assert(same.reason.includes('ไม่หาย'), `เหตุผลต้องบอกว่าสัญญาณไม่หาย — ได้ "${same.reason}"`);
-    measured.roundThrottleReason = same.reason;
+    const later5 = roundThrottleVerdict({ nowMs: T0 + 5 * MINUTE, lastNotifiedAtMs: T0, signalCount: 3 });
+    assertEqual(later5.send, true, 'ห่าง 5 นาทีก็ยังเกินพื้นรอง 3 นาที ต้องแจ้งได้');
+
+    const rerun = roundThrottleVerdict({ nowMs: T0 + 1 * MINUTE, lastNotifiedAtMs: T0, signalCount: 3 });
+    assertEqual(rerun.send, false, 'ห่าง 1 นาที = น่าจะเป็นรอบเดิมที่ยิงซ้ำ ต้องถูกกัน');
+    assert(rerun.reason.includes('ไม่หาย'), `เหตุผลต้องบอกว่าสัญญาณไม่หาย — ได้ "${rerun.reason}"`);
+    measured.roundThrottleReason = rerun.reason;
   });
 
   check('รอบที่ช้าไป 20 นาที ต้องยังแจ้งได้ (ไม่โดนกฎ "ห่างกัน 60 นาที" เล่นงาน)', () => {
@@ -796,17 +807,20 @@ async function main() {
    * และ very_strong เปิดประตูได้ทุกครั้ง = 6 ครั้ง/15 นาที
    * สเปกของเจ้าของไม่ได้ยกเว้นโหมดถอยไว้ กติกาจึงต้องเหมือนกันทั้งสองโหมด
    */
-  check('โหมดถอยใช้กติกาเดียวกับเส้นทางปกติ: ชั่วโมงละครั้ง + ไม่มีประตูหนีให้ very_strong', () => {
+  check('โหมดถอยใช้กติกาเดียวกับเส้นทางปกติ: แจ้งทันที + ไม่มีประตูหนีให้ very_strong', () => {
     const moderateSet = [makeSignal({ strength: 'moderate' }), makeSignal({ symbol: 'EURUSD', strength: 'moderate' })];
     assertEqual(throttleVerdict({ nowMs: T0, lastPushAtMs: null, signals: moderateSet }).send, true, 'ไม่เคยส่ง → ส่งได้');
     assertEqual(throttleVerdict({ nowMs: T0 + HOUR, lastPushAtMs: T0, signals: moderateSet }).send, true, 'ข้ามชั่วโมง + ห่างพอ → ส่งได้');
 
-    const blocked = throttleVerdict({ nowMs: T0 + 10 * MINUTE, lastPushAtMs: T0, signals: moderateSet });
-    assertEqual(blocked.send, false, 'ชั่วโมงเดียวกันต้องถูกกัน (ของเดิมปล่อยผ่านเมื่อครบ 10 นาที)');
+    const passes = throttleVerdict({ nowMs: T0 + 10 * MINUTE, lastPushAtMs: T0, signals: moderateSet });
+    assertEqual(passes.send, true, 'ห่าง 10 นาที = ของใหม่จริง ต้องแจ้งทันที');
+
+    const blocked = throttleVerdict({ nowMs: T0 + 1 * MINUTE, lastPushAtMs: T0, signals: moderateSet });
+    assertEqual(blocked.send, false, 'ห่าง 1 นาที = รอบเดิมยิงซ้ำ ต้องถูกกัน');
     assert(/รออีก \d+ นาที/.test(blocked.reason), `เหตุผลต้องบอกเวลาที่ต้องรอ — ได้ "${blocked.reason}"`);
 
     const strong = throttleVerdict({
-      nowMs: T0 + 10 * MINUTE,
+      nowMs: T0 + 1 * MINUTE,
       lastPushAtMs: T0,
       signals: [...moderateSet, makeSignal({ symbol: 'BTC', strength: 'very_strong' })],
     });
@@ -870,7 +884,10 @@ async function main() {
 
   console.log('\n═══ 8. บั๊ก "สัญญาณหายถาวร" ต้องหายไปจริง ═══\n');
 
-  await checkAsync('ถูกกันเพราะชั่วโมงนี้แจ้งไปแล้ว → ไม่ปั๊ม → ชั่วโมงหน้าได้ทั้งของเก่าและของใหม่ในใบเดียว', async () => {
+  // ⚠ เดิมใช้ระยะ 30 นาที ซึ่งภายใต้สเปก "ชั่วโมงละครั้ง" ยังถูกกันอยู่
+  //   สเปกใหม่ "แจ้งทันที" ปล่อยผ่านที่ 30 นาที จึงย่อเหลือ 1 นาที = ยังอยู่ในระยะที่กันจริง
+  //   ใจความของเทสต์ไม่เปลี่ยน: **ตอนถูกกัน ห้ามปั๊มว่าแจ้งแล้ว** ไม่งั้นสัญญาณหายถาวร
+  await checkAsync('ถูกกันเพราะเพิ่งแจ้งไป → ไม่ปั๊ม → รอบหน้าได้ทั้งของเก่าและของใหม่ในใบเดียว', async () => {
     const old1 = makeSignal({ symbol: 'XAUUSD', created_at: iso(T0 - 5 * MINUTE) });
     const db = makeFakeDb({ signals: [old1] });
 
@@ -879,12 +896,12 @@ async function main() {
     await sendPendingSignalsToUser(db, 'user-1', [old1], { now: T0, sender: rec1.sender });
     assertEqual(rec1.calls.length, 1, 'รอบแรกต้องแจ้ง');
 
-    // รอบที่ 2 (10:35 — ชั่วโมงเดียวกัน กดสั่งรันเอง) เจอสัญญาณใหม่ 1 ตัว
-    const mid = makeSignal({ symbol: 'BTC', created_at: iso(T0 + 30 * MINUTE) });
+    // รอบที่ 2 (10:06 — ยิงซ้ำติด ๆ) เจอสัญญาณใหม่ 1 ตัว
+    const mid = makeSignal({ symbol: 'BTC', created_at: iso(T0 + 1 * MINUTE) });
     db.tables.signals.push({ ...mid, push_sent: false, push_sent_at: null });
     const rec2 = makeRecorder();
-    const res2 = await sendPendingSignalsToUser(db, 'user-1', [mid], { now: T0 + 30 * MINUTE, sender: rec2.sender });
-    assertEqual(rec2.calls.length, 0, 'รอบที่สองในชั่วโมงเดียวกันต้องไม่เด้ง');
+    const res2 = await sendPendingSignalsToUser(db, 'user-1', [mid], { now: T0 + 1 * MINUTE, sender: rec2.sender });
+    assertEqual(rec2.calls.length, 0, 'รอบที่ยิงซ้ำติด ๆ ต้องไม่เด้ง');
     assertEqual(res2.throttled, true, 'ต้องรายงานว่าถูกกัน');
     assertEqual(res2.marked, 0, '⛔ ห้ามปั๊มว่าแจ้งแล้ว ไม่งั้นสัญญาณหายถาวร (นี่คือบั๊กเดิม)');
 
@@ -1043,28 +1060,63 @@ async function main() {
     return { db, rec: makeStampingRecorder(db) };
   }
 
-  await checkAsync('โหมดถอย: ยิงซ้ำทุก 10 นาที ตลอด 55 นาที → ต้องเด้งครั้งเดียว', async () => {
+  // ⚠ เดิมคาดหวัง "เด้งครั้งเดียวใน 55 นาที" ตามสเปก "ชั่วโมงละครั้ง"
+  //   สเปกใหม่คือแจ้งทันที ของใหม่คนละตัวที่มาห่างกัน 10 นาทีจึงต้องเด้งทุกตัว
+  //   ⚠ ตัวเลขนี้คือ "จำนวนครั้งที่โทรศัพท์สั่น" ที่เจ้าของจะเจอจริงในกรณีแย่สุด
+  //     ถ้าวันไหนอยากกลับไปรวมชุด ให้ขยับ MIN_NOTIFY_GAP_MS ไม่ใช่แก้เทสต์นี้
+  await checkAsync('แจ้งทันที: ของใหม่คนละตัวทุก 10 นาที ตลอด 50 นาที → ต้องเด้งทุกตัว', async () => {
     const { db, rec } = fallbackFixture();
+    let rounds = 0;
     for (let m = 0; m <= 50; m += 10) {
       const now = T0 + m * MINUTE;
       rec.now = now;
       const fresh = [makeSignal({ symbol: `M${m}`, strength: 'moderate', created_at: iso(now) })];
       await sendPendingSignalsToUser(db, 'user-1', fresh, { now, sender: rec.sender });
+      rounds++;
     }
-    measured.fallbackBuzzes55m = rec.calls.length;
-    assertEqual(rec.calls.length, 1, `55 นาทีต้องเด้งครั้งเดียว — เด้งจริง ${rec.calls.length} ครั้ง`);
+    measured.immediateBuzzes50m = rec.calls.length;
+    assertEqual(rec.calls.length, rounds, `ของใหม่ทุกตัวต้องเด้ง (${rounds} รอบ) — เด้งจริง ${rec.calls.length} ครั้ง`);
   });
 
-  await checkAsync('โหมดถอย: very_strong ยิงซ้ำทุก 3 นาที ตลอด 15 นาที → ต้องเด้งครั้งเดียว', async () => {
+  // ⚠ เทสต์นี้เคยยืนยันสเปกเก่า "ชั่วโมงละ 1 ครั้ง" (คาดหวังเด้งครั้งเดียวใน 15 นาที)
+  //   2026-08-18 เจ้าของสั่งเปลี่ยนเป็น "แจ้งเตือนทันทีที่มีของให้เทรด"
+  //   สัญญาณคนละตัวที่มาห่างกัน 3 นาที จึง **ต้องเด้งทุกตัว** ไม่ใช่ถูกกลืนรวมกัน
+  //   สิ่งที่ยังต้องกันคือ "รอบเดิมถูกยิงซ้ำ" ซึ่งแยกไปเป็นเทสต์ถัดไป
+  await checkAsync('แจ้งทันที: สัญญาณใหม่คนละตัวห่างกัน 6 นาที ต้องเด้งทุกตัว', async () => {
     const { db, rec } = fallbackFixture();
-    for (let m = 0; m <= 15; m += 3) {
+    let fired = 0;
+    for (let m = 0; m <= 18; m += 6) {
       const now = T0 + m * MINUTE;
       rec.now = now;
       const fresh = [makeSignal({ symbol: `V${m}`, strength: 'very_strong', confidence: 95, created_at: iso(now) })];
       await sendPendingSignalsToUser(db, 'user-1', fresh, { now, sender: rec.sender });
+      fired++;
     }
-    measured.fallbackBuzzesVeryStrong15m = rec.calls.length;
-    assertEqual(rec.calls.length, 1, `very_strong ก็ต้องเด้งครั้งเดียว — เด้งจริง ${rec.calls.length} ครั้ง`);
+    measured.immediateBuzzesDistinct18m = rec.calls.length;
+    assertEqual(
+      rec.calls.length,
+      fired,
+      `ของใหม่ทุกตัวต้องเด้ง (ยิง ${fired} รอบ) — เด้งจริง ${rec.calls.length} ครั้ง`,
+    );
+  });
+
+  // พื้นรองที่ยังต้องมีแม้จะ "แจ้งทันที": รอบเดียวกันที่ถูกยิงสองครั้งติด ๆ
+  // (กด Run workflow ซ้ำ หรือ job ถูก retry) ให้สัญญาณชุดเดิมเป๊ะ = ไม่มีข้อมูลใหม่
+  // เด้งซ้ำตรงนี้เรียกคืนไม่ได้ และเป็นสิ่งที่ทำให้คนปิดแจ้งเตือนทิ้ง
+  await checkAsync('แจ้งทันที: รอบเดิมยิงซ้ำภายใน 1 นาที ต้องไม่เด้งซ้ำ', async () => {
+    const { db, rec } = fallbackFixture();
+    const sig = makeSignal({ symbol: 'RERUN', strength: 'very_strong', confidence: 95, created_at: iso(T0) });
+
+    rec.now = T0;
+    await sendPendingSignalsToUser(db, 'user-1', [sig], { now: T0, sender: rec.sender });
+
+    const again = T0 + 1 * MINUTE;
+    rec.now = again;
+    const res = await sendPendingSignalsToUser(db, 'user-1', [sig], { now: again, sender: rec.sender });
+
+    measured.immediateRerunBuzzes = rec.calls.length;
+    assertEqual(rec.calls.length, 1, `ยิงซ้ำต้องไม่เด้งเพิ่ม — เด้งจริง ${rec.calls.length} ครั้ง`);
+    assertEqual(res.throttled, true, 'ต้องรายงานว่าถูกกัน');
   });
 
   await checkAsync('โหมดถอย: ชั่วโมงถัดไปต้องแจ้งได้ตามปกติ (ไม่ใช่เงียบไปเลย)', async () => {
@@ -1096,12 +1148,15 @@ async function main() {
     assertEqual(rec.calls.length, hoursWithSignals, `ต้องเด้งเท่าจำนวนชั่วโมงที่มีสัญญาณ (${hoursWithSignals})`);
   });
 
+  // ⚠ เดิมเทสต์นี้ใช้ระยะ 20 นาที ซึ่งภายใต้สเปกเก่า (ชั่วโมงละครั้ง) ยังถูกกันอยู่
+  //   สเปกใหม่ปล่อยผ่านที่ 20 นาที จึงเปลี่ยนมาใช้ 1 นาที = อยู่ในระยะที่ยังกันจริง
+  //   สิ่งที่เทสต์นี้ยืนยันคือ "ข้อความตอนถูกกันต้องบอกความจริงของโหมดถอย" ไม่ใช่ตัวระยะเวลา
   await checkAsync('โหมดถอย: ตอนถูกกัน ต้องบอกให้ชัดว่าสัญญาณรอบนั้น "ไม่ได้เก็บตก"', async () => {
     const { db, rec } = fallbackFixture();
     rec.now = T0;
     await sendPendingSignalsToUser(db, 'user-1', [makeSignal({ created_at: iso(T0) })], { now: T0, sender: rec.sender });
 
-    const later = T0 + 20 * MINUTE;
+    const later = T0 + 1 * MINUTE;
     rec.now = later;
     const res = await sendPendingSignalsToUser(db, 'user-1', [makeSignal({ symbol: 'BTC', created_at: iso(later) })], {
       now: later,
@@ -1226,8 +1281,9 @@ async function main() {
     console.log(`  คะแนนความเร็วจริง BTC/1D                     ${measured.realSpeed1D} → ใช้เรียงด้วยค่า ${measured.realSpeedValue1D}`);
   }
   console.log(`  เดิน 24 ชม. (สแกน 72 รอบ)                    สร้าง ${measured.created24h} สัญญาณ · เด้ง ${measured.buzzes24h} ครั้ง · หาย ${measured.lost24h} ตัว`);
-  console.log(`  โหมดถอย: ยิงทุก 10 นาที ตลอด 55 นาที          เด้ง ${measured.fallbackBuzzes55m} ครั้ง`);
-  console.log(`  โหมดถอย: very_strong ทุก 3 นาที ตลอด 15 นาที  เด้ง ${measured.fallbackBuzzesVeryStrong15m} ครั้ง`);
+  console.log(`  แจ้งทันที: ของใหม่ทุก 10 นาที ตลอด 50 นาที     เด้ง ${measured.immediateBuzzes50m} ครั้ง`);
+  console.log(`  แจ้งทันที: ของใหม่ทุก 6 นาที ตลอด 18 นาที      เด้ง ${measured.immediateBuzzesDistinct18m} ครั้ง`);
+  console.log(`  แจ้งทันที: รอบเดิมยิงซ้ำใน 1 นาที              เด้ง ${measured.immediateRerunBuzzes} ครั้ง (ต้องเป็น 1)`);
   console.log(`  โหมดถอย: เดิน 24 ชม. (สแกน 72 รอบ)           เด้ง ${measured.fallbackBuzzes24h} ครั้ง`);
   console.log(`  ขอบชั่วโมง 13:59:59Z → 14:00:01Z             เด้ง ${measured.edgeBuzzes} ใบ`);
   console.log(`  จำนวน cron ที่เหลือใน vercel.json             ${measured.vercelCrons} รายการ`);
