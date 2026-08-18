@@ -73,8 +73,14 @@ if (!APPLY) {
   process.exit(0);
 }
 
+/**
+ * บน Windows ตัวรันของ npm/gh เป็นไฟล์ .cmd ซึ่ง execFileSync เรียกตรง ๆ ไม่ได้
+ * (ได้ ENOENT ทั้งที่คำสั่งมีอยู่จริง) — ต้องผ่าน shell เท่านั้น
+ * เจอจริงตอนย้ายโปรเจกต์: ฝั่ง GitHub ผ่านหมดแต่ Vercel ล้มทั้งสามตัวด้วย ENOENT
+ */
+const WIN = process.platform === 'win32';
 const run = (cmd, args, opts = {}) =>
-  execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], ...opts });
+  execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: WIN, ...opts });
 
 console.log('\n═══ Vercel (production) ═══');
 for (const k of KEYS) {
