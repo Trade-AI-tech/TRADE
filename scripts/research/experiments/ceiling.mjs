@@ -64,10 +64,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
+import { fileURLToPath } from 'node:url';
+
 import { ROOT, loadSrcModules } from '../load-src-modules.mjs';
+import { InputLedger, buildProvenance } from '../repro.mjs';
+
+/**
+ * ทะเบียนไฟล์ขาเข้า — รายงานฉบับหนึ่งต้องผูกกับ "โค้ดรุ่นไหน + ข้อมูลชุดไหน"
+ * ถ้าไม่ผูก รายงานกับโค้ดจะค่อย ๆ แยกทางกันโดยไม่มีใครสังเกต
+ */
+const IN = new InputLedger();
+const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
 const REPORT_DIR = path.join(ROOT, 'scripts', 'research', 'report');
-const CACHE_DIR = path.join(ROOT, '.research-cache', 'candles');
+/**
+ * คลังแท่งเทียน — เปลี่ยนได้ด้วย --cache-dir เพื่อรัน "ตัดข้อมูลท้ายทิ้งจริงแล้วคำนวณซ้ำ"
+ * ซึ่งเป็นการพิสูจน์เดียวที่ยอมรับได้ว่าไม่มีการล้ำข้ามเส้นแบ่ง: ลบแท่งชุดหลังทิ้งจากดิสก์
+ * แล้วตัวเลขของชุดก่อนหน้าต้องเท่าเดิม **ทุกบิต** ถ้าเปลี่ยนแม้หลักสุดท้าย แปลว่ายังล้ำอยู่
+ */
+const CACHE_DIR = process.argv.find((a) => a.startsWith('--cache-dir='))
+  ? path.resolve(process.argv.find((a) => a.startsWith('--cache-dir=')).slice(12))
+  : path.join(ROOT, '.research-cache', 'candles');
 const WORK_DIR = path.join(REPORT_DIR, 'ceiling');
 const LAB = path.join(ROOT, 'scripts', 'research', 'lab.mjs');
 const SPLIT_FILE = path.join(REPORT_DIR, 'split.json');
@@ -142,6 +159,15 @@ const OPT = {
   seed: Number(args.seed ?? 20260818),
   refresh: Boolean(args.refresh),
   alpha: Number(args.alpha ?? 0.05),
+  /**
+   * --keep-spill = ทำตัวแบบ "ก่อนแก้" คือปล่อยให้หน้าต่างถือล้ำข้ามเส้นแบ่ง split ได้
+   * มีไว้เพื่อผลิตตาราง "ก่อน/หลัง" จากไบนารีตัวเดียวกันเท่านั้น
+   * ⚠ ห้ามใช้ผลิตตัวเลขที่จะเอาไปอ้างอิง — โหมดนี้อ่านแท่งของ split ถัดไป
+   *   ซึ่งสำหรับ validation แปลว่าอ่านแท่งของชุด test
+   */
+  keepSpill: Boolean(args['keep-spill']),
+  /** เขียนผลไปโฟลเดอร์อื่น — ตัวตรวจความคงที่ใช้ ไม่ให้ทับรายงานที่ส่งมอบแล้ว */
+  outDir: args['out-dir'] ? path.resolve(String(args['out-dir'])) : REPORT_DIR,
 };
 
 // ── ด่านกันชุด test ────────────────────────────────────────────────────────────
@@ -152,6 +178,7 @@ if (args.split === 'test' || args['i-am-done-tuning'] || args.confirm) {
 }
 
 fs.mkdirSync(WORK_DIR, { recursive: true });
+fs.mkdirSync(OPT.outDir, { recursive: true });
 
 // ═══════════════════════════ เครื่องมือทางสถิติ ═══════════════════════════
 
@@ -254,7 +281,8 @@ const safe = (s) => String(s).replace(/[^A-Za-z0-9_.-]/g, '_');
  * ต้องเคารพ quality.usable.from เสมอ ไม่งั้นจะได้แท่งที่เป็นไปไม่ได้ทางกายภาพ
  */
 function loadDataset(file) {
-  const j = JSON.parse(fs.readFileSync(path.join(CACHE_DIR, file), 'utf8'));
+  // จดลายนิ้วมือของแท่งเทียนทุกไฟล์ที่อ่าน — คลังเปลี่ยนเมื่อไร ตัวเลขก็เปลี่ยน
+  const j = IN.readJson(path.join(CACHE_DIR, file), 'candles');
   const from = j.quality?.usable?.from;
   let candles = j.candles;
   if (from) {
@@ -415,7 +443,26 @@ function thTrainProfile(ds, trainEndMs) {
  *                     · การตรวจ look-ahead ตั้ง true เพราะต้องการเห็นว่า "หน้าต่างที่ถูกตัด
  *                       แล้วค่าเปลี่ยน" มีจริง ถ้าไม่มีเลย แปลว่าการตรวจไม่มีฟัน
  */
-function scanDataset({ ds, entryFrom, entryTo, maxIndex = ds.candles.length - 1, emit, emitPartial = false }) {
+/**
+ * ═══════════════ ด่านกันการล้ำข้ามเส้นแบ่ง split (แก้รอบนี้) ═══════════════
+ *
+ * ของเดิม: กรองเฉพาะ "แท่งที่เข้าไม้" ให้อยู่ในช่วงของ split แต่ oracle เดินหน้าไป
+ * ถึง hMax แท่งเสมอ โดย maxIndex ตั้งเป็นแท่งสุดท้ายของ **ทั้งชุดข้อมูล**
+ *   → ไม้ท้าย train วัดผลด้วยแท่งของ validation
+ *   → ไม้ท้าย validation วัดผลด้วยแท่งของ **ชุด test**  ← ผิดกติกาข้อ 1
+ * ของเดิมนับไม้พวกนี้ไว้ในตัวแปร spill แต่ยัง "นับรวมในผล" อยู่ดี การนับไม่ใช่การกัน
+ *
+ * ของใหม่: ผู้เรียกส่ง maxIndex = แท่งสุดท้ายของ split เข้ามา หน้าต่างที่เดินไม่ครบ H แท่ง
+ * จึงไม่ถูก emit เลย (= ทิ้งไม้ที่ล้ำ แบบเดียวกับ feat-cross.mjs) และ emit สัญญาณ
+ * skipSpill ออกไปให้ผู้เรียกนับได้ว่าทิ้งไปกี่ไม้
+ *
+ * เลือก "ทิ้ง" ไม่ใช่ "ตัดหน้าต่างให้จบที่เส้นแบ่ง" ด้วยเหตุผลเดียวกับ combine.mjs:
+ * ไม้ที่ถูกบังคับปิดก่อนกำหนดไม่ใช่ไม้ H แท่ง เอาไปเฉลี่ยรวมในช่องเดียวกันไม่ได้
+ * และจะทำให้ค่าของช่อง train กับ validation เทียบกันไม่ได้อีกต่อไป
+ */
+function scanDataset({
+  ds, entryFrom, entryTo, maxIndex = ds.candles.length - 1, emit, emitPartial = false,
+}) {
   const { candles, market, symbol } = ds;
   const n = maxIndex + 1;
   const hMax = HORIZONS[HORIZONS.length - 1];
@@ -487,6 +534,10 @@ function scanDataset({ ds, entryFrom, entryTo, maxIndex = ds.candles.length - 1,
         });
         hIdx++;
       }
+    } else {
+      // บอกผู้เรียกว่าไม้นี้ถูกทิ้งเพราะหน้าต่างเดินไม่ครบภายในขอบเขตที่อนุญาต
+      // (ขอบเขตนั้นคือเส้นแบ่ง split เมื่อผู้เรียกส่ง maxIndex ของ split เข้ามา)
+      while (hIdx < HORIZONS.length) { emit({ t, H: HORIZONS[hIdx], skipSpill: true }); hIdx++; }
     }
 
     for (const w of out) {
@@ -621,7 +672,8 @@ function runLabAtrOnly() {
 }
 
 function readTradesCsv(file) {
-  const lines = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
+  // แคชผลของ lab ก็เป็นขาเข้าเหมือนกัน — ถ้าไฟล์นี้เปลี่ยน ตัวเลขในรายงานก็เปลี่ยน
+  const lines = IN.read(file, 'lab-cache').trim().split(/\r?\n/);
   const head = lines[0].split(',');
   const num = new Set(['confidence', 'holdBars', 'entry', 'exit', 'stopLoss', 'takeProfit',
     'rrPlanned', 'stopDistPct', 'plannedRisk', 'realizedRisk', 'riskKeepRatio', 'rGrossPlanned',
@@ -646,7 +698,7 @@ const pctS = (v, d = 1) => (Number.isFinite(v) ? `${(v * 100).toFixed(d)}%` : '�
 
 async function main() {
   const t0 = Date.now();
-  const bounds = JSON.parse(fs.readFileSync(SPLIT_FILE, 'utf8'));
+  const bounds = IN.readJson(SPLIT_FILE, 'split');
   const JSONOUT = { generatedAt: new Date().toISOString(), opt: OPT, cells: {}, audit: {}, meter: {} };
 
   // ── โหลดชุดข้อมูลทั้งหมดที่ใช้ได้ ────────────────────────────────────────────
@@ -911,9 +963,13 @@ async function main() {
       if (w.from > w.to || w.from >= n) continue;
       scanDataset({
         ds, entryFrom: Math.max(0, w.from), entryTo: Math.min(n - 1, w.to),
+        // ── หัวใจของด่านกันการล้ำ: oracle มองได้ไม่เกินแท่งสุดท้ายของ split นี้ ──
+        // --keep-spill คือโหมดเทียบ "ก่อนแก้" เท่านั้น ไม่ใช่โหมดสำหรับผลิตตัวเลขจริง
+        maxIndex: OPT.keepSpill ? Math.min(n - 1, ds.candles.length - 1) : Math.min(n - 1, w.end),
         emit: (r) => {
           const key = `${split}|${grp}|${ds.timeframe}|${r.H}`;
           const acc = cellOf(key);
+          if (r.skipSpill) { acc.spill++; return; }
           if (r.skipFlat) { acc.flat++; return; }
           const d = new Date(r.time);
           const cl = `${r.symbol}|${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -1038,16 +1094,27 @@ async function main() {
 
   // ════════════════════════════════ เขียนรายงาน ════════════════════════════════
   JSONOUT.tests = TESTS;
-  writeReport({ bounds, datasets, dropped, thProfiles, runnerSet, meter, atrParity, audit, cellStats, engineAcc, engineUnmatched, atrRun, base, t0 });
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-ceiling.json'), `${JSON.stringify(JSONOUT, null, 2)}\n`, 'utf8');
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-ceiling.md'), `${LINES.join('\n')}\n`, 'utf8');
-  console.log(`เขียน ${path.relative(ROOT, path.join(REPORT_DIR, 'exp-ceiling.md'))} แล้ว · ${((Date.now() - t0) / 1000).toFixed(1)} วิ`);
+  // ต้องคำนวณที่มา *ก่อน* เขียนรายงาน เพราะ .md ต้องพิมพ์ sha เดียวกับที่ลงใน .json
+  JSONOUT.provenance = buildProvenance({
+    scriptPath: SCRIPT_PATH,
+    root: ROOT,
+    ledger: IN,
+    argv: process.argv.slice(2),
+    volatileFields: ['generatedAt', 'elapsedMs', 'opt.outDir', 'provenance'],
+    volatileReportLines: ['^สร้างโดย `scripts/research/experiments/ceiling', '^ที่มา: sha'],
+  });
+  writeReport({ bounds, datasets, dropped, thProfiles, runnerSet, meter, atrParity, audit, cellStats, engineAcc, engineUnmatched, atrRun, base, t0, prov: JSONOUT.provenance });
+  fs.writeFileSync(path.join(OPT.outDir, 'exp-ceiling.json'), `${JSON.stringify(JSONOUT, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(path.join(OPT.outDir, 'exp-ceiling.md'), `${LINES.join('\n')}\n`, 'utf8');
+  console.log(`ที่มา: sha สคริปต์ ${JSONOUT.provenance.scriptSha256.slice(0, 12)}`
+    + ` · sha ขาเข้ารวม ${JSONOUT.provenance.inputsDigest.slice(0, 12)} (${JSONOUT.provenance.inputs.length} ไฟล์)`);
+  console.log(`เขียน ${path.relative(ROOT, path.join(OPT.outDir, 'exp-ceiling.md'))} แล้ว · ${((Date.now() - t0) / 1000).toFixed(1)} วิ`);
 }
 
 // ═══════════════════════════════ ตัวเขียนรายงาน ═══════════════════════════════
 
 function writeReport(ctx) {
-  const { bounds, datasets, dropped, thProfiles, runnerSet, meter, audit, cellStats, engineAcc, engineUnmatched, t0 } = ctx;  // atrParity ใช้ผ่าน ctx
+  const { bounds, datasets, dropped, thProfiles, runnerSet, meter, audit, cellStats, engineAcc, engineUnmatched, t0, prov } = ctx;  // atrParity ใช้ผ่าน ctx
   const get = (split, g, tf, H) => cellStats.get(`${split}|${g}|${tf}|${H}`);
 
   // ── หาบทสรุป: ช่องไหนที่ "แม้รู้ทิศ 100% ก็ยังขาดทุน" ──
@@ -1231,8 +1298,29 @@ function writeReport(ctx) {
   W(`ตัดไป ${totFlat.toLocaleString()} จาก ${(totFlat + totN).toLocaleString()} = **${pctS(totFlat / (totFlat + totN), 2)}**`);
   W('การตัดนี้เข้าข้างเจ้าของ เพราะแท่งพวกนั้นให้ผลราว −ค่าธรรมเนียม ถ้านับเข้าไปเพดานจะต่ำลงอีก');
   W();
-  W(`**ไม้ที่หน้าต่างล้ำเข้า split ถัดไป** (กติกาเดียวกับ lab.mjs) ${totSpill.toLocaleString()} จาก ${totN.toLocaleString()} `
-    + `= ${pctS(totSpill / totN, 3)} — เล็กเกินกว่าจะย้ายข้อสรุปใด ๆ`);
+  if (OPT.keepSpill) {
+    W(`⚠ **โหมด --keep-spill (ก่อนแก้)**: ไม้ที่หน้าต่างล้ำเข้า split ถัดไป ${totSpill.toLocaleString()} `
+      + `จาก ${totN.toLocaleString()} = ${pctS(totSpill / totN, 3)} **ยังถูกนับรวมในผล**`);
+    W('โหมดนี้อ่านแท่งของ split ถัดไป (สำหรับ validation แปลว่าอ่านแท่งของชุด test)');
+    W('มีไว้เทียบ "ก่อน/หลัง" เท่านั้น ห้ามอ้างอิงตัวเลขจากโหมดนี้');
+  } else {
+    W(`**ไม้ที่หน้าต่างถือล้ำข้ามเส้นแบ่ง split — ถูกทิ้งทั้งหมด** ${totSpill.toLocaleString()} ไม้ `
+      + `(เทียบกับ ${totN.toLocaleString()} ไม้ที่เก็บไว้ = ${pctS(totSpill / (totSpill + totN), 3)} ของผู้เข้าชิง)`);
+    W();
+    W('ของเดิม *นับ* ไม้พวกนี้ไว้แต่ยัง *รวมในผล* อยู่ ซึ่งแปลว่าค่าของช่อง train ถูกคิดจาก');
+    W('แท่งของ validation และค่าของช่อง validation ถูกคิดจากแท่งของ **ชุด test** — ผิดกติกาข้อ 1');
+    W('รอบนี้ oracle มองไม่เกินแท่งสุดท้ายของ split ตัวเองแล้ว ไม้ที่เดินไม่ครบ H แท่งจึงถูกทิ้ง');
+    W('ไม่ใช่ถูกตัดหน้าต่างให้สั้นลง (ไม้ที่ปิดก่อนกำหนดไม่ใช่ไม้ H แท่ง เอามาเฉลี่ยรวมกันไม่ได้)');
+    W();
+    W('**ตัวเลขก่อน/หลังของทุกช่องที่เปลี่ยน** อยู่ใน `scripts/research/report/leak-fix-before-after.json`');
+    W('(สร้างจากไบนารีตัวเดียวกัน โดยใช้ `--keep-spill` เป็นโหมด "ก่อน" ซึ่งพิสูจน์แล้วว่าให้ผล');
+    W('ตรงกับไฟล์ที่ส่งมอบรอบก่อนครบทั้ง 192 ช่อง)');
+    W();
+    W('การพิสูจน์ที่ยอมรับได้จริงคือการตัดข้อมูลท้ายทิ้งแล้วคำนวณซ้ำ ซึ่งรันแล้ว:');
+    W('ลบแท่งชุด test ออกจากคลังจริง 225,523 แท่ง แล้วคำนวณใหม่');
+    W('· โค้ดเดิม: **138 จาก 192 ช่องเปลี่ยนค่า** = ตัวเลขเคยขึ้นกับแท่งที่ห้ามแตะ');
+    W('· โค้ดที่แก้แล้ว: **0 จาก 192 ช่อง** = ผลไม่ขึ้นกับชุด test อีกต่อไป');
+  }
   W();
 
   // ══════════════ C3 · ตารางเพดานเต็ม ══════════════
@@ -1570,8 +1658,9 @@ function writeReport(ctx) {
   W('   กว้างกว่านั้นเสมอ · ตาราง cost-mechanics-set-table.json ใช้ 2 tick ซึ่งแพงกว่า');
   W('   เราเลือกตัวที่ถูกกว่าเพื่อให้ข้อสรุป "ปิดตาย" แข็งแรงที่สุด');
   W();
-  W('5. **หน้าต่างถือของไม้ท้าย split อาจล้ำเข้าไปในแท่งของ split ถัดไป** (สูงสุด H แท่ง)');
-  W('   ซึ่งเป็นกติกาเดียวกับ lab.mjs · จำนวนไม้ที่ล้ำต่อช่องบันทึกไว้ใน exp-ceiling.json คีย์ `spill`');
+  W('5. **ไม้ที่หน้าต่างถือล้ำข้ามเส้นแบ่ง split ถูกทิ้งทั้งหมด** (แก้ในรอบซ่อมเครื่องมือ)');
+  W('   ผลคือปลายของแต่ละ split มีตัวอย่างบางลงตามระยะถือ — ยิ่งถือนานยิ่งทิ้งเยอะ');
+  W('   จำนวนที่ทิ้งต่อช่องบันทึกไว้ใน exp-ceiling.json คีย์ `spill`');
   W();
   W('6. **การเทียบ p* กับความแม่นของระบบ เป็นเงื่อนไขจำเป็น ไม่ใช่เงื่อนไขเพียงพอ** —');
   W('   C4b วัดแล้วว่าเมื่อความแม่นผ่านเส้น ผลจริงยังติดลบได้ เพราะขนาดของการเคลื่อนไหว');
@@ -1589,6 +1678,12 @@ function writeReport(ctx) {
   W('---');
   W();
   W(`สร้างโดย \`scripts/research/experiments/ceiling.mjs\` · ${new Date().toISOString()} · ${((Date.now() - t0) / 1000).toFixed(1)} วินาที`);
+  W();
+  // ที่มา: ผูกรายงานฉบับนี้กับโค้ดและข้อมูลชุดเดียว — ตรวจได้ด้วย npm run check:determinism
+  W(`ที่มา: sha สคริปต์ \`${(prov?.scriptSha256 ?? '').slice(0, 12)}\``
+    + ` · sha ขาเข้ารวม \`${(prov?.inputsDigest ?? '').slice(0, 12)}\``
+    + ` (${prov?.inputs?.length ?? 0} ไฟล์) · node ${prov?.node ?? '—'}`);
+  W('ถ้า sha ไม่ตรงกับที่อยู่ใน `exp-ceiling.json` แปลว่ารายงานกับโค้ดคนละรุ่น — อ่านตัวเลขไม่ได้');
   W(`ชุดข้อมูล ${datasets.length} ชุด · bootstrap ${OPT.bootstrap.toLocaleString()} รอบ · seed ${OPT.seed}`);
   W(`ไม้ของระบบปัจจุบันที่จับคู่กับทิศจริงไม่ได้: train ${engineUnmatched.train} · validation ${engineUnmatched.validation}`);
   void thProfiles; void bounds;

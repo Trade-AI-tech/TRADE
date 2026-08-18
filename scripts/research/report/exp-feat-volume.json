@@ -1,10 +1,11 @@
 {
- "generatedAt": "2026-08-18T07:00:16.458Z",
+ "generatedAt": "2026-08-18T13:07:16.575Z",
  "opt": {
   "bootstrap": 2000,
   "seed": 20260818,
   "alpha": 0.05,
-  "cutFrac": 0.8
+  "cutFrac": 0.8,
+  "outDir": "C:\\Users\\ASUS\\Desktop\\TIKTOK\\scripts\\research\\report"
  },
  "features": [
   {
@@ -137327,5 +137328,895 @@
   "SISB",
   "STGT",
   "TTA"
- ]
+ ],
+ "provenance": {
+  "script": "scripts/research/experiments/feat-volume.mjs",
+  "scriptSha256": "ef7e19ff1b8b015964c5c4fa424fd694c6d9be2053b25ddbee6915fd2fa89dbd",
+  "node": "v24.14.0",
+  "platform": "win32-x64",
+  "argv": [],
+  "inputs": [
+   {
+    "path": ".research-cache/candles/CRYPTO__ADA__1D.json",
+    "role": "candles",
+    "sha256": "e153c2283b102065423103f3553f88f96d960b853d761d379fa9d9a07564e923",
+    "bytes": 532882
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__ADA__1H.json",
+    "role": "candles",
+    "sha256": "edb95e95f091cf59a6cd8c252a556820cf9a4ecbf88a31bdd6bda865e85a80cf",
+    "bytes": 2793659
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__BCH__1D.json",
+    "role": "candles",
+    "sha256": "786e71e414d466a4d651b14a52a54c6a2e3846f5c31213d3b19f46697c68e1ee",
+    "bytes": 516822
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__BCH__1H.json",
+    "role": "candles",
+    "sha256": "fe24b0d987c33a545f9e0b65e7a98b9b4959f8067f8969d1f4724d21f56c3011",
+    "bytes": 2696222
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__BTC__1D.json",
+    "role": "candles",
+    "sha256": "f658731906c17c68748aa74414d6a94778081fd8d367bcac113e88601e50d0b8",
+    "bytes": 659330
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__BTC__1H.json",
+    "role": "candles",
+    "sha256": "cfe0f4e260762b8265b1372d1e63bf67c9790db736ac39d6c153f14a6a573bd1",
+    "bytes": 2407087
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__DOGE__1D.json",
+    "role": "candles",
+    "sha256": "dad10bac3749fffb358b020b5e0e4b690e2c5e58c4c232bd82d2aaf907982607",
+    "bytes": 545265
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__DOGE__1H.json",
+    "role": "candles",
+    "sha256": "b21c19795544fa8ada93e45fba0d28383fa23bb41847b67feba0e86504e0fa83",
+    "bytes": 2834765
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__DOT__1D.json",
+    "role": "candles",
+    "sha256": "6f1296e3a22da9066d80cb0205878b7a6b335da9518351fb69e3dc94611986a9",
+    "bytes": 354479
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__DOT__1H.json",
+    "role": "candles",
+    "sha256": "d3f3a3a6bc60ed50d118532d45fdac464fc19a6e685f088f83430ba12677087e",
+    "bytes": 2733717
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__ETH__1D.json",
+    "role": "candles",
+    "sha256": "6705cbec94b7397729b8a2cf774534481a78553cb665be78f040a91d708ef250",
+    "bytes": 514835
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__ETH__1H.json",
+    "role": "candles",
+    "sha256": "65cba30ca212ac17376e45c9842650c402a4f1b7aed5c386bde38c4912c942bd",
+    "bytes": 2661515
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__LINK__1D.json",
+    "role": "candles",
+    "sha256": "0e4899bcf80458b537ecb11d4f165303f00fd7496c74036f88f2a7c3737e7ec3",
+    "bytes": 521384
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__LINK__1H.json",
+    "role": "candles",
+    "sha256": "3f6481fed32240536ce956bfcdda67204daa86c84b0e8e21adc041fd46a0a220",
+    "bytes": 2745081
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__LTC__1D.json",
+    "role": "candles",
+    "sha256": "aa105a072e5ba01ed778c37383c4e2e3b3ec55a0c3027143472ca7ee9f7ca73e",
+    "bytes": 701881
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__LTC__1H.json",
+    "role": "candles",
+    "sha256": "1994672c0d19e6c46813d843e2fe955cbb667abae27bcf296e654383e4278625",
+    "bytes": 2716353
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__SOL__1D.json",
+    "role": "candles",
+    "sha256": "b3ad06aa57e23e03f1dd401af90ca0be8129426ee179c0f4c3c61f3a0ce6e1c7",
+    "bytes": 378158
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__SOL__1H.json",
+    "role": "candles",
+    "sha256": "1affa7b4b62da6ce02137de20afd8117f8540b72194b6dda8f1828f4182744c2",
+    "bytes": 2737390
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__XRP__1D.json",
+    "role": "candles",
+    "sha256": "07491872e8c912dd841eaaf4d26b990adecfbc1022ebc96169956214326427e6",
+    "bytes": 530774
+   },
+   {
+    "path": ".research-cache/candles/CRYPTO__XRP__1H.json",
+    "role": "candles",
+    "sha256": "1cf53054e4c42022b8104ff7e5f94c5ca06a410b070db53f4e867603604984e0",
+    "bytes": 2762857
+   },
+   {
+    "path": ".research-cache/candles/FOREX__AUDUSD__1D.json",
+    "role": "candles",
+    "sha256": "da727e0ed0918bc3c4656de3620d86e59ecb49babdea97b0388fc69f02000e5a",
+    "bytes": 819511
+   },
+   {
+    "path": ".research-cache/candles/FOREX__AUDUSD__1H.json",
+    "role": "candles",
+    "sha256": "38526f9891753c6b58543106fed5e66b7abb992b0dfe0b56068fa6c74bbc9508",
+    "bytes": 2667492
+   },
+   {
+    "path": ".research-cache/candles/FOREX__EURJPY__1D.json",
+    "role": "candles",
+    "sha256": "c139f3f0412f749fde88ced5c5413c01b6425d4f6eb71bd40cfd3b544d1663e2",
+    "bytes": 940524
+   },
+   {
+    "path": ".research-cache/candles/FOREX__EURJPY__1H.json",
+    "role": "candles",
+    "sha256": "bb5b5883b98d706e40a1e70792b8d3cd4eb6b7f70dfa80bd2d79231f55384621",
+    "bytes": 2640592
+   },
+   {
+    "path": ".research-cache/candles/FOREX__EURUSD__1D.json",
+    "role": "candles",
+    "sha256": "fbe4431730108274993394eda967e720cb62d203a00dd4f30350087f46e4b11a",
+    "bytes": 914160
+   },
+   {
+    "path": ".research-cache/candles/FOREX__EURUSD__1H.json",
+    "role": "candles",
+    "sha256": "ec6cfd58c14a42a312076e680f5253801e0d4535d19821b7d9e2cfab7d3ecf84",
+    "bytes": 2652220
+   },
+   {
+    "path": ".research-cache/candles/FOREX__GBPJPY__1D.json",
+    "role": "candles",
+    "sha256": "663762e52b65032c0b9d308e7a1aa2a5c30c90602f01fd23bb5c52875c98b8bd",
+    "bytes": 907871
+   },
+   {
+    "path": ".research-cache/candles/FOREX__GBPJPY__1H.json",
+    "role": "candles",
+    "sha256": "9f22c4ed4b6761cd0bd468c3a7c6260b1d089cda100d4c60e5cb66ed51822ee7",
+    "bytes": 2636888
+   },
+   {
+    "path": ".research-cache/candles/FOREX__GBPUSD__1D.json",
+    "role": "candles",
+    "sha256": "bac456e7eb03bcea6fb835b44905481135953b9c4da2964a0e8bc754bce3bbd9",
+    "bytes": 915200
+   },
+   {
+    "path": ".research-cache/candles/FOREX__GBPUSD__1H.json",
+    "role": "candles",
+    "sha256": "33f8e7feb8515fac45f42f6bb696c9f1411924005a1f941b59c7de4134a6e490",
+    "bytes": 2650502
+   },
+   {
+    "path": ".research-cache/candles/FOREX__NZDUSD__1D.json",
+    "role": "candles",
+    "sha256": "5677ac28e37c11dfca92dc5fa6d2a08404d94b5a61ae785d9d0f3d287e76be1c",
+    "bytes": 916282
+   },
+   {
+    "path": ".research-cache/candles/FOREX__NZDUSD__1H.json",
+    "role": "candles",
+    "sha256": "3b67712163216953dbf817e577d51c995f80907dcd25fafe0229c3cbad794ca9",
+    "bytes": 2660491
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDCAD__1D.json",
+    "role": "candles",
+    "sha256": "12ca39c8aa5d02038d0e00adca83346e227d4a0cd8c8b75ecbaf484e09d4bf31",
+    "bytes": 926208
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDCAD__1H.json",
+    "role": "candles",
+    "sha256": "28276c0115d6c7533ed6d316c0e22a0639040b01f7e2265b99255dcdfc7ae539",
+    "bytes": 2666067
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDCHF__1D.json",
+    "role": "candles",
+    "sha256": "420c15ad72529ac41a086e5cc70a2a7772da2cec2e4d27e75a47c43abce39ded",
+    "bytes": 926003
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDCHF__1H.json",
+    "role": "candles",
+    "sha256": "968b8f4c44b22ad3b452bc69ffd381f0af55e18537afe4b824263ef31c43d34c",
+    "bytes": 2663788
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDJPY__1D.json",
+    "role": "candles",
+    "sha256": "a27d970b9ed16e3eb3781abb891148f5e8566b43c5fa409ef785f1a2b12c739e",
+    "bytes": 1184036
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDJPY__1H.json",
+    "role": "candles",
+    "sha256": "759e947316d3107ff93002258381beae75259167bf8958c7759b6897d91a63c2",
+    "bytes": 2632738
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDMXN__1D.json",
+    "role": "candles",
+    "sha256": "a67950311ce863f1a15381b6cb47f19bbb8178cad30a96fac1a6bce2c1fd6786",
+    "bytes": 916436
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDMXN__1H.json",
+    "role": "candles",
+    "sha256": "cd8d88cee4fb30edaec284bb16dd5cfaf7f105d62c7891c8d0ae1efe7f83c2c6",
+    "bytes": 2653016
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDTHB__1D.json",
+    "role": "candles",
+    "sha256": "93577f49be98950ed27a2196a8c1b546b0a0cd9e898c63db58288f4ccd508b9c",
+    "bytes": 899660
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDTHB__1H.json",
+    "role": "candles",
+    "sha256": "c91f8ac61d1a125c877f4ce067880fc9cd9ba8be989b215e91fbd9776f358c32",
+    "bytes": 2567424
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDZAR__1D.json",
+    "role": "candles",
+    "sha256": "9f39a228c2bc49223c2e877ae7ac97bf3ddf53e4981fd73ffd6906aa3bd25f41",
+    "bytes": 908002
+   },
+   {
+    "path": ".research-cache/candles/FOREX__USDZAR__1H.json",
+    "role": "candles",
+    "sha256": "e602b3a5bac8160b3a943026b2838264c34b421928784dec78a20cbadaeddd28",
+    "bytes": 2654794
+   },
+   {
+    "path": ".research-cache/candles/GOLD__HG_F__1D.json",
+    "role": "candles",
+    "sha256": "03c860e36e1b17603e0c0e5272c3ff0a62a787b097a8c2e26a87e0f855dc50ab",
+    "bytes": 1016476
+   },
+   {
+    "path": ".research-cache/candles/GOLD__HG_F__1H.json",
+    "role": "candles",
+    "sha256": "8a0fc7cf233e3eaba353254e5a72e2be46d1c7a7911c590f5c7cb050a6b68832",
+    "bytes": 2119376
+   },
+   {
+    "path": ".research-cache/candles/GOLD__PA_F__1D.json",
+    "role": "candles",
+    "sha256": "f2c532a291c668fea8e09692da2d1a46f8875a43dcff04b1b950d7af1d4fd44a",
+    "bytes": 562080
+   },
+   {
+    "path": ".research-cache/candles/GOLD__PA_F__1H.json",
+    "role": "candles",
+    "sha256": "b6f763d9abf141428be3e48640d170371e877f4496e1e0db30eb8a4d3e71895d",
+    "bytes": 1427547
+   },
+   {
+    "path": ".research-cache/candles/GOLD__PL_F__1D.json",
+    "role": "candles",
+    "sha256": "75f8db710912c6cc2c3489696a5add96eb719b8cc06d569f207d4ff6025d0335",
+    "bytes": 638764
+   },
+   {
+    "path": ".research-cache/candles/GOLD__PL_F__1H.json",
+    "role": "candles",
+    "sha256": "607f26adb0debb19fb865c4b5d42197f2c84f4abce613c9651bc91cad1b7616a",
+    "bytes": 1969181
+   },
+   {
+    "path": ".research-cache/candles/GOLD__XAGUSD__1D.json",
+    "role": "candles",
+    "sha256": "6ad5666d6201a8f02e7513167ea46723e03f32d55c6bb20f6d3398b7a3ffc311",
+    "bytes": 902678
+   },
+   {
+    "path": ".research-cache/candles/GOLD__XAGUSD__1H.json",
+    "role": "candles",
+    "sha256": "0558f1934dac2a2bedc06811dddb47ffdbb023a698f98eb499a5b5066ab7214a",
+    "bytes": 2116530
+   },
+   {
+    "path": ".research-cache/candles/GOLD__XAUUSD__1D.json",
+    "role": "candles",
+    "sha256": "e8f5756967e82e381e1bbf7f469fe77f35972dc9d2d2b2f0f24e6a0712f81791",
+    "bytes": 871012
+   },
+   {
+    "path": ".research-cache/candles/GOLD__XAUUSD__1H.json",
+    "role": "candles",
+    "sha256": "9261ced7f63c5f4ee6334fd45362d1bf99550dad85966a2ea364348d6509e2ea",
+    "bytes": 1952911
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__ADVANC__1D.json",
+    "role": "candles",
+    "sha256": "80f1dbca622e6aac77b04709c63a52401295427ea50de68400cf58a1e3cb0d24",
+    "bytes": 686400
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__ADVANC__1H.json",
+    "role": "candles",
+    "sha256": "7bee3b2dcf8a0d682a83d4cce2b397d9308a1b4ce27fdb165d0d496a6d33960d",
+    "bytes": 494512
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__AOT__1D.json",
+    "role": "candles",
+    "sha256": "a31b198bc03c3cc9ecdb2608b28e6df43f58cfc9f2bb8667b8533a330db34c6c",
+    "bytes": 714345
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__AOT__1H.json",
+    "role": "candles",
+    "sha256": "daa188b70e8c3ea83274d2a3640e36bf05b98d0e04fe3998823597f7aaf49baa",
+    "bytes": 515845
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BBL__1D.json",
+    "role": "candles",
+    "sha256": "119813b86aca5c1770ab5ced1fc97c56a33bc9d645a5a98afe796fa7745e7765",
+    "bytes": 674969
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BBL__1H.json",
+    "role": "candles",
+    "sha256": "98be438e96faeeee4a4bbc318b4bdea318ab9fa76f7368becc4f24e417bd6cda",
+    "bytes": 514266
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BDMS__1D.json",
+    "role": "candles",
+    "sha256": "d652e8191fec6560891564d7e4a70d2bbc135dda51cae6ad87f61132b86af8a8",
+    "bytes": 813032
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BDMS__1H.json",
+    "role": "candles",
+    "sha256": "10fc118792978414de0ab3b020a106d1226b7a39c972e796f24de0726faccea3",
+    "bytes": 639305
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BE8__1D.json",
+    "role": "candles",
+    "sha256": "f29d7ef85f63095328ba9bde0a1d61b30cfcee0b543eac7f0d5b67137ad2779f",
+    "bytes": 163087
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__BE8__1H.json",
+    "role": "candles",
+    "sha256": "fac229bf9ce1215020b6473ffb730f504a486b7b36b24ed337b5127826136892",
+    "bytes": 666989
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__CPALL__1D.json",
+    "role": "candles",
+    "sha256": "5dc9212e24d270477b725f66d0628bb45c47104a4208658028f6ab246b3a77ef",
+    "bytes": 660864
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__CPALL__1H.json",
+    "role": "candles",
+    "sha256": "ca588d9a60b77c5e5233d8217c623953ec25749225c9b0e59399daf0bf02670b",
+    "bytes": 516791
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__CPF__1D.json",
+    "role": "candles",
+    "sha256": "90763d93cf534ebe26660071ed7c4240899386d7c78feb023cb2e9c4b5e971a4",
+    "bytes": 881016
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__CPF__1H.json",
+    "role": "candles",
+    "sha256": "1b131d761b26f62391aac98f7d1a59dceb579b34a0863a0ac0874c17c577b953",
+    "bytes": 714174
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__DELTA__1D.json",
+    "role": "candles",
+    "sha256": "359fcbb9806e9f70c9a6a7e4ef66bdc7ea8bd2d9f7cf5a5c46d5d1e0055bb925",
+    "bytes": 952216
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__DELTA__1H.json",
+    "role": "candles",
+    "sha256": "9150a7349daf35c808cf3befbe37e10bd9bf532ed5b2faf9c0af78b1270e28b6",
+    "bytes": 511010
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__EA__1D.json",
+    "role": "candles",
+    "sha256": "ba429ee0e94e056a69e534d89d5ae728013e864f86e3ffb19c5f8964ef2fdbd2",
+    "bytes": 409297
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__EA__1H.json",
+    "role": "candles",
+    "sha256": "a7c85930b87ed27fe5abfebae465e03f49efd839e0f871c9df143f895f6082ba",
+    "bytes": 703494
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__GUNKUL__1D.json",
+    "role": "candles",
+    "sha256": "1d68ba50fd178164eb43f0135446d6fe215147f5b56738dbd71cf32b18dd2b73",
+    "bytes": 608173
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__GUNKUL__1H.json",
+    "role": "candles",
+    "sha256": "c4f09a256e462d55d40aaadebb35dd7abd14091b41f7c528df8525588312f723",
+    "bytes": 765437
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__IRPC__1D.json",
+    "role": "candles",
+    "sha256": "4d1f7fc42816b737c05540fdd705a0328ff46f3735d8ef5f305612059b4d374a",
+    "bytes": 944785
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__IRPC__1H.json",
+    "role": "candles",
+    "sha256": "0fe181e643042a60c715fa91e3be0c18089e1276970648b9b2b918af525e0f5d",
+    "bytes": 768801
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__ITD__1D.json",
+    "role": "candles",
+    "sha256": "64a8c3a8461bb0309a0f362f0a61b4b231eac1b03a986cd11d9d56930df5d840",
+    "bytes": 998325
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__ITD__1H.json",
+    "role": "candles",
+    "sha256": "7614503a8ded011f33e4623e9dc820fa691b797dfe7ea37a0d8316e43f6d3ad4",
+    "bytes": 750594
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__IVL__1D.json",
+    "role": "candles",
+    "sha256": "01e7ecfd0934a1c522d1eb4ebc001bc3260f7c4fd889e1440b769c0e54f6d199",
+    "bytes": 491548
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__IVL__1H.json",
+    "role": "candles",
+    "sha256": "7450f1241583f7c344832ce9573f948a01b3fc7035729b55115c6f15d732b3c2",
+    "bytes": 686972
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JAS__1D.json",
+    "role": "candles",
+    "sha256": "b66c6bd79a66f0e29fac623057523dc77f6e3aca7f1d84afc1619aceeb98559b",
+    "bytes": 998585
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JAS__1H.json",
+    "role": "candles",
+    "sha256": "1df08f1486c43161d0803622087847cc954d894b26348bc3fa5a461f787207f3",
+    "bytes": 770410
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JMART__1D.json",
+    "role": "candles",
+    "sha256": "d5d55d62590852304fe1af502c595ff62c40882e259b25c2161dbd905795fe69",
+    "bytes": 621479
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JMART__1H.json",
+    "role": "candles",
+    "sha256": "495388363a1dd800991352b74ff0a851871a495dbdf54d57e4613e6ba21beb43",
+    "bytes": 721258
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JMT__1D.json",
+    "role": "candles",
+    "sha256": "40438bce0a3c6ec148c0ecf3d5f1ef6502d33882959593d9f6ba2b447f4d7964",
+    "bytes": 493420
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__JMT__1H.json",
+    "role": "candles",
+    "sha256": "2417d62ae0ef318accd8740ebee24cd7d7232dd3a5ccefe080b52d7365e79ba1",
+    "bytes": 699326
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__KBANK__1D.json",
+    "role": "candles",
+    "sha256": "2ebcbd0110a5ec1fbbd1148d8154f3c1c56c63aa25c9a1da0cc99a03c0844cdd",
+    "bytes": 681808
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__KBANK__1H.json",
+    "role": "candles",
+    "sha256": "072568c5fa5d3f5347074b94fafd378dfd49d630ff5c21e847bb376308c7b32f",
+    "bytes": 513979
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__KCE__1D.json",
+    "role": "candles",
+    "sha256": "41c3797436b2c32fafcc1ac03575f1fcdc46e2a97b66e4c4f046ee1df9278add",
+    "bytes": 886078
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__KCE__1H.json",
+    "role": "candles",
+    "sha256": "3595976e7047fbae0659e4b8cc6fc870af4a775a78480fd1a39f05c6d5e05f3a",
+    "bytes": 596601
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__MINT__1D.json",
+    "role": "candles",
+    "sha256": "e3c5840c40d5c69349330cf0e230af619aca4e43f1c325838320ba19a4eca8d2",
+    "bytes": 909174
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__MINT__1H.json",
+    "role": "candles",
+    "sha256": "06d543311ace3250995ecb42365bdb88155f57beba757c2405fc1f8136833c83",
+    "bytes": 605190
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__NEX__1D.json",
+    "role": "candles",
+    "sha256": "5574d7325b48db9c0d97f7c35c0b1510db01e46b7b5da6807b997f48b743982f",
+    "bytes": 802334
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__NEX__1H.json",
+    "role": "candles",
+    "sha256": "73e67323acac75484ec77b609e7e5dd917e58f3e81927ab725553ae62284ab4a",
+    "bytes": 756324
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__PTTEP__1D.json",
+    "role": "candles",
+    "sha256": "492fa1d201ec4d853f959e11b9bb71be4ac357b7ee43fbe2f8922703560d160a",
+    "bytes": 777996
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__PTTEP__1H.json",
+    "role": "candles",
+    "sha256": "de4c4c38418482b7cce14f9597f953fd36de998bcad92cbf310d90a846aa264c",
+    "bytes": 514894
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__PTT__1D.json",
+    "role": "candles",
+    "sha256": "1ed20105442c7a5f5795d569666b53df3400a2b4fcb9638970f0b69f505f00ad",
+    "bytes": 809318
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__PTT__1H.json",
+    "role": "candles",
+    "sha256": "88d73d881c79effc271169288d949c04800503ccacc17cfecbea7a3f9a26ec2e",
+    "bytes": 517365
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SCC__1D.json",
+    "role": "candles",
+    "sha256": "0e1d4534c4b0475bc92d610f9f57e3d95d1799d595728c4a1e7d2fe53fe2f662",
+    "bytes": 696034
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SCC__1H.json",
+    "role": "candles",
+    "sha256": "3f224e6a7f066bece029bc3f92bb9608ac9b4b1450919101f0d4b7535559136f",
+    "bytes": 499524
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SINGER__1D.json",
+    "role": "candles",
+    "sha256": "52502c874f2fb5131662401fc82ccfe05a366f9750aa957889a1f9b731215a02",
+    "bytes": 953305
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SINGER__1H.json",
+    "role": "candles",
+    "sha256": "281b157098b37acc8bbb782ddb9c63ceb9dd3bbd555ca8524cdb9c2c5eb83f76",
+    "bytes": 716878
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SISB__1D.json",
+    "role": "candles",
+    "sha256": "7e1b06b453fac12d96760cd49283de160ac504fa1e2fe42b4fef757f18e940e3",
+    "bytes": 256220
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SISB__1H.json",
+    "role": "candles",
+    "sha256": "ed649e170a06d350b1f1c6eb6ec9eabb6492e2ac5d503f5d2e73aac3680404da",
+    "bytes": 621234
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SKY__1D.json",
+    "role": "candles",
+    "sha256": "c1c8d3f83b22c451a0fe4b360f59d9e7a67c7b639c66d626889be3adacfd2146",
+    "bytes": 442528
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__SKY__1H.json",
+    "role": "candles",
+    "sha256": "47ec8994c92a1f652492a891d4015d852cf00f88839f46b7a2534615506040b1",
+    "bytes": 646700
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__STGT__1D.json",
+    "role": "candles",
+    "sha256": "2782511169f1245e1792375fffbf902c308f77914c1ac2e60bc9eb44ff057d1c",
+    "bytes": 201230
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__STGT__1H.json",
+    "role": "candles",
+    "sha256": "a2e4b603033f210f31fd6984235350d3bb0cef7af19c815f8b1acc2bcf52eeed",
+    "bytes": 715085
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__TTA__1D.json",
+    "role": "candles",
+    "sha256": "6b8483980ab7871a28a5d042955e702d9f61519c0188b745662233aed21e57a6",
+    "bytes": 968506
+   },
+   {
+    "path": ".research-cache/candles/TH_STOCK__TTA__1H.json",
+    "role": "candles",
+    "sha256": "3c79aeae0d4dc10dbdf243012032d71188e9f0df6f274c625a023c5efaaf84f8",
+    "bytes": 730920
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__AAPL__1D.json",
+    "role": "candles",
+    "sha256": "bc9aff494c1097c10f486972e99a0ad1fcc540662057661608c98e41f2331b0e",
+    "bytes": 1857336
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__AAPL__1H.json",
+    "role": "candles",
+    "sha256": "5dc3c054728dfaaa86672daa1f2098dec4178993ec595e7553b486796f139c76",
+    "bytes": 804067
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__BA__1D.json",
+    "role": "candles",
+    "sha256": "9aaf55de89ce4d4c990b95c549c3923d33baae0bacdde641db53e2970725c2b7",
+    "bytes": 2114455
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__BA__1H.json",
+    "role": "candles",
+    "sha256": "47e1d2b18d41bf903a21204236fa0b80ac42f12b089f373f3936e0c23914959b",
+    "bytes": 797616
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__CVS__1D.json",
+    "role": "candles",
+    "sha256": "dc0993c5b13162d04c8980b2dcf77b23bbb7fb3fa1b1f44c9c5c6f39b17be6fc",
+    "bytes": 1870554
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__CVS__1H.json",
+    "role": "candles",
+    "sha256": "e4a8fa71c706fafc00db9110db9e58910da9c200552a2818024ac49ba63626a2",
+    "bytes": 789411
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__DIS__1D.json",
+    "role": "candles",
+    "sha256": "8b35de02d4d6dd6e1ff85ed11a94d66bd4365a9051d1fcf1697f526549538121",
+    "bytes": 2278130
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__DIS__1H.json",
+    "role": "candles",
+    "sha256": "5b53439a0607ae06875309be500dc2bff8256d352c36ac858e1bf641758a8b58",
+    "bytes": 799244
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__F__1D.json",
+    "role": "candles",
+    "sha256": "8dd3aba717fd8303d9211564521a7bb0abd658db6b905bc423dd8a78b381065e",
+    "bytes": 2171829
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__F__1H.json",
+    "role": "candles",
+    "sha256": "80c63149ccd39f7e7b4fc957c28c8e8ea888fd64170400d733f2e1a87a75d248",
+    "bytes": 807833
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__INTC__1D.json",
+    "role": "candles",
+    "sha256": "6b19a214ca60dc965a92168c5b437d0c063ad7577b9a2a606b1db466a608af6f",
+    "bytes": 1752146
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__INTC__1H.json",
+    "role": "candles",
+    "sha256": "f037ebd7e8c5914125d6c79a183df765628bdcbeff238ba16bb464901bb73b57",
+    "bytes": 805014
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__IWM__1D.json",
+    "role": "candles",
+    "sha256": "8722219cb3bbafdd45889d2956a0703409144b5c800653c9a1cc3400e5c1bb5e",
+    "bytes": 1033056
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__IWM__1H.json",
+    "role": "candles",
+    "sha256": "fcba17b0a3a21a7726364aaed02202013310bb78abc1938457f1d06a64540a0d",
+    "bytes": 805216
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__KO__1D.json",
+    "role": "candles",
+    "sha256": "4c191d37f4c48dde1741b92b26f99e77f0f9191cbf335a66639fc01bcc967b96",
+    "bytes": 2109315
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__KO__1H.json",
+    "role": "candles",
+    "sha256": "ffcf581bea3cdd5b7ace44440359ae3e38efd96fe1641987d4bcaa51e8907f4d",
+    "bytes": 792685
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__MSFT__1D.json",
+    "role": "candles",
+    "sha256": "3ec51eff554fd53a937b39dd500510def62db7e76ba7bd8f9cf0ddb52edb84c3",
+    "bytes": 1550136
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__MSFT__1H.json",
+    "role": "candles",
+    "sha256": "071ede72392d31b416b5c8c539fbe4c190d492e81e5ddfa0fae1d33d49b0cf12",
+    "bytes": 793297
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__NKE__1D.json",
+    "role": "candles",
+    "sha256": "1bee3d20660348afe590b10303437943a0d433f2b814c9a366daad7dc49bc7a0",
+    "bytes": 1759887
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__NKE__1H.json",
+    "role": "candles",
+    "sha256": "d73ab29ec87134e112a92bf905ec4902706db8a6c526f38a9a5b2f33f1d0fdd4",
+    "bytes": 793889
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__NVDA__1D.json",
+    "role": "candles",
+    "sha256": "50ab0dce8785f685f2868515be3ebeca890d079f92f088a5b892b79dd6c3b02e",
+    "bytes": 1137410
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__NVDA__1H.json",
+    "role": "candles",
+    "sha256": "907f987366e5e74132844d4b6353670a95b3d32b4de233c2d28ad21e91979c1a",
+    "bytes": 808619
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__PFE__1D.json",
+    "role": "candles",
+    "sha256": "0841b832e77cccce962f8cd90e9f0b561203b03c8ad7d876b2d39c72214d06c9",
+    "bytes": 2199020
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__PFE__1H.json",
+    "role": "candles",
+    "sha256": "c08b2e4144c11918c7474bd8caa0ce6b8372e4059455db789b91891a7092b763",
+    "bytes": 807904
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__PYPL__1D.json",
+    "role": "candles",
+    "sha256": "2a2597c9fa5759a2b49cd28345fc8f7daee89e474a191b46616bbe2f355f6201",
+    "bytes": 437198
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__PYPL__1H.json",
+    "role": "candles",
+    "sha256": "c069c0983f4d454cdc24760743b3e47c3ab7a054aac1d72d5427b3267d26b8c4",
+    "bytes": 794884
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__SPY__1D.json",
+    "role": "candles",
+    "sha256": "b23d3e5d94d6feda3075216f108d4f0dca807cd2eedaec970e7dff184f0c0663",
+    "bytes": 1263448
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__SPY__1H.json",
+    "role": "candles",
+    "sha256": "843f369768c5547dcd57910ac94167e1df85a0848fbae37f379eff157364834b",
+    "bytes": 790562
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__TLT__1D.json",
+    "role": "candles",
+    "sha256": "46042242666d9ed3adbb89aff7c9e9409092df5d7c3e93424bf60afd02849dfb",
+    "bytes": 952968
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__TLT__1H.json",
+    "role": "candles",
+    "sha256": "baf2e1b1dec5b89e0efed8b7c79dc66f08bfc33afc8390e68ee4adadaa6c25e7",
+    "bytes": 791667
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__T__1D.json",
+    "role": "candles",
+    "sha256": "20ea7e2f895f1717bd002ece291251c85fb0d30fc5f37c0b22716805084ff4ec",
+    "bytes": 1729211
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__T__1H.json",
+    "role": "candles",
+    "sha256": "17b428d9624cec179b4cb724fd2ea3d55b35415f3af30ced3d89d3b7a792dfa9",
+    "bytes": 807232
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__XOM__1D.json",
+    "role": "candles",
+    "sha256": "3c415693a4ba0b265daab9f64750be840bc765a8650a6d69cc2d5fc870cecdb1",
+    "bytes": 2002667
+   },
+   {
+    "path": ".research-cache/candles/US_STOCK__XOM__1H.json",
+    "role": "candles",
+    "sha256": "f8aba9498e4d24951752c6b32e35e869d26807538f7c876c1db92f002646cd34",
+    "bytes": 808001
+   },
+   {
+    "path": "scripts/research/report/split.json",
+    "role": "split",
+    "sha256": "7fdb319652ff73deda15a9d82a92578d195cb1f39e138764067f136bd533f77e",
+    "bytes": 1103
+   }
+  ],
+  "inputsDigest": "1964e3b8d61ec0055fb191e431e65f6891fe77d4491cd605d02e1d3d68ef5321",
+  "volatileFields": [
+   "elapsedMs",
+   "generatedAt",
+   "opt.outDir",
+   "provenance"
+  ],
+  "volatileReportLines": [
+   "^สร้างโดย `scripts/research/experiments/feat-volume",
+   "^ที่มา: sha"
+  ]
+ }
 }

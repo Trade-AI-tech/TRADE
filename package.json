@@ -17,6 +17,8 @@
     "scan:universe:dry": "node scripts/scan-universe.mjs --dry-run",
     "lab:parity": "node scripts/research/check-lab-parity.mjs",
     "lab:config": "node scripts/research/engine-lab.mjs",
+    "check:determinism": "node scripts/research/check-determinism.mjs",
+    "check:determinism:self": "node scripts/research/check-determinism.mjs --self-test",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/supabase.ts"

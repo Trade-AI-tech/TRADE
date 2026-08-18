@@ -70,7 +70,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { InputLedger, buildProvenance } from '../repro.mjs';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/**
+ * ทะเบียนไฟล์ขาเข้า + ลายนิ้วมือของสคริปต์เอง
+ *
+ * โรคที่กัน: รายงาน .md ที่ถูกสร้างจากโค้ดคนละรุ่นกับที่อยู่บนดิสก์ แล้วไม่มีใครรู้
+ * เพราะไม่มีอะไรผูกสองอย่างนี้เข้าด้วยกันเลย ต่อไปนี้ .md จะพิมพ์ sha ของโค้ดที่ผลิตมัน
+ * และ check-determinism.mjs จะเทียบกับ sha ของไฟล์จริง ถ้าไม่ตรง = แดง
+ */
+const IN = new InputLedger();
+const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const REPORT_DIR = path.join(ROOT, 'scripts', 'research', 'report');
 const CACHE_DIR = path.join(ROOT, '.research-cache', 'candles');
 const SPLIT_FILE = path.join(REPORT_DIR, 'split.json');
@@ -161,6 +173,8 @@ const OPT = {
   seed: Number(args.seed ?? 20260818),
   alpha: Number(args.alpha ?? 0.05),
   cutFrac: Number(args.cutFrac ?? 0.80),   // ตัดท้ายทิ้งเหลือเท่านี้ ตอนตรวจ look-ahead
+  /** เขียนผลไปโฟลเดอร์อื่น — ตัวตรวจความคงที่ใช้ ไม่ให้ทับรายงานที่ส่งมอบแล้ว */
+  outDir: args['out-dir'] ? path.resolve(String(args['out-dir'])) : REPORT_DIR,
 };
 
 // ── ด่านกันชุด test และ validation ────────────────────────────────────────────
@@ -279,7 +293,8 @@ function applyHolm(scopeName, keyFn, alpha = OPT.alpha) {
  * ต้องเคารพ quality.usable.from เสมอ ไม่งั้นจะได้แท่งที่เป็นไปไม่ได้ทางกายภาพ
  */
 function loadDataset(file) {
-  const j = JSON.parse(fs.readFileSync(path.join(CACHE_DIR, file), 'utf8'));
+  // จดลายนิ้วมือของแท่งเทียนทุกไฟล์ที่อ่าน — คลังเปลี่ยนเมื่อไร ตัวเลขก็เปลี่ยน
+  const j = IN.readJson(path.join(CACHE_DIR, file), 'candles');
   const from = j.quality?.usable?.from;
   let candles = j.candles;
   if (from) {
@@ -908,7 +923,7 @@ const pctS = (v, d = 1) => (Number.isFinite(v) ? `${(v * 100).toFixed(d)}%` : '�
 
 async function main() {
   const t0 = Date.now();
-  const bounds = JSON.parse(fs.readFileSync(SPLIT_FILE, 'utf8'));
+  const bounds = IN.readJson(SPLIT_FILE, 'split');
   const JSONOUT = {
     generatedAt: new Date().toISOString(), opt: OPT,
     features: FEATURES.map((f) => ({ key: f.key, family: f.fam, needsVolume: !!f.needsVol, control: f.ctrl ?? null, why: f.why })),
@@ -1271,17 +1286,29 @@ async function main() {
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   console.log(`[C3/C4] วัดครบ ${results.length} แถว · ลงทะเบียนการทดสอบ ${TESTS.length} ข้อ · ${elapsed} วิ`);
 
+  // ต้องคำนวณที่มา *ก่อน* เขียนรายงาน เพราะ .md ต้องพิมพ์ sha เดียวกับที่ลงใน .json
+  JSONOUT.provenance = buildProvenance({
+    scriptPath: SCRIPT_PATH,
+    root: ROOT,
+    ledger: IN,
+    argv: process.argv.slice(2),
+    volatileFields: ['generatedAt', 'elapsedMs', 'opt.outDir', 'provenance'],
+    volatileReportLines: ['^สร้างโดย `scripts/research/experiments/feat-volume', '^ที่มา: sha'],
+  });
+
   writeReport({ JSONOUT, results, cells, cellInfo, leak, volAudit, dropped, runnerSet, elapsed, bounds });
 
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-feat-volume.json'), JSON.stringify(JSONOUT, null, 1), 'utf8');
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-feat-volume.md'), LINES.join('\n'), 'utf8');
-  console.log(`\nเขียนแล้ว: scripts/research/report/exp-feat-volume.md · exp-feat-volume.json  (${elapsed} วิ)`);
+  fs.writeFileSync(path.join(OPT.outDir, 'exp-feat-volume.json'), JSON.stringify(JSONOUT, null, 1), 'utf8');
+  fs.writeFileSync(path.join(OPT.outDir, 'exp-feat-volume.md'), LINES.join('\n'), 'utf8');
+  console.log(`ที่มา: sha สคริปต์ ${JSONOUT.provenance.scriptSha256.slice(0, 12)}`
+    + ` · sha ขาเข้ารวม ${JSONOUT.provenance.inputsDigest.slice(0, 12)} (${JSONOUT.provenance.inputs.length} ไฟล์)`);
+  console.log(`\nเขียนแล้ว: ${path.relative(ROOT, path.join(OPT.outDir, 'exp-feat-volume.md')).replace(/\\/g, '/')}  (${elapsed} วิ)`);
 }
 
 // ════════════════════════════════ เขียนรายงาน ════════════════════════════════
 
 function writeReport(ctx) {
-  const { results, cells, cellInfo, leak, volAudit, dropped, runnerSet, elapsed, bounds } = ctx;
+  const { JSONOUT, results, cells, cellInfo, leak, volAudit, dropped, runnerSet, elapsed, bounds } = ctx;
   const real = results.filter((r) => !r.control);
   const ctrl = results.filter((r) => r.control);
   const byId = new Map(TESTS.map((t) => [t.id, t]));
@@ -1296,6 +1323,13 @@ function writeReport(ctx) {
   W('# ตระกูลที่ 1 · วอลุ่มและโครงสร้างราคาที่เครื่องยนต์ไม่เคยใช้');
   W();
   W(`สร้างโดย \`scripts/research/experiments/feat-volume.mjs\` · ${new Date().toISOString()} · ใช้เวลา ${elapsed} วินาที`);
+  W();
+  // ที่มา: ผูกรายงานฉบับนี้กับโค้ดและข้อมูลชุดเดียว — ตรวจได้ด้วย npm run check:determinism
+  // (โรคที่กัน: รายงานถูกสร้างจากโค้ดคนละรุ่นแล้วตัวเลขพาดหัวไม่ตรงกับโค้ดบนดิสก์)
+  W(`ที่มา: sha สคริปต์ \`${(JSONOUT.provenance?.scriptSha256 ?? '').slice(0, 12)}\``
+    + ` · sha ขาเข้ารวม \`${(JSONOUT.provenance?.inputsDigest ?? '').slice(0, 12)}\``
+    + ` (${JSONOUT.provenance?.inputs?.length ?? 0} ไฟล์) · node ${JSONOUT.provenance?.node ?? '—'}`);
+  W('ถ้า sha ไม่ตรงกับที่อยู่ใน `exp-feat-volume.json` แปลว่ารายงานกับโค้ดคนละรุ่น — อ่านตัวเลขไม่ได้');
   W();
   W('---');
   W();

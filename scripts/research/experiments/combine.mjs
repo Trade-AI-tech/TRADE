@@ -70,13 +70,38 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 import { ROOT, loadSrcModules } from '../load-src-modules.mjs';
+import { InputLedger, buildProvenance, sha256File } from '../repro.mjs';
+
+/**
+ * ═══════════════════ ทะเบียนไฟล์ขาเข้า (แก้เหตุ "รันซ้ำได้คนละคำตอบ") ═══════════════════
+ *
+ * ไฟล์นี้อ่านผลของสคริปต์พี่น้อง 4 ฉบับ (feat-volume · feat-cross · feat-time · ceiling)
+ * ซึ่ง **สคริปต์พี่น้องเขียนทับได้ทุกเมื่อ** ถ้าฉบับใดฉบับหนึ่งเปลี่ยนระหว่างวัน
+ * ด่านคัดจะได้ช่องรอดคนละชุด → จักรวาลเป้าหมายคนละอัน → โมเดลคนละตัว → ตัวเลขคนละโลก
+ * โดยไม่มี error สักบรรทัด
+ *
+ * พิสูจน์แล้วว่าทำให้เกิดได้ตามสั่ง: ปิดธง holmPass ของ clv5 ใน US_STOCK|1D แค่ 2 ข้อ
+ * (เท่ากับที่จะเกิดเองถ้ารัน feat-volume ใหม่ด้วยขนาดตระกูล Holm ที่ต่างไป)
+ * → validation h=10 เปลี่ยนจาก 15.07 เป็น 5.82 bps/ไม้ เงียบสนิท
+ *
+ * ทางแก้: จดลายนิ้วมือ (sha256) ของทุกไฟล์ที่อ่าน ฝังลงรายงาน แล้วให้ตัวตรวจเทียบ
+ */
+const IN = new InputLedger();
+
+/** เส้นทางของสคริปต์นี้เอง — ใช้ทำลายนิ้วมือของโค้ดที่ผลิตรายงานฉบับนี้ */
+const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
 const REPORT_DIR = path.join(ROOT, 'scripts', 'research', 'report');
 const WORK_DIR = path.join(REPORT_DIR, 'combine');
-const CACHE_DIR = path.join(ROOT, '.research-cache', 'candles');
+/** คลังแท่งเทียน — เปลี่ยนได้ด้วย --cache-dir (ใช้พิสูจน์การตัดข้อมูลท้ายทิ้งแล้วคำนวณซ้ำ) */
+const CACHE_DIR = (() => {
+  const a = process.argv.find((x) => x.startsWith('--cache-dir='));
+  return a ? path.resolve(a.slice('--cache-dir='.length)) : path.join(ROOT, '.research-cache', 'candles');
+})();
 const SPLIT_FILE = path.join(REPORT_DIR, 'split.json');
 const LAB = path.join(ROOT, 'scripts', 'research', 'lab.mjs');
 
@@ -117,7 +142,20 @@ const OPT = {
   truncFrac: Number(ARGS['trunc-frac'] ?? 0.2),
   trainOnly: !!ARGS['train-only'],
   useLab: !ARGS['no-lab'],
+  /**
+   * --rerun-probe = การรันซ้ำเชิงกลเพื่อ "ตรวจว่าได้ผลเดิมไหม" ไม่ใช่การวิจัย
+   *
+   * ทำไมต้องแยก: สมุดบันทึกการแตะ validation คือหลักฐานว่า "เราตัดสินใจบน validation
+   * ไปกี่ครั้ง" ยิ่งเยอะ validation ยิ่งกลายเป็น train การรันซ้ำเพื่อเทียบไบต์ไม่ได้
+   * ตัดสินใจอะไรเลย ถ้าไปนับรวมกัน ตัวเลขในสมุดจะโป่งจนอ่านไม่ได้ความ (รอบก่อนโป่ง
+   * จาก 2 เป็น 32 เพราะเหตุนี้) แต่จะไม่บันทึกเลยก็ไม่ซื่อสัตย์ — จึงบันทึกแยกบรรทัด
+   * แล้วรายงานสองตัวเลขแยกกัน
+   */
+  rerunProbe: !!ARGS['rerun-probe'],
+  /** เขียนผลไปโฟลเดอร์อื่น — ตัวตรวจความคงที่ใช้ เพื่อไม่ทับรายงานที่ส่งมอบไปแล้ว */
+  outDir: ARGS['out-dir'] ? path.resolve(String(ARGS['out-dir'])) : REPORT_DIR,
 };
+fs.mkdirSync(OPT.outDir, { recursive: true });
 
 // ══════════════════════════ ค่าคงที่ที่ลอกมา (ห้ามแก้) ══════════════════════════
 
@@ -176,6 +214,23 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * ═══════════════ ตัวช่วยเรียงที่ให้ผลเดิมทุกครั้ง (แก้รอบนี้) ═══════════════
+ *
+ * สองกับดักที่ทำให้ "รันซ้ำได้คนละคำตอบ" โดยไม่มี error:
+ *
+ *   1. comparator คืน NaN — เกิดเมื่อค่าที่เอามาลบกันเป็น NaN (เช่น p ที่วัดไม่ได้)
+ *      V8 ตีความ NaN ว่า "ไม่ต้องสลับ" ผลที่ได้จึงขึ้นกับลำดับเริ่มต้นและอัลกอริทึม
+ *      ภายในของ sort ซึ่งเปลี่ยนได้ตามรุ่น node และตามความยาวอาเรย์
+ *   2. comparator คืน 0 ให้ของที่ "ควรต่างกัน" — ผลลัพธ์ขึ้นกับความ stable ของ sort
+ *      ตัวที่อันตรายที่สุดในไฟล์นี้คือการเลือก "จักรวาลเป้าหมาย" จากจำนวนช่องที่รอด:
+ *      ถ้าสองจักรวาลรอดเท่ากัน ตัวไหนชนะจะเป็นเรื่องบังเอิญ แล้วทั้งงานวิจัยเปลี่ยนตลาด
+ *
+ * กติกาที่ใช้ทั้งไฟล์: ค่าที่ใช้ไม่ได้ = น้อยที่สุดเสมอ · เท่ากันแล้วตัดสินด้วยสตริงของคีย์
+ */
+const sortNum = (v) => (Number.isFinite(v) ? v : -Infinity);
+const tieKey = (a, b) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0);
 
 function percentileOfSorted(sorted, p) {
   if (!sorted.length) return null;
@@ -275,7 +330,8 @@ function listDatasets() {
 
 /** โหลด dataset แล้วเคารพ quality.usable.from — ลอกกติกาจาก lab.mjs */
 function loadDataset(file) {
-  const j = JSON.parse(fs.readFileSync(path.join(CACHE_DIR, file), 'utf8'));
+  // จดลายนิ้วมือของแท่งเทียนด้วย — คลังถูก fetch ใหม่เมื่อไรผลก็เปลี่ยน ต้องตรวจย้อนได้
+  const j = IN.readJson(path.join(CACHE_DIR, file), 'candles');
   const from = j.quality?.usable?.from;
   let candles = j.candles;
   if (from) {
@@ -326,7 +382,7 @@ function collectCells() {
 
   // ── ตระกูล 1: วอลุ่ม/โครงสร้างราคา (exp-feat-volume.json) ─────────────────────
   {
-    const j = JSON.parse(fs.readFileSync(SRC_VOLUME, 'utf8'));
+    const j = IN.readJson(SRC_VOLUME, 'upstream:feat-volume');
     const byId = new Map(j.tests.map((t) => [t.id, t]));
     for (const r of j.rows) {
       const icT = byId.get(`IC:${r.cell}:${r.feature}:h${r.h}`);
@@ -350,7 +406,7 @@ function collectCells() {
 
   // ── ตระกูล 2: ความสัมพันธ์ข้ามสัญลักษณ์ (exp-feat-cross.json) ─────────────────
   {
-    const j = JSON.parse(fs.readFileSync(SRC_CROSS, 'utf8'));
+    const j = IN.readJson(SRC_CROSS, 'upstream:feat-cross');
     const byId = new Map(j.tests.map((t) => [t.id, t]));
     for (const c of j.cells) {
       if (!c.res) continue;
@@ -386,7 +442,7 @@ function collectCells() {
   //   จึงแก้ค่า p ของเงินด้วย Holm ที่นี่เอง ภายในตระกูล (กรอบเวลา) เดียวกับที่ต้นทางใช้
   //   แล้วบันทึกไว้ในบัญชีการเปรียบเทียบว่าเป็นการทดสอบที่ "รอบนี้" เป็นคนแก้ค่า p
   {
-    const j = JSON.parse(fs.readFileSync(SRC_TIME, 'utf8'));
+    const j = IN.readJson(SRC_TIME, 'upstream:feat-time');
     const byId = new Map(j.tests.map((t) => [t.id, t]));
     const usable = j.cells.filter((c) => c.enough && Number.isFinite(c.moneyP));
     const byFamily = new Map();
@@ -397,7 +453,10 @@ function collectCells() {
     }
     const holmOfCell = new Map();     // key ของช่อง → { pass, threshold }
     for (const [, arr] of byFamily) {
-      const sorted = [...arr].sort((a, b) => a.moneyP - b.moneyP);
+      // NaN-safe + ตัดสินเสมอด้วย key ของช่อง (ลำดับ Holm กำหนดว่าช่องไหนรอด)
+      // p ที่วัดไม่ได้ต้องไปอยู่ท้ายสุด (ถือว่า "ไม่มีนัยสำคัญที่สุด") ไม่ใช่หัวแถว
+      const pAsc = (v) => (Number.isFinite(v) ? v : Infinity);
+      const sorted = [...arr].sort((a, b) => (pAsc(a.moneyP) - pAsc(b.moneyP)) || tieKey(a.key, b.key));
       const m = sorted.length;
       let stillPassing = true;
       sorted.forEach((c, i) => {
@@ -482,7 +541,7 @@ function crossSectionRank(raw, bi, nSym, G, minPool, out) {
       vals[m] = v; idxs[m] = s; m++;
     }
     if (m < minPool) continue;
-    const order = Array.from({ length: m }, (_, i) => i).sort((a, b) => vals[a] - vals[b]);
+    const order = Array.from({ length: m }, (_, i) => i).sort((a, b) => (vals[a] - vals[b]) || (a - b));
     let i = 0;
     while (i < m) {
       let j = i;
@@ -664,10 +723,26 @@ let MODEL_FEATURES = [];
 /**
  * สร้างตารางแถว (หนึ่งแถว = หนึ่งแท่งสัญญาณของหนึ่งสัญลักษณ์)
  * เก็บ: ค่า feature · ผลตอบแทนล่วงหน้า h แท่ง · ข้อมูลที่ต้องใช้จำลองไม้ · กลุ่มเวลา
+ *
+ * ═══════════════ ด่านกันการล้ำข้ามเส้นแบ่ง split (แก้รอบนี้) ═══════════════
+ *
+ * ของเดิมกรองเฉพาะเวลาของ "แท่งสัญญาณ" (t < toMs) แต่ตัวเลขที่วัดจริงอ่านไปข้างหน้า:
+ *   · ผลตอบแทนล่วงหน้าอ่าน candles[i+h]
+ *   · ตัวจำลองไม้เฝ้าแท่ง i+1 .. i+h เพื่อดูว่าโดน SL/TP ตรงไหน
+ * แถวที่อยู่ปลายชุด train จึงเอาแท่งของ validation มาคิดผล และแถวปลาย validation
+ * เอาแท่งของ **ชุด test** มาคิดผล — ซึ่งผิดกติกาข้อ 1 ตรง ๆ
+ *
+ * เลือกวิธี "ทิ้งไม้ที่ล้ำ" (แบบเดียวกับ feat-cross.mjs ที่มีด่านนี้อยู่แล้ว — ตัวแปร dropSpill)
+ * ไม่เลือก "ตัดหน้าต่างให้จบที่เส้นแบ่ง" เพราะการตัดหน้าต่างจะเปลี่ยน *นิยาม* ของ h:
+ * ไม้ที่ตั้งใจถือ 10 แท่งแต่ถูกบังคับปิดที่แท่งที่ 3 ไม่ใช่ไม้ถือ 10 แท่ง เอาไปเฉลี่ย
+ * รวมกับไม้อื่นในช่องเดียวกันไม่ได้ และทำให้ช่อง train กับ validation เทียบกันไม่ได้
+ * การทิ้งทำให้ทุกแถวที่เหลือเป็นไม้ h แท่งจริงทั้งหมด ราคาที่จ่ายคือตัวอย่างหายไป
+ * ที่ปลายช่วง ซึ่งนับได้และรายงานได้ (rows.dropSpill)
  */
 function buildRows(pool, symFeats, crossFeats, fromMs, toMs, h) {
   const rows = {
     sym: [], idx: [], time: [], f: {}, fwd: [], cluster: [],
+    dropSpill: 0, kept: 0,
   };
   for (const name of MODEL_FEATURES) rows.f[name] = [];
   const clusterOf = (ms) => {
@@ -686,6 +761,9 @@ function buildRows(pool, symFeats, crossFeats, fromMs, toMs, h) {
       if (t < fromMs || t >= toMs) continue;
       // ต้องมีแท่งข้างหน้าครบ h แท่ง ไม่งั้นวัดผลตอบแทนล่วงหน้าไม่ได้
       if (i + h >= n) continue;
+      // ── ด่านกันการล้ำ: แท่งสุดท้ายที่ไม้นี้จะแตะ (i+h) ต้องยังอยู่ในช่วงเดียวกัน ──
+      // เวลาเรียงจากน้อยไปมากอยู่แล้ว ตรวจแท่งท้ายสุดแท่งเดียวจึงพอ
+      if (ds.times[i + h] >= toMs) { rows.dropSpill++; continue; }
       if (!isUsableBar(ds.candles[i]) || !isUsableBar(ds.candles[i + h])) continue;
 
       const vals = [];
@@ -704,6 +782,7 @@ function buildRows(pool, symFeats, crossFeats, fromMs, toMs, h) {
       MODEL_FEATURES.forEach((name, j) => rows.f[name].push(vals[j]));
       rows.fwd.push(fwd);
       rows.cluster.push(clusterOf(t));
+      rows.kept++;
     }
   }
   rows.n = rows.sym.length;
@@ -800,7 +879,7 @@ function spearman(a, b) {
   const n = a.length;
   if (n < 10) return NaN;
   const rank = (arr) => {
-    const ord = Array.from({ length: n }, (_, i) => i).sort((x, y) => arr[x] - arr[y]);
+    const ord = Array.from({ length: n }, (_, i) => i).sort((x, y) => (arr[x] - arr[y]) || (x - y));
     const rk = new Float64Array(n);
     let i = 0;
     while (i < n) {
@@ -835,7 +914,8 @@ function spearman(a, b) {
  *   (ผลตอบแทนล่วงหน้า h แท่ง) ของแถวท้าย fold ฝึก ยื่นเข้าไปในช่วงของ fold วัด
  */
 function selectLambda(rows, lambdas, h, folds = 5) {
-  const order = Array.from({ length: rows.n }, (_, i) => i).sort((a, b) => rows.time[a] - rows.time[b]);
+  const order = Array.from({ length: rows.n }, (_, i) => i)
+    .sort((a, b) => (rows.time[a] - rows.time[b]) || (rows.sym[a] - rows.sym[b]) || (a - b));
   const perLambda = lambdas.map(() => ({ sum: 0, cnt: 0, ics: [] }));
   const detail = [];
   const embargoMs = h * 24 * 3600 * 1000 * 1.5;   // h วันซื้อขาย เผื่อวันหยุด 1.5 เท่า
@@ -1124,16 +1204,39 @@ function pairedByCluster(A, B) {
   return { G, mean, se, t, p: tTestP(t, G - 1), ci: [mean - 1.96 * se, mean + 1.96 * se] };
 }
 
-/** สรุปสถิติของชุดไม้หนึ่งชุด (หน่วย bps ของมูลค่าสถานะ) */
-function summarizeTrades(trades, rng, label) {
-  if (!trades.length) return { label, n: 0 };
+/**
+ * ═══════════════ สถิติของชุดไม้ + ด่านตรวจตัวเอง (เพิ่มรอบซ่อมเครื่องมือ) ═══════════════
+ *
+ * ทำไมต้องคำนวณสองรอบแล้วเทียบกันทุกบิต
+ *
+ * ตัวตรวจความคงที่ (check-determinism.mjs) จับได้ว่าประมาณ 1 ใน 20 รอบ
+ * วัตถุผลลัพธ์ของช่องหนึ่งจะมี "ค่าของช่องข้าง ๆ" อยู่ในนั้น ตัวอย่างที่จับได้จริง:
+ *
+ *   train h=10 ช่อง "เครื่องหมายล้วน" ควรได้ +10.96 bps/ไม้ แต่บางรอบได้ −37.51
+ *   ซึ่งเป็นค่าของช่อง "ขายทุกแท่ง" **ตรงกันทุกบิตทั้ง 9 ค่า**
+ *   (grossBps · netBps · netSe · netT · netP · winRate · dirAccuracy · longShare · avgHold)
+ *   ขณะที่ค่าที่เหลือของช่องนั้น (n · byReason · netCI · firstTime · lastTime)
+ *   ยังถูกต้องเป็นของตัวเอง
+ *
+ * ชุดไม้ไม่ได้ผิด — สิ่งที่ผิดคือค่าที่ถูกเขียนลงในวัตถุผลลัพธ์ นี่เป็นอาการระดับ
+ * เครื่องยนต์ JS/หน่วยความจำ ไม่ใช่บั๊กที่แก้ได้ด้วยการเขียนสูตรใหม่ และมันเงียบสนิท:
+ * ตัวเลขบวกกลายเป็นลบโดยไม่มี error ใด ๆ
+ *
+ * ⚠ นี่คือกลไกเดียวกับที่ทำให้รอบก่อนเห็น "validation h=3 ridge net 194.79"
+ *   ซึ่งตรวจแล้วว่าเป็นค่า ceilingOnAllBars ของช่องเดียวกันเป๊ะ ๆ (ค่าจริงคือ 0.32)
+ *   ทั้งสองกรณีคือ "ค่าของช่องหนึ่งไปโผล่ในสล็อตของอีกช่องหนึ่ง ในวัตถุก้อนเดียวกัน"
+ *
+ * แก้ไม่ได้ที่ต้นเหตุ แต่กันไม่ให้ผลที่เชื่อไม่ได้หลุดออกไปได้:
+ * คำนวณสถิติสองรอบ แล้วเทียบทุกบิต ถ้าไม่ตรง = รอบนี้ใช้ไม่ได้ → หยุดดัง ๆ
+ * ดีกว่าพิมพ์ตัวเลขสวย ๆ ที่ไม่มีใครรู้ว่าผิด
+ */
+function summarizeCore(trades) {
   const gross = trades.map((t) => t.gross * 10000);
   const fee = trades.map((t) => t.fee * 10000);
   const net = trades.map((t) => t.net * 10000);
   const cl = trades.map((t) => t.cluster);
   const g = clusterMeanStats(gross, cl);
   const nStat = clusterMeanStats(net, cl);
-  const ci = clusterBootstrapCI(net, cl, rng);
   const wins = trades.filter((t) => t.net > 0).length;
   const dirRight = trades.filter((t) => t.gross > 0).length;
   const longs = trades.filter((t) => t.isLong).length;
@@ -1142,10 +1245,9 @@ function summarizeTrades(trades, rng, label) {
   const byReason = {};
   for (const t of trades) byReason[t.reason] = (byReason[t.reason] ?? 0) + 1;
   return {
-    label,
     n: trades.length,
     grossBps: g.mean, feeBps: fee.reduce((a, b) => a + b, 0) / fee.length,
-    netBps: nStat.mean, netSe: nStat.se, netT: nStat.t, netP: nStat.p, netCI: ci, clusters: nStat.G,
+    netBps: nStat.mean, netSe: nStat.se, netT: nStat.t, netP: nStat.p, clusters: nStat.G,
     winRate: wins / trades.length,
     dirAccuracy: dirRight / trades.length,
     longShare: longs / trades.length,
@@ -1156,14 +1258,74 @@ function summarizeTrades(trades, rng, label) {
   };
 }
 
+/** จำนวนครั้งที่ด่านตรวจตัวเองจับความผิดปกติได้ — รายงานไว้ให้เห็น ไม่ซ่อน */
+const SELF_CHECK = { comparisons: 0, mismatches: [] };
+
+function summarizeTrades(trades, rng, label) {
+  if (!trades.length) return { label, n: 0 };
+  const a = summarizeCore(trades);
+  const b = summarizeCore(trades);
+  SELF_CHECK.comparisons++;
+  const sa = JSON.stringify(a);
+  const sb = JSON.stringify(b);
+  if (sa !== sb) {
+    SELF_CHECK.mismatches.push({ label, a: sa.slice(0, 300), b: sb.slice(0, 300) });
+    throw new Error(`ด่านตรวจตัวเองไม่ผ่าน: สถิติของช่อง "${label}" คำนวณสองรอบได้คนละค่า\n`
+      + `  รอบที่ 1: ${sa.slice(0, 240)}\n  รอบที่ 2: ${sb.slice(0, 240)}\n`
+      + '  รอบนี้ใช้ไม่ได้ — อย่าอ่านตัวเลขจากรอบนี้ ให้รันใหม่');
+  }
+  const net = trades.map((t) => t.net * 10000);
+  const cl = trades.map((t) => t.cluster);
+  return { label, ...a, netCI: clusterBootstrapCI(net, cl, rng) };
+}
+
+/**
+ * ด่านตรวจข้ามช่อง — จับ "ค่าของช่องหนึ่งไปโผล่ในอีกช่อง" ที่การคำนวณซ้ำอาจพลาด
+ *
+ * ตรรกะ: สองกลยุทธ์ที่เข้าไม้คนละจำนวน เป็นไปไม่ได้ที่ค่าเฉลี่ยจะตรงกันทุกบิต
+ * (ตัวเลขเป็น double 15-16 หลัก การบังเอิญตรงกันหมดมีโอกาสราวศูนย์)
+ * ถ้าเจอ = หน่วยความจำปนกัน ไม่ใช่เรื่องบังเอิญ
+ */
+function crossCheckSummaries(bucket, tag) {
+  const names = Object.keys(bucket).filter((k) => bucket[k] && bucket[k].n > 0);
+  const bad = [];
+  for (const nm of names) {
+    const s = bucket[nm];
+    if (nm === 'alwaysLong' && s.longShare !== 1) bad.push(`${tag}: "ซื้อทุกแท่ง" มีฝั่งซื้อ ${s.longShare} ไม่ใช่ 1`);
+    if (nm === 'alwaysShort' && s.longShare !== 0) bad.push(`${tag}: "ขายทุกแท่ง" มีฝั่งซื้อ ${s.longShare} ไม่ใช่ 0`);
+  }
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const A = bucket[names[i]]; const B = bucket[names[j]];
+      if (A.n === B.n) continue;                       // ชุดไม้ต่างขนาด ถึงจะเถียงได้
+      if (!Number.isFinite(A.netBps) || !Number.isFinite(B.netBps)) continue;
+      if (A.netBps === B.netBps) {
+        bad.push(`${tag}: "${names[i]}" (${A.n} ไม้) กับ "${names[j]}" (${B.n} ไม้) `
+          + `มีค่าเฉลี่ยสุทธิตรงกันทุกบิต (${A.netBps}) — เป็นไปไม่ได้ทางสถิติ = หน่วยความจำปนกัน`);
+      }
+    }
+  }
+  return bad;
+}
+
 // ═══════════════════════════ การเรียก lab.mjs ═══════════════════════════
 
+/**
+ * ═══════════════ แคชผลของ lab.mjs — ของเดิมใช้ซ้ำโดยไม่ตรวจอะไรเลย ═══════════════
+ *
+ * ของเดิมเช็คแค่ "ไฟล์ csv มีอยู่ไหม" ถ้ามีก็ใช้เลย แปลว่า:
+ *   · ไฟล์ที่สร้างจากอาร์กิวเมนต์ชุดอื่น (เช่นเปลี่ยน --max-hold หรือ seed) ถูกใช้ต่อเงียบ ๆ
+ *   · ไฟล์ที่เขียนค้างไว้ครึ่งเดียวเพราะรันก่อนหน้าโดนหยุดกลางคัน ก็ถูกใช้ต่อเงียบ ๆ
+ *   · lab.mjs รุ่นใหม่ที่แก้สูตรไปแล้ว จะไม่มีผล เพราะไม่มีใครสั่งให้สร้างใหม่
+ * ทั้งสามกรณีให้ "คำตอบที่ต่างจากเดิมโดยไม่มีใครรู้" ซึ่งคือโรคที่รอบนี้ต้องรักษา
+ *
+ * ของใหม่: เก็บใบกำกับ (.meta.json) คู่กับ csv ทุกไฟล์ บันทึกอาร์กิวเมนต์ที่ใช้จริง
+ * + sha ของ lab.mjs + sha ของ csv เอง ถ้าอะไรไม่ตรง = สร้างใหม่ ไม่ใช่ใช้ต่อ
+ */
 function runLab(tag, split, extra = []) {
   const csv = path.join(WORK_DIR, `${tag}-${split}-trades.csv`);
-  if (fs.existsSync(csv)) return { csv, cached: true };
-  fs.mkdirSync(WORK_DIR, { recursive: true });
-  execFileSync(process.execPath, [
-    LAB,
+  const metaFile = `${csv}.meta.json`;
+  const labArgs = [
     '--markets=US_STOCK',
     '--timeframes=1D',
     `--split=${split}`,
@@ -1173,11 +1335,34 @@ function runLab(tag, split, extra = []) {
     '--bootstrap=200',
     `--seed=${OPT.seed}`,
     ...extra,
-  ], { cwd: ROOT, stdio: ['ignore', 'ignore', 'pipe'], maxBuffer: 128 * 1024 * 1024 });
+  ];
+  const labSha = sha256File(LAB);
+  const want = { labArgs, labSha };
+
+  if (fs.existsSync(csv) && fs.existsSync(metaFile)) {
+    let meta = null;
+    try { meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')); } catch { meta = null; }
+    const sameArgs = meta && JSON.stringify(meta.labArgs) === JSON.stringify(want.labArgs);
+    const sameLab = meta && meta.labSha === want.labSha;
+    const sameCsv = meta && meta.csvSha === sha256File(csv);
+    if (sameArgs && sameLab && sameCsv) {
+      IN.note(csv, `lab-cache:${tag}-${split}`);
+      return { csv, cached: true };
+    }
+    console.warn(`⚠ แคชของ lab (${tag}/${split}) ไม่ตรงใบกำกับ — สร้างใหม่`
+      + ` (อาร์กิวเมนต์ตรง: ${!!sameArgs} · lab.mjs ตรง: ${!!sameLab} · ไฟล์ตรง: ${!!sameCsv})`);
+  }
+
+  fs.mkdirSync(WORK_DIR, { recursive: true });
+  execFileSync(process.execPath, [LAB, ...labArgs],
+    { cwd: ROOT, stdio: ['ignore', 'ignore', 'pipe'], maxBuffer: 128 * 1024 * 1024 });
   for (const suffix of [`${split}-trades.csv`, `${split}.txt`, `${split}.json`]) {
     const src = path.join(REPORT_DIR, `${tag}-${suffix}`);
     if (fs.existsSync(src)) fs.renameSync(src, path.join(WORK_DIR, `${tag}-${suffix}`));
   }
+  if (!fs.existsSync(csv)) throw new Error(`lab.mjs ไม่ได้สร้าง ${csv} — หยุดดีกว่าเดาต่อ`);
+  fs.writeFileSync(metaFile, JSON.stringify({ ...want, csvSha: sha256File(csv) }, null, 2));
+  IN.note(csv, `lab-cache:${tag}-${split}`);
   return { csv, cached: false };
 }
 
@@ -1231,10 +1416,11 @@ async function main() {
   const t0 = Date.now();
   fs.mkdirSync(WORK_DIR, { recursive: true });
   const rng = mulberry32(OPT.seed);
-  const bounds = JSON.parse(fs.readFileSync(SPLIT_FILE, 'utf8'));
+  const bounds = IN.readJson(SPLIT_FILE, 'split');
   const OUT = {
     generatedAt: new Date().toISOString(), opt: OPT,
     gate: {}, meter: {}, leak: {}, model: {}, train: {}, validation: {}, tests: [], ledger: {},
+    provenance: {},
   };
 
   // ══════════════════ S0 · ด่านคัด: อะไรรอดจากรอบก่อนบ้าง ══════════════════
@@ -1267,7 +1453,9 @@ async function main() {
   // หุ้นไทย: ช่องที่ "ใกล้ผ่านที่สุด" — ต้องรายงานว่าขาดไปเท่าไร
   const thaiCells = gated.filter((c) => GROUP_MARKET[c.group] === 'TH_STOCK' && !c.control
     && !CLOSED_CELLS.has(`${c.group}|${c.tf}`));
-  const thaiClosest = [...thaiCells].sort((a, b) => (b.netBps ?? -1e9) - (a.netBps ?? -1e9)).slice(0, 12);
+  const cellKey = (c) => `${c.src}|${c.group}|${c.tf}|${c.feature}|${c.h}`;
+  const byNetDesc = (a, b) => (sortNum(b.netBps) - sortNum(a.netBps)) || tieKey(cellKey(a), cellKey(b));
+  const thaiClosest = [...thaiCells].sort(byNetDesc).slice(0, 12);
   OUT.gate.thaiClosest = thaiClosest.map((c) => ({
     src: c.src, group: c.group, tf: c.tf, feature: c.feature, h: c.h,
     edgeBps: c.edgeBps, feeBps: c.feeBps, netBps: c.netBps, moneyP: c.moneyP,
@@ -1276,7 +1464,7 @@ async function main() {
   // เอาเฉพาะจักรวาลหุ้นไทยที่ "สะอาด" (ไม่ได้เลือกตัวด้วยข้อมูลอนาคต) — นี่คือของจริงที่เจ้าของมี
   OUT.gate.thaiCleanClosest = thaiCells
     .filter((c) => !LEAKY_UNIVERSE.has(c.group))
-    .sort((a, b) => (b.netBps ?? -1e9) - (a.netBps ?? -1e9))
+    .sort(byNetDesc)
     .slice(0, 12)
     .map((c) => ({
       src: c.src, group: c.group, tf: c.tf, feature: c.feature, h: c.h,
@@ -1287,7 +1475,7 @@ async function main() {
     }));
 
   // อ้างอิงเพดานที่วัดไว้แล้ว (exp-ceiling.json) — p* = ความแม่นทิศที่ต้องได้ถึงจะคุ้มค่าธรรมเนียม
-  const ceilJson = JSON.parse(fs.readFileSync(SRC_CEILING, 'utf8'));
+  const ceilJson = IN.readJson(SRC_CEILING, 'upstream:ceiling');
   OUT.ceilingRef = {};
   for (const key of Object.keys(ceilJson.cells)) {
     const [split, group, tf, hh] = key.split('|');
@@ -1304,7 +1492,7 @@ async function main() {
 
   if (!survivors.length) {
     OUT.stopped = 'ไม่มี feature ไหนรอดด่านคัดเลย — หยุดตามกติกาข้อ 1';
-    fs.writeFileSync(path.join(REPORT_DIR, 'exp-combine.json'), JSON.stringify(OUT, null, 2));
+    fs.writeFileSync(path.join(OPT.outDir, 'exp-combine.json'), JSON.stringify(OUT, null, 2));
     console.log('ไม่มี feature ไหนรอด — ไม่ประกอบโมเดล');
     return;
   }
@@ -1312,7 +1500,14 @@ async function main() {
   // จักรวาลที่จะประกอบโมเดล: ช่องที่รอดกระจุกอยู่ที่ไหนมากที่สุด
   const cellCount = {};
   for (const c of survivors) cellCount[`${c.group}|${c.tf}`] = (cellCount[`${c.group}|${c.tf}`] ?? 0) + 1;
-  const targetCell = Object.entries(cellCount).sort((a, b) => b[1] - a[1])[0][0];
+  const cellRank = Object.entries(cellCount).sort((a, b) => (b[1] - a[1]) || tieKey(a[0], b[0]));
+  const targetCell = cellRank[0][0];
+  // ถ้าเสมอกัน ผู้ชนะถูกตัดสินด้วยตัวอักษร ไม่ใช่หลักฐาน — ต้องบอกให้ดัง ไม่ใช่เงียบ
+  const targetTie = cellRank.filter(([, v]) => v === cellRank[0][1]).map(([k]) => k);
+  if (targetTie.length > 1) {
+    console.warn(`⚠ จักรวาลเป้าหมายเสมอกัน ${targetTie.length} ช่อง (${targetTie.join(' · ')}) `
+      + `— เลือก ${targetCell} ด้วยลำดับตัวอักษร ไม่ใช่ด้วยหลักฐาน`);
+  }
   const [targetGroup, targetTf] = targetCell.split('|');
   const targetMarket = GROUP_MARKET[targetGroup];
 
@@ -1409,7 +1604,12 @@ async function main() {
 
   // ══════════ ตารางแถวของ train (แคชไว้ต่อระยะถือ) ══════════
   const trainRows = {};
-  for (const h of MODEL_HORIZONS) trainRows[h] = buildRows(pool, symFeats, crossFeats, -Infinity, trainEnd, h);
+  // นับไม้ที่ถูกทิ้งเพราะหน้าต่างล้ำเส้นแบ่ง — ต้องรายงาน ไม่ใช่ทิ้งเงียบ ๆ
+  OUT.model.spill = { train: {}, validation: {} };
+  for (const h of MODEL_HORIZONS) {
+    trainRows[h] = buildRows(pool, symFeats, crossFeats, -Infinity, trainEnd, h);
+    OUT.model.spill.train[h] = { kept: trainRows[h].kept, dropped: trainRows[h].dropSpill };
+  }
 
   // ══════════ M0b · วัด IC ใหม่ด้วยโค้ดอิสระ เทียบกับรายงานต้นทาง ══════════
   //
@@ -1424,7 +1624,7 @@ async function main() {
     if (!vals) continue;
     const icHere = spearman(vals, rowsH.fwd);
     const icRep = c.src === 'feat-volume'
-      ? (JSON.parse(fs.readFileSync(SRC_VOLUME, 'utf8')).rows
+      ? (IN.readJson(SRC_VOLUME, 'upstream:feat-volume').rows
         .find((r) => r.cell === targetCell && r.feature === c.feature && r.h === c.h)?.ic ?? NaN)
       : NaN;
     icCheck.push({
@@ -1500,8 +1700,15 @@ async function main() {
     const ridgeScores = scoreRows(rows, st, w);
 
     const cutsOf = (sc) => {
-      const sorted = Array.from(sc).sort((a, b) => a - b);
-      return { lo: percentileOfSorted(sorted, PRIMARY_Q), hi: percentileOfSorted(sorted, 1 - PRIMARY_Q) };
+      const all = Array.from(sc);
+      const sorted = all.filter(Number.isFinite).sort((a, b) => a - b);
+      const dropped = all.length - sorted.length;
+      if (dropped) console.warn(`⚠ h=${h}: คะแนนที่ใช้ไม่ได้ ${dropped} ค่า ถูกคัดออกก่อนหาเส้นแบ่ง`);
+      return {
+        lo: percentileOfSorted(sorted, PRIMARY_Q),
+        hi: percentileOfSorted(sorted, 1 - PRIMARY_Q),
+        nUsable: sorted.length, nDropped: dropped,
+      };
     };
     const cutsRidge = cutsOf(ridgeScores);
     const cutsEqw = cutsOf(eqwScores);
@@ -1536,6 +1743,8 @@ async function main() {
         mulberry32(OPT.seed + h + 6), 'เครื่องยนต์ปัจจุบัน',
       );
     }
+    const xbad = crossCheckSummaries(trainOut[h], `train h=${h}`);
+    if (xbad.length) throw new Error(`ด่านตรวจข้ามช่องไม่ผ่าน — รอบนี้ใช้ไม่ได้:\n  ${xbad.join('\n  ')}`);
     console.log(`h=${h}: ridge net ${f2(trainOut[h].ridge.netBps)} bps/ไม้ (${trainOut[h].ridge.n} ไม้) · λ=${lambda} · IC ${f4(trainOut[h].icRidge)}`);
   }
   OUT.train = trainOut;
@@ -1553,15 +1762,30 @@ async function main() {
   //   จะเขียนบรรทัดลงสมุดบันทึกถาวร แล้วรายงานพิมพ์จำนวนครั้งที่นับได้จริงจากสมุด
   //   ไม่ใช่พิมพ์เลข 1 ตายตัว (ถ้ารันซ้ำ ตัวเลขในรายงานจะโตขึ้นให้เห็นเอง)
   const TOUCH_LOG = path.join(WORK_DIR, 'VALIDATION-TOUCHES.md');
-  const touches = { combineSweeps: 0, labRuns: 0, notes: [], logFile: TOUCH_LOG };
+  const touches = {
+    combineSweeps: 0, mechanicalReruns: 0, labRuns: 0, notes: [], logFile: TOUCH_LOG,
+  };
   if (!OPT.trainOnly) {
     if (!fs.existsSync(TOUCH_LOG)) {
       fs.writeFileSync(TOUCH_LOG, '# สมุดบันทึกการแตะชุด validation ของ combine.mjs\n\n'
-        + '| เมื่อไร | อาร์กิวเมนต์ | หมายเหตุ |\n|---|---|---|\n');
+        + 'ชนิด `วิจัย` = การกวาดที่อาจนำไปสู่การตัดสินใจ (นี่คือตัวเลขที่ทำให้ validation'
+        + ' ปนเปื้อนทีละนิด)\n'
+        + 'ชนิด `กลไก` = การรันซ้ำเพื่อเทียบไบต์ว่าได้ผลเดิมไหม ไม่มีการตัดสินใจใด ๆ'
+        + ' จึงไม่เพิ่มการปนเปื้อน แต่ยังต้องบันทึกไว้ให้เห็น\n\n'
+        + '| เมื่อไร | ชนิด | อาร์กิวเมนต์ | หมายเหตุ |\n|---|---|---|---|\n');
     }
-    fs.appendFileSync(TOUCH_LOG, `| ${new Date().toISOString()} | ${process.argv.slice(2).join(' ') || '(ไม่มี)'} | กวาด validation หลังแช่แข็งโมเดล |\n`);
-    touches.combineSweeps = fs.readFileSync(TOUCH_LOG, 'utf8').split('\n').filter((l) => l.startsWith('| 20')).length;
+    const kind = OPT.rerunProbe ? 'กลไก' : 'วิจัย';
+    const note = OPT.rerunProbe
+      ? 'รันซ้ำเชิงกลโดยตัวตรวจความคงที่ — ไม่มีการตัดสินใจ'
+      : 'กวาด validation หลังแช่แข็งโมเดล';
+    fs.appendFileSync(TOUCH_LOG,
+      `| ${new Date().toISOString()} | ${kind} | ${process.argv.slice(2).join(' ') || '(ไม่มี)'} | ${note} |\n`);
+    const logLines = fs.readFileSync(TOUCH_LOG, 'utf8').split('\n').filter((l) => l.startsWith('| 20'));
+    // นับแยกสองชนิด — บรรทัดเก่าที่ไม่มีคอลัมน์ชนิด ถือเป็น "วิจัย" ตามเดิม (ระวังไว้ก่อน)
+    touches.mechanicalReruns = logLines.filter((l) => l.includes('| กลไก |')).length;
+    touches.combineSweeps = logLines.length - touches.mechanicalReruns;
     touches.notes.push('combine.mjs อ่านแท่ง validation หลังโมเดลถูกแช่แข็งแล้วทุกค่า (นับจากสมุดบันทึก ไม่ใช่เลขตายตัว)');
+    touches.notes.push('การรันซ้ำเชิงกลของตัวตรวจความคงที่ถูกนับแยก เพราะไม่ได้ตัดสินใจอะไรบน validation');
     const valOut = {};
     let engineVal = null;
     if (OPT.useLab) {
@@ -1572,6 +1796,7 @@ async function main() {
     }
     for (const h of MODEL_HORIZONS) {
       const rows = buildRows(pool, symFeats, crossFeats, trainEnd, validationEnd, h);
+      OUT.model.spill.validation[h] = { kept: rows.kept, dropped: rows.dropSpill };
       const f = frozen[h];
       const ridgeScores = scoreRows(rows, f.st, f.w);
       const eqwScores = new Float64Array(rows.n);
@@ -1602,6 +1827,8 @@ async function main() {
       if (engineVal) {
         valOut[h].engine = summarizeTrades(engineVal, mulberry32(OPT.seed + 106 + h), 'เครื่องยนต์ปัจจุบัน');
       }
+      const vbad = crossCheckSummaries(valOut[h], `validation h=${h}`);
+      if (vbad.length) throw new Error(`ด่านตรวจข้ามช่องไม่ผ่าน — รอบนี้ใช้ไม่ได้:\n  ${vbad.join('\n  ')}`);
       console.log(`validation h=${h}: ridge net ${f2(valOut[h].ridge.netBps)} bps/ไม้ (${valOut[h].ridge.n} ไม้)`);
     }
     OUT.validation = valOut;
@@ -1648,7 +1875,9 @@ async function main() {
   // Holm ภายในตระกูล
   const famNames = [...new Set(tests.map((t) => t.family))];
   for (const fam of famNames) {
-    const arr = tests.filter((t) => t.family === fam).sort((a, b) => a.p - b.p);
+    const pAsc = (v) => (Number.isFinite(v) ? v : Infinity);
+    const arr = tests.filter((t) => t.family === fam)
+      .sort((a, b) => (pAsc(a.p) - pAsc(b.p)) || tieKey(a.id, b.id));
     const m = arr.length;
     let still = true;
     arr.forEach((t, i) => {
@@ -1666,10 +1895,44 @@ async function main() {
     priorRounds: { ceiling: 192, featVolume: 1968, featTime: 636, featCross: 1736 },
   };
 
+  OUT.selfCheck = { statPairsCompared: SELF_CHECK.comparisons, mismatches: SELF_CHECK.mismatches.length };
   OUT.elapsedMs = Date.now() - t0;
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-combine.json'), JSON.stringify(OUT, null, 2));
+  // ══════ ที่มาของผลลัพธ์ — ผูกรายงานกับโค้ดและข้อมูลชุดหนึ่ง ══════
+  //
+  // ทุกช่องที่ไม่ได้อยู่ใน volatileFields ต้องเท่ากันทุกไบต์เมื่อรันซ้ำ
+  // ตัวตรวจ check-determinism.mjs อ่านรายการนี้จากไฟล์ผลลัพธ์เอง — สคริปต์ต้อง
+  // ประกาศเองว่าอะไรของตัวเองที่ไม่คงที่ ตัวตรวจไม่มีรายการยกเว้นลับของตัวมันเอง
+  OUT.provenance = buildProvenance({
+    scriptPath: SCRIPT_PATH,
+    root: ROOT,
+    ledger: IN,
+    argv: process.argv.slice(2),
+    volatileFields: [
+      'generatedAt',
+      'elapsedMs',
+      'touches.combineSweeps',
+      'touches.mechanicalReruns',
+      'touches.logFile',
+      'opt.outDir',
+      'provenance',
+    ],
+    volatileReportLines: [
+      // เวลาที่สร้าง — ต่างทุกครั้งโดยธรรมชาติ
+      '^> สร้างเมื่อ ',
+      // จำนวนครั้งที่แตะ validation โตขึ้นทุกครั้งที่รันจริง (นั่นคือเจตนาของสมุดบันทึก)
+      'กวาดแท่ง validation แบบ',
+      'รันซ้ำ',
+      // บรรทัดนี้พิมพ์อาร์กิวเมนต์ ซึ่งมี --out-dir ที่ต่างกันทุกรอบตอนถูกตรวจ
+      '^node v',
+    ],
+  });
+
+  const outJson = path.join(OPT.outDir, 'exp-combine.json');
+  fs.writeFileSync(outJson, JSON.stringify(OUT, null, 2));
   writeReport(OUT, { survivors, gated, thaiClosest, targetCell, pool, bounds });
-  console.log(`เสร็จ ${(OUT.elapsedMs / 1000).toFixed(1)} วินาที · รายงาน scripts/research/report/exp-combine.md`);
+  console.log(`ที่มา: sha สคริปต์ ${OUT.provenance.scriptSha256.slice(0, 12)}`
+    + ` · sha ขาเข้ารวม ${OUT.provenance.inputsDigest.slice(0, 12)} (${OUT.provenance.inputs.length} ไฟล์)`);
+  console.log(`เสร็จ ${(OUT.elapsedMs / 1000).toFixed(1)} วินาที · รายงาน ${path.relative(ROOT, path.join(OPT.outDir, 'exp-combine.md')).replace(/\\/g, '/')}`);
 }
 
 /** แถวเดียวของตารางผลกลยุทธ์ */
@@ -1690,6 +1953,22 @@ function writeReport(OUT, ctx) {
   W(`> สร้างเมื่อ ${OUT.generatedAt} · ใช้เวลา ${(OUT.elapsedMs / 1000).toFixed(1)} วินาที`);
   W(`> bootstrap ${OPT.bootstrap} รอบ · seed ${OPT.seed} · จับกลุ่มด้วยเดือนปฏิทิน`);
   W();
+  // ── ที่มา: ผูก md ฉบับนี้กับโค้ดและข้อมูลชุดเดียว ตรวจย้อนได้ด้วย npm run check:determinism
+  const pv = OUT.provenance ?? {};
+  W('**ที่มาของตัวเลขทุกตัวในไฟล์นี้** (ถ้า sha ไม่ตรง แปลว่ารายงานกับโค้ดคนละรุ่น — อ่านไม่ได้)');
+  W();
+  W('| อะไร | sha256 (12 ตัวแรก) |');
+  W('|---|---|');
+  const bt = '`';
+  W(`| สคริปต์ ${bt}${pv.script ?? '—'}${bt} | ${bt}${(pv.scriptSha256 ?? '').slice(0, 12)}${bt} |`);
+  W(`| ขาเข้าทั้งหมด ${pv.inputs?.length ?? 0} ไฟล์ (รวมกัน) | ${bt}${(pv.inputsDigest ?? '').slice(0, 12)}${bt} |`);
+  for (const f of (pv.inputs ?? []).filter((x) => x.role !== 'candles')) {
+    W(`| ${f.role} ${bt}${f.path}${bt} | ${bt}${(f.sha256 ?? '').slice(0, 12)}${bt} |`);
+  }
+  W(`| แท่งเทียน ${(pv.inputs ?? []).filter((x) => x.role === 'candles').length} ไฟล์ | (รวมอยู่ใน sha ขาเข้า) |`);
+  W();
+  W(`node ${pv.node ?? '—'} · ${pv.platform ?? '—'} · อาร์กิวเมนต์: ${bt}${(pv.argv ?? []).join(' ') || '(ไม่มี)'}${bt}`);
+  W();
 
   // ── คำตอบสั้น ───────────────────────────────────────────────────────────────
   const h = PRIMARY_H;
@@ -1702,7 +1981,8 @@ function writeReport(OUT, ctx) {
   W();
   W('| ตลาด | ช่องที่วัดได้ | ผ่านเกณฑ์เข้ม | ผ่านเกณฑ์หลวม |');
   W('|---|---:|---:|---:|');
-  for (const [mk, v] of Object.entries(OUT.gate.byMarket).sort((a, b) => b[1].strict - a[1].strict)) {
+  for (const [mk, v] of Object.entries(OUT.gate.byMarket)
+    .sort((a, b) => (b[1].strict - a[1].strict) || tieKey(a[0], b[0]))) {
     const label = mk === 'TH_STOCK' ? '**หุ้นไทย (ตลาดที่เจ้าของเทรดจริง)**' : mk;
     W(`| ${label} | ${v.cells} | ${v.strict} | ${v.loose} |`);
   }
@@ -1772,7 +2052,8 @@ function writeReport(OUT, ctx) {
   W();
   W('| ที่มา | กลุ่ม | TF | feature | ถือ | ขอบ (bps) | ค่าธรรมเนียม | สุทธิ | p ของเงิน |');
   W('|---|---|---|---|---:|---:|---:|---:|---:|');
-  for (const s of [...OUT.gate.survivors].sort((a, b) => b.netBps - a.netBps)) {
+  for (const s of [...OUT.gate.survivors].sort((a, b) => (sortNum(b.netBps) - sortNum(a.netBps))
+    || tieKey(`${a.src}|${a.group}|${a.tf}|${a.feature}|${a.h}`, `${b.src}|${b.group}|${b.tf}|${b.feature}|${b.h}`))) {
     W(`| ${s.src} | ${GROUP_LABEL[s.group] ?? s.group} | ${s.tf} | \`${s.feature}\` | ${s.h} | ${f2(s.edgeBps)} | ${f2(s.feeBps)} | **${f2(s.netBps)}** | ${pS(s.moneyP)} |`);
   }
   W();
@@ -1864,6 +2145,31 @@ function writeReport(OUT, ctx) {
   W('⚠ ตัวปรับมาตรฐาน (mean/sd) และเส้นแบ่งคะแนนของโมเดล fit บน **train เท่านั้น** แล้วแช่แข็ง');
   W('เอาไปใช้กับ validation ตรง ๆ — ไม่คำนวณใหม่ ค่าที่ใช้จริงพิมพ์ไว้ใน `exp-combine.json`');
   W();
+  // ── M1b: ด่านกันการล้ำข้ามเส้นแบ่ง (เพิ่มรอบนี้) ──────────────────────────────
+  W('## M1b · ด่านกันการล้ำข้ามเส้นแบ่ง split');
+  W();
+  W('การตรวจ look-ahead ข้างบนตรวจ **ค่า feature** ว่าอ่านอนาคตไหม แต่จับอีกโรคไม่ได้:');
+  W('ตัว feature สะอาด แต่ **ผลตอบแทนที่เอามาวัด** อ่านข้ามเส้นแบ่งไปแล้ว');
+  W('แถวสัญญาณที่อยู่ปลายชุด train อ่าน `candles[i+h]` ซึ่งเป็นแท่งของ validation');
+  W('และแถวปลาย validation อ่านแท่งของ **ชุด test** — ผิดกติกาข้อ 1 ตรง ๆ');
+  W();
+  W('รอบนี้ทิ้งไม้ที่หน้าต่างล้ำออก (วิธีเดียวกับ `feat-cross.mjs`) ไม่ตัดหน้าต่างให้สั้นลง');
+  W('เพราะไม้ที่ถูกบังคับปิดก่อนกำหนดไม่ใช่ไม้ h แท่ง เอามาเฉลี่ยรวมกันไม่ได้');
+  W();
+  W('| ชุด | ถือ (แท่ง) | แถวที่เก็บ | แถวที่ทิ้งเพราะล้ำ | ทิ้งไปกี่ % |');
+  W('|---|---:|---:|---:|---:|');
+  for (const sp of ['train', 'validation']) {
+    for (const hh of MODEL_HORIZONS) {
+      const v = OUT.model.spill?.[sp]?.[hh];
+      if (!v) continue;
+      const pctDrop = v.kept + v.dropped > 0 ? (v.dropped / (v.kept + v.dropped)) * 100 : NaN;
+      W(`| ${sp} | ${hh} | ${v.kept.toLocaleString()} | ${v.dropped.toLocaleString()} | ${f2(pctDrop)}% |`);
+    }
+  }
+  W();
+  W('⚠ ตัวเลขทุกตัวในรายงานฉบับก่อนหน้า (ที่ยังไม่มีด่านนี้) สูงกว่าความจริงเล็กน้อยทุกช่อง');
+  W('ผลกระทบใหญ่สุดอยู่ที่ระยะถือยาว เพราะหน้าต่างยาวล้ำเส้นแบ่งได้มากกว่า');
+  W();
 
   // ── S3 ────────────────────────────────────────────────────────────────────
   W('---');
@@ -1943,7 +2249,8 @@ function writeReport(OUT, ctx) {
     W();
     W('| สิ่งที่แตะ | จำนวนครั้ง |');
     W('|---|---:|');
-    W(`| combine.mjs กวาดแท่ง validation | ${OUT.touches.combineSweeps} |`);
+    W(`| combine.mjs กวาดแท่ง validation แบบ **วิจัย** (อาจนำไปสู่การตัดสินใจ) | ${OUT.touches.combineSweeps} |`);
+    W(`| combine.mjs รันซ้ำ **เชิงกล** โดยตัวตรวจความคงที่ (ไม่ตัดสินใจอะไร) | ${OUT.touches.mechanicalReruns} |`);
     W(`| lab.mjs รันบน validation (เอาไม้ของเครื่องยนต์ปัจจุบันมาเทียบ) | ${OUT.touches.labRuns} |`);
     W();
     for (const n of OUT.touches.notes) W(`· ${n}`);
@@ -2058,7 +2365,7 @@ function writeReport(OUT, ctx) {
   W('|---|---:|---:|---:|---:|---:|---:|');
   const ceilKeys = Object.keys(OUT.ceilingRef).sort((a, b) => {
     const [ga, ha] = a.split('|'); const [gb, hb] = b.split('|');
-    return ga === gb ? Number(ha) - Number(hb) : ga.localeCompare(gb);
+    return ga === gb ? Number(ha) - Number(hb) : tieKey(ga, gb);
   });
   for (const key of ceilKeys) {
     const c = OUT.ceilingRef[key];
@@ -2196,10 +2503,13 @@ function writeReport(OUT, ctx) {
   ];
   lim.forEach((l, i) => { W(`${i + 1}. ${l}`); W(); });
 
-  fs.writeFileSync(path.join(REPORT_DIR, 'exp-combine.md'), `${LINES.join('\n')}\n`);
+  fs.writeFileSync(path.join(OPT.outDir, 'exp-combine.md'), `${LINES.join('\n')}\n`);
 }
 
 export { collectCells, passesGate, passesLooseGate, buildPool, buildCrossFeatures, buildSymbolFeatures, main };
+
+// เปิดให้ทดสอบด่านตรวจตัวเองจากภายนอกได้ — เครื่องตรวจที่ทดสอบไม่ได้ ก็เชื่อไม่ได้
+export { summarizeCore, crossCheckSummaries };
 
 // รันเฉพาะตอนถูกเรียกตรง ๆ — ถ้าถูก import เข้ามาจะไม่ทำงานเอง
 if (process.argv[1] && process.argv[1].endsWith('combine.mjs')) {
