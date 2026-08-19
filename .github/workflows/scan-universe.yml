@@ -221,3 +221,16 @@ jobs:
           else
             node scripts/scan-universe.mjs
           fi
+
+      # ── ปิดบัญชีสัญญาณเก่าที่ราคาเดินผ่านไปแล้ว ────────────────────────────────
+      # รันหลังสแกนโดยตั้งใจ: สัญญาณที่เพิ่งเกิดรอบนี้ยังไม่มีแท่งใหม่ให้เดิน
+      # ตัวเก็บผลจะปล่อยมันค้างไว้เองแล้วมาปิดในรอบถัด ๆ ไป
+      #
+      # continue-on-error เพราะงานนี้เป็นการ "บันทึกประวัติ" ไม่ใช่ "ส่งสัญญาณ"
+      # ถ้า Yahoo ล่มหรือ migration 007 ยังไม่ได้ลง ต้องไม่ทำให้รอบสแกนที่สำเร็จแล้วกลายเป็นแดง
+      - name: ปิดบัญชีสัญญาณที่ถึงเวลาแล้ว
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/resolve-signals.mjs
