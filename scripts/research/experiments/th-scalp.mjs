@@ -135,8 +135,29 @@ const TH_MIN_FEE = 50;         // ค่าคอมขั้นต่ำต่�
 const TH_RISK_BAHT = 2000;     // เงินเสี่ยงต่อไม้ที่ใช้คิดขนาดคำสั่ง
 const TH_TICKS_PER_ROUND = 1;  // จ่ายสเปรดกี่ tick ต่อรอบ (1 = มองโลกในแง่ดีที่สุด)
 
-/** ค่าธรรมเนียมไป-กลับแบบ bps ของกลุ่มที่ไม่ใช่หุ้นไทย — ตัวเดียวกับตารางของ lab.mjs */
-const NON_TH_FEE_BPS = { GOLD: 5, FOREX: 1.5 };
+/**
+ * ค่าธรรมเนียมไป-กลับแบบ bps ของกลุ่มที่ไม่ใช่หุ้นไทย — คัดลอกจาก COST_BPS ใน lab.mjs
+ *
+ * ⚠ เดิมไฟล์นี้เขียนไว้แค่ { GOLD: 5, FOREX: 1.5 } พร้อมคอมเมนต์ว่า 'ตัวเดียวกับตารางของ lab.mjs'
+ *   ซึ่งไม่จริง: lab.mjs มีตารางราย-สัญลักษณ์ทับอยู่อีกชั้น ผลคือ XAGUSD(15) PL=F(12) PA=F(20)
+ *   HG=F(10) ถูกกดเหลือ 5 และ USDTHB(15) USDZAR(5) USDMXN(3) EURJPY/GBPJPY(2.5) ถูกกดเหลือ 1.5
+ *   ทุกตัวเลขของกลุ่มทองและกลุ่มค่าเงินในไฟล์นี้จึงมองโลกสวยเกินจริง และต้องรันใหม่
+ *   (ceiling.mjs:406 กับ fx-magnitude.mjs:424 ใช้ bySymbol ?? byMarket ถูกต้องมาตลอด)
+ */
+const LAB_COST_BPS = {
+  byMarket: { GOLD: 5, FOREX: 1.5, TH_STOCK: 40, US_STOCK: 5, CRYPTO: 25 },
+  bySymbol: {
+    XAUUSD: 3, XAGUSD: 15, 'PL=F': 12, 'PA=F': 20, 'HG=F': 10,
+    EURJPY: 2.5, GBPJPY: 2.5, USDMXN: 3, USDZAR: 5, USDTHB: 15,
+  },
+};
+
+/** ราย-สัญลักษณ์มาก่อนเสมอ แล้วค่อยตกไปที่ค่าประจำตลาด — ลำดับเดียวกับ lab.mjs:629 */
+function nonThFeeBps(symbol, market) {
+  const bps = LAB_COST_BPS.bySymbol[symbol] ?? LAB_COST_BPS.byMarket[market];
+  if (bps === undefined) throw new Error(`ไม่มีค่าประมาณต้นทุนสำหรับ ${market}/${symbol}`);
+  return bps;
+}
 
 /**
  * เรขาคณิตที่ทดสอบ — เลือกจากกลไก ไม่ใช่จากการกวาด
@@ -716,8 +737,11 @@ async function main() {
       feeFrac = quantile(fees, 0.5);
       feeNote = 'ค่าคอม+ขั้นต่ำ+สเปรด 1 tick (มัธยฐาน)';
     } else {
-      feeFrac = NON_TH_FEE_BPS[g] / 10000;
-      feeNote = 'ตาราง bps ของ lab.mjs';
+      // ราย-สัญลักษณ์: กลุ่ม GOLD มีทั้ง XAUUSD(3) และ PA=F(20) ค่าเดียวทั้งกลุ่มจึงผิดเสมอ
+      const bpsPerTrade = tr.map((t) => nonThFeeBps(t.symbol, t.market) / 10000)
+        .filter(Number.isFinite).sort((a, b) => a - b);
+      feeFrac = quantile(bpsPerTrade, 0.5);
+      feeNote = 'ตาราง bps ราย-สัญลักษณ์ของ lab.mjs (มัธยฐาน)';
     }
     S1[g] = { n: vals.length, edge: bt.mean, ciTrade: [bt.lo, bt.hi], ciSymbol: [bc.lo, bc.hi], p: bt.p, feeFrac, feeNote, clusters: bc.clusters };
     registerTest({
@@ -862,7 +886,7 @@ async function main() {
         const withCost = tr.map((t) => {
           const isTh = t.market === 'TH_STOCK';
           const c = isTh ? realisticThCostR(t.entry, t.stopDistPct).costR
-            : flatCostR(NON_TH_FEE_BPS[t.market], t.stopDistPct);
+            : flatCostR(nonThFeeBps(t.symbol, t.market), t.stopDistPct);
           return { symbol: t.symbol, gross: t.rGross, cost: c, net: t.rGross - c, t };
         }).filter((x) => Number.isFinite(x.net));
         const tpIn1 = tr.filter((t) => t.holdBars === 0 && (t.exitReason === 'take_profit' || t.exitReason === 'gap_target')).length / tr.length;
@@ -1024,7 +1048,7 @@ async function main() {
         const withCost = tr.map((t) => {
           const isTh = t.market === 'TH_STOCK';
           const c = isTh ? realisticThCostR(t.entry, t.stopDistPct).costR
-            : flatCostR(NON_TH_FEE_BPS[t.market], t.stopDistPct);
+            : flatCostR(nonThFeeBps(t.symbol, t.market), t.stopDistPct);
           return { symbol: t.symbol, gross: t.rGross, cost: c, net: t.rGross - c };
         }).filter((x) => Number.isFinite(x.net));
         const tpIn1 = tr.filter((t) => t.holdBars === 0 && (t.exitReason === 'take_profit' || t.exitReason === 'gap_target')).length / tr.length;
