@@ -28,6 +28,16 @@ jobs:
 
       - run: npm run lint
 
+      # ── ตัวตรวจความสอดคล้องของสำเนา ────────────────────────────────────────
+      # รีโปนี้มีตรรกะที่ถูกลอกไว้หลายที่โดยจำเป็น (Edge Function ต้องเป็นไฟล์เดียวจบ ·
+      # ตัวสแกนกับตัวเก็บผลรันด้วย node ล้วนจึง import .ts ไม่ได้)
+      # สำเนาที่เพี้ยนจากต้นฉบับจะไม่มี error ให้เห็น มีแต่ตัวเลขที่ผิด — ด่านนี้จึงต้องอยู่ใน CI
+      # ไม่ใช่รอให้ใครนึกได้แล้วรันเอง ทั้งสี่ตัวใช้เวลารวมไม่ถึงสิบวินาที
+      - run: npm run check:parity
+      - run: npm run check:parity:scan
+      - run: npm run check:parity:resolver
+      - run: npm run check:ui-claims
+
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
