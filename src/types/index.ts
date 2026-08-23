@@ -92,7 +92,28 @@ export interface Signal {
   telegram_sent: boolean;
   expires_at: string | null;
   created_at: string;
+
+  // ── ผลลัพธ์จริงของสัญญาณ (migration 007) ────────────────────────────────
+  // เขียนโดย scripts/resolve-signals.mjs ที่เดินราคาไปข้างหน้าแล้วปิดบัญชีให้
+  // เป็น optional เพราะแถวที่สร้างก่อน migration 007 จะไม่มีค่าเหล่านี้
+  // และเพราะตัวเขียนอื่น ๆ (route ฝั่ง Vercel, Edge Function) ยังไม่ได้ตั้งค่ามันตอน insert
+  //
+  // ⚠ realized_r คือ raw_r − cost_r และเป็นตัวเลขเดียวที่ใช้ตัดสินว่าระบบทำเงินได้ไหม
+  //   กติกาที่ฝังอยู่ในตัวเลขอ่านได้ที่หัวไฟล์ scripts/resolve-signals.mjs
+  outcome?: SignalOutcome | null;
+  exit_price?: number | null;
+  resolved_at?: string | null;
+  raw_r?: number | null;
+  cost_r?: number | null;
+  realized_r?: number | null;
+  mfe_r?: number | null;
+  mae_r?: number | null;
+  bars_held?: number | null;
+  resolve_note?: string | null;
 }
+
+/** open = ยังไม่ปิด · tp = แตะเป้า · sl = โดนตัดขาดทุน · timeout = หมดเวลา · unresolvable = ข้อมูลไม่พอ */
+export type SignalOutcome = 'open' | 'tp' | 'sl' | 'timeout' | 'unresolvable';
 
 export interface SignalReason {
   type: 'technical' | 'news' | 'pattern' | 'fundamental';

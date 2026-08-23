@@ -38,6 +38,12 @@ jobs:
       - run: npm run check:parity:resolver
       - run: npm run check:ui-claims
 
+      # ตรรกะที่แปลง "ราคาที่วิ่งไป" เป็น "ตัวเลขที่เจ้าของใช้ตัดสินใจเรื่องเงิน"
+      # ถ้ามันเอนเข้าข้างตัวเองแม้แต่นิดเดียว ทุกข้อสรุปหลังจากนั้นพัง และจะพังแบบมองไม่เห็น
+      # เพราะตัวเลขจะดูสวยขึ้นเรื่อย ๆ ซึ่งเป็นทิศที่คนอยากเชื่ออยู่แล้ว
+      - run: npm run test:resolver
+      - run: npm run test:scorecard
+
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

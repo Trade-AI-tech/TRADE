@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   TrendingUp,
   X,
+  ClipboardList,
 } from 'lucide-react';
 import { useAppStore } from '@/hooks/useStore';
 
@@ -25,6 +26,8 @@ const navItems = [
   { href: '/signals', label: 'สัญญาณ AI', icon: Zap },
   { href: '/markets', label: 'ตลาด', icon: LineChart },
   { href: '/backtest', label: 'Backtest', icon: FlaskConical },
+  // ผลจริงของสัญญาณที่ระบบยิงออกไป — คนละชั้นหลักฐานกับ Backtest ซึ่งวัดบนอดีต
+  { href: '/scorecard', label: 'ผลจริง', icon: ClipboardList },
   { href: '/news', label: 'ข่าวสาร', icon: Newspaper },
 ];
 
