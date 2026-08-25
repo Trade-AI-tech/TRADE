@@ -213,6 +213,20 @@ export interface SignalGateConfig {
   minStopDistancePct: number;
   maxStopDistancePct: number;
   maxSignalsPerRun: number;
+  /**
+   * เกณฑ์ที่ต่างออกไปเฉพาะบาง timeframe — ทับเฉพาะช่องที่ระบุ ที่เหลือใช้ค่าหลัก
+   * ไม่มีคีย์ของ timeframe ไหน = timeframe นั้นใช้ค่าหลักทั้งชุด
+   */
+  perTimeframe?: Partial<Record<string, Partial<Omit<SignalGateConfig, 'perTimeframe'>>>>;
+}
+
+/**
+ * รวมเกณฑ์หลักกับส่วนที่ทับเฉพาะ timeframe นั้น
+ * แยกเป็นฟังก์ชันเพื่อให้ทั้ง evaluateSignal และตัวเรียกภายนอกได้ผลเดียวกันเสมอ
+ */
+export function gateForTimeframe(timeframe: string | undefined, gate: SignalGateConfig = SIGNAL_GATE): SignalGateConfig {
+  const override = timeframe ? gate.perTimeframe?.[timeframe] : undefined;
+  return override ? { ...gate, ...override } : gate;
 }
 
 /**
@@ -356,6 +370,35 @@ export const SIGNAL_GATE: SignalGateConfig = {
    *   ไม่งั้นผู้ใช้คนแรกจะกินโควตาของคนอื่นหมด
    */
   maxSignalsPerRun: 5,
+
+  /**
+   * ── เลน 15m: เกณฑ์คนละชุดกับ 1D/1H โดยตั้งใจ ────────────────────────────
+   *
+   * เจ้าของขอเมื่อ 2026-08-25 ว่าอยากได้สัญญาณถี่ขึ้นบน TF เล็ก
+   * ที่ 'strong' เลน 15m ให้ผลเท่ากับ 1H/1D คือ **ศูนย์** — วัดจริงจากรอบ dry run
+   * 39 คำขอ มีทิศทาง 7 ตัว และทั้ง 7 ตกที่ "ไม่แรงพอ" ทุกตัว
+   * ถ้าไม่ผ่อนตรงนี้ การเพิ่ม 15m เข้ามาก็ไม่เปลี่ยนอะไรเลยนอกจากเปลืองคำขอ
+   *
+   * ⚠ สิ่งที่ต้องรู้ก่อนอ่านตัวเลขจากเลนนี้:
+   *   · 'moderate' วัดบน validation ได้ −0.0564 R/ไม้ เทียบ 'strong' −0.0481
+   *     คือแย่กว่า ไม่ใช่ดีกว่า — ผ่อนเกณฑ์ = ได้จำนวน ไม่ได้ความแม่น
+   *   · Yahoo ให้ข้อมูล 15m ย้อนหลังแค่ 1 เดือน จึงแบ่ง train/validation/test ไม่ได้
+   *     เลนนี้ **ไม่เคยถูกตรวจสอบนอกตัวอย่างเลย** ต่างจาก 1H/1D ที่มีข้อมูลพอตรวจ
+   *   · RR ขั้นต่ำลดจาก 1.5 เหลือ 1.2 เพราะบน TF เล็กเป้าที่ไปถึงได้จริงสั้นกว่า
+   *     แต่การลด RR ก็คือการลดกำไรต่อไม้ที่ชนะ ไม่ใช่การเพิ่มโอกาสชนะ
+   *   · SL ขั้นต่ำ 0.15% ยังคงไว้ และตัวสแกนขยาย SL ของ 15m ให้ถึงเพดานต้นทุน
+   *     0.05 R ก่อนถึงด่านนี้อยู่แล้ว (ดู applyStopFloor ใน src/lib/costs.ts)
+   *
+   * อยากปิดเลนนี้: ลบบล็อก perTimeframe ทิ้ง แล้วเอา 15m ออกจาก --timeframes ของ workflow
+   */
+  perTimeframe: {
+    '15m': {
+      minStrength: 'moderate',
+      minConfidence: 55,
+      minRiskReward: 1.2,
+      maxSignalsPerRun: 8,
+    },
+  },
 };
 
 // ── เหตุผลที่ตก ───────────────────────────────────────────────────────────
@@ -438,6 +481,9 @@ export function evaluateSignal(
   });
 
   if (!signal) return structural('no_signal', 'generateSignal ไม่คืนสัญญาณ (ข้อมูลแท่งไม่พอหรือราคาผิดรูป)');
+
+  // เกณฑ์ของ timeframe นี้อาจถูกทับไว้ (ดู perTimeframe ใน SIGNAL_GATE)
+  gate = gateForTimeframe(signal.timeframe, gate);
 
   const action: SignalAction = signal.action;
   if (action !== 'BUY' && action !== 'SELL') {

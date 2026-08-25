@@ -70,6 +70,13 @@ const DEDUPE_HOURS_1H = 4;
 const TIMEFRAMES = {
   '1D': { interval: '1d', range: '1y' },
   '1H': { interval: '1h', range: '3mo' },
+  /**
+   * 15m — Yahoo ให้ย้อนหลังได้สูงสุด 1 เดือนเท่านั้น (ขอ 2mo ขึ้นไปตอบ Unprocessable Entity)
+   * 2,052 แท่งจึงพอวิเคราะห์รอบปัจจุบันได้ แต่ **น้อยเกินกว่าจะแบ่ง train/validation/test**
+   * แปลว่าเส้นทาง 15m ไม่เคยถูกตรวจสอบแบบนอกตัวอย่างเลย ต่างจาก 1H/1D
+   * ทุกตัวเลขที่ออกจาก 15m จึงเป็น "ของที่ยังไม่ได้วัด" ไม่ใช่ "ของที่วัดแล้วว่าดี"
+   */
+  '15m': { interval: '15m', range: '1mo' },
 };
 
 /** แท่งน้อยกว่านี้วิเคราะห์ไม่ได้ — เกณฑ์เดียวกับ route เดิม */
@@ -91,9 +98,16 @@ const DRY_RUN = hasFlag('dry-run');
 const NO_NOTIFY = hasFlag('no-notify') || DRY_RUN;
 const AS_JSON = hasFlag('json');
 const LIMIT = argValue('limit') ? Number(argValue('limit')) : null;
+/**
+ * ชื่อ timeframe เทียบแบบไม่สนตัวพิมพ์ แล้วคืน "คีย์ตัวจริง" ของ TIMEFRAMES เสมอ
+ * เดิมบังคับ .toUpperCase() ซึ่งใช้ได้กับ 1D/1H แต่พัง 15m ทันทีที่เพิ่มเข้ามา (กลายเป็น 15M)
+ */
+const canonicalTf = (raw) =>
+  Object.keys(TIMEFRAMES).find((k) => k.toLowerCase() === String(raw).trim().toLowerCase()) ?? String(raw).trim();
+
 const TF_LIST = (argValue('timeframes') || '1D,1H')
   .split(',')
-  .map((s) => s.trim().toUpperCase())
+  .map(canonicalTf)
   .filter(Boolean);
 
 /** ข้อความที่โผล่บนหน้า run ของ GitHub Actions — นอก CI ไม่เกะกะเพราะ log ปกติก็อ่านได้ */
@@ -291,6 +305,7 @@ async function loadRealModules() {
       universe: UNIVERSE_TS,
       marketData: path.join(ROOT, 'src', 'lib', 'market-data.ts'),
       engine: path.join(ROOT, 'src', 'lib', 'signal-engine.ts'),
+      costs: path.join(ROOT, 'src', 'lib', 'costs.ts'),
       push: path.join(ROOT, 'src', 'lib', 'push-server.ts'),
       telegram: path.join(ROOT, 'src', 'lib', 'telegram.ts'),
     };
@@ -298,7 +313,7 @@ async function loadRealModules() {
 
     transpileGraph(Object.values(paths), tmpDir);
     const load = (abs) => import(pathToFileURL(path.join(tmpDir, flatName(abs))).href);
-    const [universe, marketData, engine, push, telegram] = await Promise.all(Object.values(paths).map(load));
+    const [universe, marketData, engine, costs, push, telegram] = await Promise.all(Object.values(paths).map(load));
 
     // ── ตัวให้คะแนนความเร็ว (ไม่บังคับ) ────────────────────────────────────────────
     // ทุกอย่างในบล็อกนี้ห่อ try ไว้ทั้งก้อนโดยตั้งใจ: ไฟล์ของคนอื่นที่ยังเขียนไม่เสร็จ
@@ -336,6 +351,7 @@ async function loadRealModules() {
       ...pick(universe, ['SYMBOL_UNIVERSE', 'buildScanTargets', 'selectSignals', 'describeRejections', 'SIGNAL_GATE'], 'src/lib/universe.ts'),
       ...pick(marketData, ['fetchChart'], 'src/lib/market-data.ts'),
       ...pick(engine, ['generateSignal'], 'src/lib/signal-engine.ts'),
+      ...pick(costs, ['applyStopFloor', 'costRFor', 'MAX_COST_R'], 'src/lib/costs.ts'),
       ...pick(push, ['sendPendingSignalsToUser', 'pushStateColumnAvailable'], 'src/lib/push-server.ts'),
       ...pick(telegram, ['sendSignalAlert'], 'src/lib/telegram.ts'),
       speedScore,
@@ -400,6 +416,60 @@ async function main() {
     ghaWarn(msg);
     console.log(`⚠ ${msg}`);
   }
+
+  // ── ตาราง signals มีคอลัมน์ต้นทุนแล้วหรือยัง (migration 007) ────────────────────
+  // เหตุผลเดียวกับ pushStateReady: ใส่ฟิลด์ที่ตารางไม่มี Postgres ปฏิเสธทั้ง batch
+  let costColumnReady = false;
+  if (sb) {
+    const { error } = await sb.from('signals').select('cost_r').limit(1);
+    costColumnReady = !error;
+    if (!costColumnReady) {
+      ghaWarn('ยังไม่ได้รัน supabase/migrations/007_signal_outcomes.sql — สัญญาณจะไม่มีตัวเลขต้นทุนกำกับ');
+    }
+  }
+
+  /**
+   * ชั้นนโยบายหลังเครื่องยนต์ตัดสินใจแล้ว — ทำสองอย่าง
+   *
+   * 1. **ขยายระยะ SL ของ 15m ให้ถึงขั้นต่ำ** (ไม่แตะ 1H/1D)
+   *    ต้นทุนต่อไม้ = ค่าธรรมเนียม ÷ ระยะ SL วัดเมื่อ 2026-08-24 จาก ATR สดได้
+   *    1D 0.021 R · 1H 0.149 R · 15m 0.306 R — 15m แพงกว่า 1D สิบสี่เท่าครึ่ง
+   *    ตัวอย่างสุดขั้ว: EURUSD บน 15m ได้ SL แค่ 0.034% = 3.4 pip ขณะสเปรดไป-กลับ 1.5 pip
+   *    คือจ่ายค่าสเปรด 44% ของเงินที่เสี่ยงตั้งแต่ยังไม่เข้าไม้
+   *
+   *    ทำไมไม่แตะ 1H/1D ด้วย: สองเส้นทางนั้นถูกวัดผลนอกตัวอย่างไว้แล้วด้วย SL ตามธรรมชาติ
+   *    ของเครื่องยนต์ ถ้าขยายด้วย ตัวเลขบนจอจะเทียบกับผลวิจัยไม่ได้อีกต่อไป
+   *
+   *    ⚠ การขยาย SL **ไม่ได้ทำให้ระบบกำไร** ขอบก่อนหักต้นทุนของจักรวาลนี้วัดได้ −0.0272 R/ไม้
+   *    มันแค่เลิกจ่ายค่าธรรมเนียมเกินตัว ราคาที่จ่ายแทนคือไม้กินระยะกว้างขึ้นและอยู่นานขึ้น
+   *
+   * 2. **ติดตัวเลขต้นทุนไปกับทุกสัญญาณ** เพื่อให้เจ้าของเห็นเองว่าไม้นี้เสียค่าผ่านทางกี่ R
+   *    ค่านี้คำนวณจาก entry/stop ล้วน ๆ จึงตรงกับที่ scripts/resolve-signals.mjs จะคิดตอนปิดบัญชี
+   */
+  let stopsWidened = 0;
+  const applyCostPolicy = (signal, tf) => {
+    let out = signal;
+    if (tf === '15m') {
+      try {
+        const floored = lib.applyStopFloor(
+          signal.entry_price, signal.stop_loss, signal.take_profit, signal.symbol, signal.market
+        );
+        if (floored && floored.widenedBy > 1) {
+          out = { ...out, stop_loss: floored.stop_loss, take_profit: floored.take_profit };
+          stopsWidened++;
+        }
+      } catch (e) {
+        ghaWarn(`ขยาย SL ของ ${signal.symbol} 15m ไม่สำเร็จ (${e?.message ?? e}) — ใช้ระยะเดิม`);
+      }
+    }
+    if (costColumnReady) {
+      try {
+        const c = lib.costRFor(out.entry_price, out.stop_loss, out.symbol, out.market);
+        if (Number.isFinite(c)) out = { ...out, cost_r: Math.round(c * 1e4) / 1e4 };
+      } catch { /* ไม่มีค่าประมาณต้นทุนของตัวนี้ — ปล่อยว่างดีกว่าใส่เลขมั่ว */ }
+    }
+    return out;
+  };
 
   // ลำดับในแจ้งเตือนมาจากไหน — ต้องเห็นทุกรอบ ไม่งั้นเวลาลำดับไม่เปลี่ยนจะเดาไม่ออกว่า
   // เพราะ scorecard ยังไม่มี หรือเพราะโหลดไม่ติด
@@ -535,7 +605,7 @@ async function main() {
         candles,
         timeframe: tf,
       });
-      candidates.push({ signal: signal ?? null, target });
+      candidates.push({ signal: signal ? applyCostPolicy(signal, tf) : null, target });
     } catch (e) {
       // เครื่องคำนวณพังกับข้อมูลตัวเดียว ต้องไม่ล้มทั้งรอบ
       ghaWarn(`generateSignal ล้มที่ ${target.symbol} ${tf}: ${e?.message ?? e}`);
@@ -794,6 +864,7 @@ async function main() {
     console.log(`ดึง    สำเร็จ ${fetchStats.ok}/${jobs.length} (${pct(fetchStats.ok, jobs.length)}) · ดึงไม่ได้ ${fetchStats.httpFail} · ข้อมูลไม่พอ ${fetchStats.thin} · หมดงบเวลา ${fetchStats.budget}`);
     console.log(`เกณฑ์  พิจารณา ${evaluated} · ผ่าน ${allRows.length} · ${rejectionLine}`);
     console.log(`บันทึก ${DRY_RUN ? `${allRows.length} (dry run ไม่ได้เขียน)` : signalsInserted} แถว · ซ้ำของเดิมข้าม ${dedupeSkipped} · ราคาอัปเดต ${pricesUpdated} · ผู้รับ ${recipients.size} คน`);
+    console.log(`ต้นทุน ขยาย SL ของ 15m ${stopsWidened} ตัว (เพดานต้นทุน ${lib.MAX_COST_R} R/ไม้) · ${costColumnReady ? 'ติดตัวเลขต้นทุนไปกับทุกสัญญาณ' : 'ยังไม่มีคอลัมน์ cost_r'}`);
     if (!NO_NOTIFY) {
       console.log(`แจ้ง   เด้ง ${notify.notifications} ครั้ง (ถึงเครื่อง ${notify.sent}) · เก็บตกของค้าง ${notify.pendingPicked} · ปั๊มว่าแจ้งแล้ว ${notify.marked} · โดนกันความถี่ ${notify.throttled} คน · ล้ม ${notify.failed} · telegram ${notify.telegramSent}/${notify.telegramSent + notify.telegramFailed}`);
       console.log(`สถานะ  คอลัมน์ push_sent ${pushStateReady ? 'พร้อม (เก็บตกรอบหน้าได้)' : 'ยังไม่มี — ยังไม่ได้รัน migration 006 (สัญญาณที่พลาดจะหายเหมือนเดิม)'}`);

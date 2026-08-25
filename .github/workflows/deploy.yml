@@ -43,6 +43,7 @@ jobs:
       # เพราะตัวเลขจะดูสวยขึ้นเรื่อย ๆ ซึ่งเป็นทิศที่คนอยากเชื่ออยู่แล้ว
       - run: npm run test:resolver
       - run: npm run test:scorecard
+      - run: npm run test:costs
 
       - run: npm run build
         env:
