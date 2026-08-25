@@ -521,6 +521,22 @@ export function generateSignalLab(input, cfg, ind) {
     if (!(takeProfit < currentPrice)) takeProfit = currentPrice - atr * X.tpAtrMult;
   }
 
+  // ชั้นที่ 2.5 — เป้าต้อง "ไกลพอคุ้มความเสี่ยง" ไม่ใช่แค่ "อยู่ถูกฝั่ง"
+  // ลอกจาก src/lib/signal-engine.ts (ดูเหตุผลเต็มและตัวเลขที่วัดได้ที่นั่น)
+  //
+  // อัตราส่วนขั้นต่ำดึงจาก tpAtrMult/slAtrMult ที่มีอยู่แล้ว (ค่าเริ่มต้น 3/1.5 = 2.0)
+  // แทนการเพิ่มคีย์ config ใหม่ — สองเหตุผล: ค่าเริ่มต้นตรงกับ production เป๊ะโดยอัตโนมัติ
+  // และการกวาดค่า exits ก็จะเลื่อนเพดานนี้ตามไปเองอย่างสอดคล้อง ไม่ต้องจำว่ามีปุ่มที่สาม
+  if (action === 'BUY' || action === 'SELL') {
+    const risk = Math.abs(currentPrice - stopLoss);
+    if (risk > 0) {
+      const minReward = risk * (X.tpAtrMult / X.slAtrMult);
+      if (!(Math.abs(takeProfit - currentPrice) >= minReward)) {
+        takeProfit = action === 'BUY' ? currentPrice + minReward : currentPrice - minReward;
+      }
+    }
+  }
+
   // ชั้นที่ 3 — ตรวจ invariant อีกครั้ง "หลังปัดทศนิยม"
   // สิ่งที่ไหลออกไปจริงคือค่าที่ผ่าน roundPrice แล้ว ถ้าระยะเล็กกว่าครึ่งหน่วยปัดจะยุบเท่ากับ entry
   const O = cfg.output;

@@ -215,11 +215,15 @@ jobs:
           # ไม่ใช่ความลับ (ต้องเป็น mailto: หรือ URL ตามสเปก VAPID) แต่ให้ override ได้
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || 'https://trading-ai-ivory.vercel.app' }}
           SCAN_NODE_MODULES: ${{ runner.temp }}/scandeps/node_modules
+        # 15m เพิ่มเข้ามาเมื่อ 2026-08-25 ตามที่เจ้าของขอสัญญาณถี่ขึ้น
+        # คำขอต่อรอบขึ้นจาก 26 เป็น 39 · วัดจริงแล้วรอบละ ~2 วินาที ยังห่างงบเวลา 40 วิมาก
+        # ⚠ เลนนี้ใช้เกณฑ์คนละชุด (moderate/RR 1.2) และ Yahoo ให้ข้อมูลย้อนหลังแค่ 1 เดือน
+        #   จึงไม่เคยถูกตรวจสอบนอกตัวอย่างเลย — ดู perTimeframe ใน src/lib/universe.ts
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            node scripts/scan-universe.mjs --dry-run
+            node scripts/scan-universe.mjs --dry-run --timeframes=1D,1H,15m
           else
-            node scripts/scan-universe.mjs
+            node scripts/scan-universe.mjs --timeframes=1D,1H,15m
           fi
 
       # ── ปิดบัญชีสัญญาณเก่าที่ราคาเดินผ่านไปแล้ว ────────────────────────────────
