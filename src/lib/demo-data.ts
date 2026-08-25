@@ -75,6 +75,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 42, macd: 2.8, ma20: 2340, ma50: 2335 },
     news_sentiment: 0.65, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0338,
     expires_at: '2025-07-02T00:00:00Z', created_at: '2025-06-30T10:00:00Z',
   },
   {
@@ -90,6 +92,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 62, macd: 1.85, ma20: 125.8, ma50: 120.3 },
     news_sentiment: 0.78, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0148,
     expires_at: '2025-07-07T00:00:00Z', created_at: '2025-06-30T09:30:00Z',
   },
   {
@@ -105,6 +109,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 48, macd: -0.85, ma20: 202.5, ma50: 208.3 },
     news_sentiment: -0.45, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0146,
     expires_at: '2025-07-05T00:00:00Z', created_at: '2025-06-30T08:00:00Z',
   },
   {
@@ -120,6 +126,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 55, macd: 0.0012, ma20: 1.0830, ma50: 1.0815 },
     news_sentiment: 0.35, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0465,
     expires_at: '2025-07-02T00:00:00Z', created_at: '2025-06-30T07:00:00Z',
   },
   {
@@ -135,6 +143,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 63, macd: 0.28, ma20: 34.20, ma50: 33.80 },
     news_sentiment: 0.55, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.1112,
     expires_at: '2025-07-14T00:00:00Z', created_at: '2025-06-30T06:30:00Z',
   },
   {
@@ -149,6 +159,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 50, macd: -0.15, ma20: 129.2, ma50: 130.5 },
     news_sentiment: 0.1, telegram_sent: false,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.1469,
     expires_at: '2025-07-07T00:00:00Z', created_at: '2025-06-30T06:00:00Z',
   },
   {
@@ -164,6 +176,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 72, macd: 0.35, ma20: 158.1, ma50: 157.5 },
     news_sentiment: -0.55, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0242,
     expires_at: '2025-07-02T00:00:00Z', created_at: '2025-06-30T05:00:00Z',
   },
   {
@@ -178,6 +192,8 @@ export const DEMO_SIGNALS: Signal[] = [
     ],
     indicators: { rsi: 58, macd: 1.25, ma20: 213.2, ma50: 210.8 },
     news_sentiment: 0.48, telegram_sent: true,
+    // ต้นทุนไป-กลับโดยประมาณ คิดจาก entry/stop ของแถวนี้ด้วยตารางเดียวกับของจริง (src/lib/costs.ts)
+    cost_r: 0.0236,
     expires_at: null, created_at: '2025-06-29T14:00:00Z',
   },
 ];

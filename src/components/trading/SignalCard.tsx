@@ -318,6 +318,29 @@ export default function SignalCard({ signal }: Props) {
             {rrText}
           </span>
         </div>
+
+        {/* ต้นทุนไป-กลับของไม้นี้ คิดเป็นสัดส่วนของเงินที่เสี่ยง
+            เขียนโดยตัวสแกนตอนสร้างสัญญาณ (คอลัมน์ cost_r) ไม่ได้คำนวณใหม่ที่นี่
+            แถวเก่าก่อน migration 007 ไม่มีค่านี้ จึงไม่แสดงอะไรเลยแทนที่จะเดา
+
+            ทำไมต้องโชว์: ต้นทุนคือตัวที่ใหญ่ที่สุดในสมการของ TF เล็ก และมองไม่เห็น
+            จากราคา entry/SL/TP เลย เจ้าของควรเห็นก่อนตัดสินใจว่าไม้นี้เสียค่าผ่านทางเท่าไร */}
+        {typeof signal.cost_r === 'number' && Number.isFinite(signal.cost_r) && (
+          <div
+            className="flex items-baseline gap-1.5 flex-shrink-0"
+            title="ค่าธรรมเนียมไป-กลับโดยประมาณ คิดเป็นสัดส่วนของเงินที่เสี่ยงในไม้นี้ — ตัวเลขนี้ถูกหักออกจากผลลัพธ์เสมอ"
+          >
+            <span className="text-[10px] text-gray-400 uppercase font-medium">ต้นทุน</span>
+            <span
+              className={cn(
+                'text-sm font-mono font-semibold',
+                signal.cost_r >= 0.15 ? 'text-red-700 [.dark_&]:text-down' : 'text-gray-600 [.dark_&]:text-gray-300'
+              )}
+            >
+              {signal.cost_r.toFixed(3)}R
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-[10px] text-gray-400 uppercase font-medium">Conf</span>
           {/* รางของแถบต้องมีสีจริง ไม่ใช่ขาวโปร่ง ไม่งั้นบนพื้นขาวจะเห็นแค่ส่วนที่เติม
