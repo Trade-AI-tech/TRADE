@@ -1,0 +1,40 @@
+name: Fetch News
+
+# ── ทำไมแยกจาก scan-universe.yml ──────────────────────────────────────────────
+# ตัวสแกนรันทุก 30 นาที ถ้าดึงข่าวไปด้วยจะเป็น 13 คำขอ × 48 รอบ = 624 คำขอ/วัน
+# ไปที่ Yahoo เพิ่มจากที่ยิงกราฟอยู่แล้ว ซึ่งไม่จำเป็นเลยเพราะพาดหัวข่าวไม่ได้เปลี่ยน
+# ทุกครึ่งชั่วโมง — และแหล่งข้อมูลฟรีมักตอบ 429 เมื่อยิงถี่ (ปฏิทินเศรษฐกิจที่ลองไว้
+# ตอบ 429 หลังเรียกแค่สองครั้ง จนใช้ไม่ได้เลย)
+#
+# ทุก 4 ชั่วโมง = 6 รอบ/วัน × 13 คำขอ = 78 คำขอ/วัน ซึ่งห่างจากจุดที่มีปัญหามาก
+# และข่าวที่เก่ากว่า 48 ชม. ถูกทิ้งอยู่แล้วในสคริปต์ ตารางจึงไม่บวม
+
+on:
+  schedule:
+    # นาทีที่ 5 ของชั่วโมงที่ 0, 4, 8, 12, 16, 20 (UTC)
+    # เลี่ยงนาทีที่ 10/40 ที่ตัวสแกนใช้ เพื่อไม่ให้ยิง Yahoo พร้อมกันสองงาน
+    - cron: '5 0,4,8,12,16,20 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: fetch-news
+  cancel-in-progress: false
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 ขึ้นไป — เหตุผลเดียวกับ scan-universe.yml (Node 20 ไม่มี WebSocket ในตัว)
+          node-version: '22'
+
+      - name: ดึงข่าวเข้าตาราง news
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        # สคริปต์นี้ใช้ fetch ในตัวของ node ล้วน ไม่ต้องติดตั้งแพ็กเกจอะไรเลย
+        run: node scripts/fetch-news.mjs
