@@ -469,6 +469,19 @@ function buildMemoIndicators(real, candles) {
     detectPatterns: real.detectPatterns,
     determineTrend: real.determineTrend,
     ATR: real.ATR,
+
+    // Stochastic กับ ADX เป็น causal รายดัชนีเหมือน RSI/MACD/BB — ค่าที่ i ขึ้นกับ 0..i
+    // เท่านั้น (มีข้อพิสูจน์ในชุดทดสอบ scripts/test-indicators.mjs) จึงคำนวณบนชุดเต็ม
+    // ครั้งเดียวแล้วอ่านที่ดัชนีของ prefix ได้ ผลเท่ากันระดับบิต
+    //
+    // ⚠ ADX ต้องเป็นแบบอนุกรม ไม่ใช่คืนค่าเดียวของแท่งท้าย ไม่งั้นห้องแล็บต้องเรียกซ้ำ
+    //   ทุกแท่งซึ่งเป็น O(n²) และช้าจนรันจริงไม่ไหวบนคลังข้อมูลขนาดนี้
+    Stochastic: (arr, k, d) => { checkCandles(arr); return memo(`STOCH|${k}|${d}`, () => real.Stochastic(candles, k, d)); },
+    ADX: (arr, p) => { checkCandles(arr); return memo(`ADX|${p}`, () => real.ADX(candles, p)); },
+
+    // volumeRatio อ่านแค่ period+1 แท่งท้าย — เรียกของจริงตรง ๆ เหมือน ATR
+    // ไม่ใช่คอขวด และการเรียกของจริงคือหลักประกันว่าไม่มีสำเนาให้เพี้ยน
+    volumeRatio: real.volumeRatio,
   };
 }
 

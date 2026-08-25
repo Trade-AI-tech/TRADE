@@ -104,6 +104,14 @@ export const DEFAULT_CONFIG = deepFreeze({
     },
     supportResistance: { enabled: true, score: 1, weight: 0.15 },
     news: { enabled: true, bullThreshold: 0.3, bearThreshold: -0.3, scoreMultiplier: 2, weight: 0.2 },
+
+    // ── กฎที่เพิ่มมาเพื่อวัด ยังไม่ได้อยู่ใน src/lib/signal-engine.ts ──────────
+    // ทุกตัว enabled: false เป็นค่าเริ่มต้นโดยตั้งใจ เพื่อให้ config เริ่มต้นของห้องแล็บ
+    // ยังให้ผลตรงกับเครื่องยนต์จริงทุกฟิลด์ (npm run lab:parity ต้องเขียวเสมอ)
+    // เปิดทีละตัวด้วย --config เพื่อวัดว่าตัวไหนเพิ่มขอบจริง แล้วค่อยพอร์ตเฉพาะตัวที่รอด
+    stochastic: { enabled: false, kPeriod: 14, dPeriod: 3, oversold: 20, overbought: 80, score: 1, weight: 0.15 },
+    adx: { enabled: false, period: 14, minTrend: 25, score: 1, weight: 0.15 },
+    volume: { enabled: false, period: 20, minRatio: 1.5, score: 1, weight: 0.15 },
   },
 
   /** เกณฑ์ตัดสิน action / strength / confidence */
@@ -354,6 +362,12 @@ export function generateSignalLab(input, cfg, ind) {
 
   // RSI
   const R = cfg.rules;
+
+  // คำนวณเฉพาะตอนกฎเปิด — ปิดอยู่ก็ไม่ต้องเสียเวลา และผลลัพธ์ต้องเท่าเดิมเป๊ะ
+  const stoch = R.stochastic.enabled ? ind.Stochastic(candles, R.stochastic.kPeriod, R.stochastic.dPeriod) : null;
+  const adx = R.adx.enabled ? ind.ADX(candles, R.adx.period) : null;
+  const volRatio = R.volume.enabled ? ind.volumeRatio(candles, R.volume.period) : NaN;
+
   if (R.rsi.enabled && Number.isFinite(rsiNow)) {
     // ต้นฉบับเป็น if/else-if ยาวเส้นเดียว: โซน oversold/overbought กินก่อน ถ้าไม่เข้าโซนค่อยดูการตัด 50
     // แยกเป็นสองก้อนที่นี่เพื่อปิดทีละกฎย่อยได้ แต่เมื่อเปิดทั้งคู่ ลำดับการตัดสินเหมือนเดิมทุกประการ
@@ -426,6 +440,52 @@ export function generateSignalLab(input, cfg, ind) {
     } else if (Number.isFinite(bb.upper[last]) && currentPrice > bb.upper[last]) {
       bearScore += R.bollinger.score;
       reasons.push({ type: 'technical', label: 'BB Upper Touch', detail: 'ราคาสูงกว่า Bollinger Upper Band', weight: R.bollinger.weight });
+    }
+  }
+
+  // Stochastic — ตำแหน่งราคาในกรอบ (ต่างจาก RSI ที่วัดแรงของการเปลี่ยนแปลง)
+  if (R.stochastic.enabled && stoch) {
+    const kNow = stoch.k[last];
+    const dNow = stoch.d[last];
+    if (Number.isFinite(kNow) && Number.isFinite(dNow)) {
+      if (kNow < R.stochastic.oversold && kNow > dNow) {
+        bullScore += R.stochastic.score;
+        reasons.push({ type: 'technical', label: 'Stoch Oversold Turn', detail: `%K ${kNow.toFixed(1)} ตัดขึ้น %D ในโซน oversold`, weight: R.stochastic.weight });
+      } else if (kNow > R.stochastic.overbought && kNow < dNow) {
+        bearScore += R.stochastic.score;
+        reasons.push({ type: 'technical', label: 'Stoch Overbought Turn', detail: `%K ${kNow.toFixed(1)} ตัดลง %D ในโซน overbought`, weight: R.stochastic.weight });
+      }
+    }
+  }
+
+  // ADX — ให้คะแนนเสริมกับ "ทิศที่ DI ชี้" เฉพาะตอนเทรนด์แรงพอ
+  // ตัวนี้ไม่ได้ให้ทิศเอง มันขยายความมั่นใจของทิศที่มีอยู่แล้ว
+  if (R.adx.enabled && adx) {
+    const adxNow = adx.adx[last];
+    const pdi = adx.plusDI[last];
+    const mdi = adx.minusDI[last];
+    if (Number.isFinite(adxNow) && adxNow >= R.adx.minTrend && Number.isFinite(pdi) && Number.isFinite(mdi)) {
+      if (pdi > mdi) {
+        bullScore += R.adx.score;
+        reasons.push({ type: 'technical', label: 'ADX Strong Uptrend', detail: `ADX ${adxNow.toFixed(1)} · +DI เหนือ −DI`, weight: R.adx.weight });
+      } else if (mdi > pdi) {
+        bearScore += R.adx.score;
+        reasons.push({ type: 'technical', label: 'ADX Strong Downtrend', detail: `ADX ${adxNow.toFixed(1)} · −DI เหนือ +DI`, weight: R.adx.weight });
+      }
+    }
+  }
+
+  // วอลุ่ม — ยืนยันว่าการเคลื่อนไหวมีคนร่วมด้วย ให้คะแนนตามทิศของแท่งล่าสุด
+  // ⚠ ค่าเงินสปอตบน Yahoo ส่งวอลุ่ม 0 มาทั้งชุด → volumeRatio คืน NaN → กฎนี้เงียบไปเอง
+  //   ซึ่งถูกต้องแล้ว ไม่ใช่บั๊ก แต่แปลว่ากฎนี้มีผลเฉพาะทอง/โลหะเท่านั้นในจักรวาลปัจจุบัน
+  if (R.volume.enabled && Number.isFinite(volRatio) && volRatio >= R.volume.minRatio) {
+    const lastCandle = candles[candles.length - 1];
+    if (lastCandle.close > lastCandle.open) {
+      bullScore += R.volume.score;
+      reasons.push({ type: 'technical', label: 'Volume Surge Up', detail: `วอลุ่ม ${volRatio.toFixed(1)} เท่าของปกติ พร้อมแท่งขึ้น`, weight: R.volume.weight });
+    } else if (lastCandle.close < lastCandle.open) {
+      bearScore += R.volume.score;
+      reasons.push({ type: 'technical', label: 'Volume Surge Down', detail: `วอลุ่ม ${volRatio.toFixed(1)} เท่าของปกติ พร้อมแท่งลง`, weight: R.volume.weight });
     }
   }
 

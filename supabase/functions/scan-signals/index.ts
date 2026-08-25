@@ -399,6 +399,132 @@ export function determineTrend(
   if (close < ma20 && ma20 < ma50) return 'downtrend';
   return 'sideways';
 }
+
+/**
+ * Stochastic Oscillator — ราคาปิดอยู่ตรงไหนของช่วง high/low ที่ผ่านมา
+ *
+ * %K = (close − lowestLow) / (highestHigh − lowestLow) × 100
+ * %D = ค่าเฉลี่ยเคลื่อนที่ของ %K (สัญญาณ)
+ *
+ * ต่างจาก RSI ตรงที่ RSI วัด "แรงของการเปลี่ยนแปลง" ส่วนตัวนี้วัด "ตำแหน่งในกรอบ"
+ * ช่วงที่ราคาออกข้าง ตัวนี้จึงแกว่งเต็มสเกลขณะที่ RSI ยังนิ่งอยู่กลาง ๆ
+ *
+ * ⚠ ช่วงที่ high = low ทั้งกรอบ (ตลาดปิด/แท่งแบน) ตัวหารเป็นศูนย์ → คืน NaN
+ *   ไม่ใช่ 50 หรือ 0 เพราะสองค่านั้นเป็นตัวเลขที่ "ดูใช้ได้" แล้วไหลไปเป็นสัญญาณจริงได้
+ */
+export function Stochastic(candles: CandleData[], kPeriod = 14, dPeriod = 3) {
+  const k: number[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < kPeriod - 1) { k.push(NaN); continue; }
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (let j = 0; j < kPeriod; j++) {
+      const c = candles[i - j];
+      if (c.high > hi) hi = c.high;
+      if (c.low < lo) lo = c.low;
+    }
+    const range = hi - lo;
+    k.push(range > 0 ? ((candles[i].close - lo) / range) * 100 : NaN);
+  }
+  return { k, d: SMA(k, dPeriod) };
+}
+
+/**
+ * ADX — ความ "แรงของเทรนด์" โดยไม่สนทิศทาง (Wilder)
+ *
+ * ค่าสูง = ราคาเดินไปทางเดียวอย่างมีระเบียบ · ค่าต่ำ = ออกข้าง
+ * ใช้เป็นตัวกรองมากกว่าตัวให้ทิศ: เทรนด์อ่อนคือช่วงที่กฎตามเทรนด์ทำงานแย่ที่สุด
+ *
+ * คืน { adx, plusDI, minusDI } เป็นค่าล่าสุดค่าเดียว (เหมือน ATR) เพราะผู้เรียกทุกที่
+ * ต้องการแค่ค่าปัจจุบัน การคืนทั้งอาร์เรย์เปลืองหน่วยความจำโดยไม่มีใครใช้
+ */
+export function ADX(candles: CandleData[], period = 14) {
+  const n = candles.length;
+  const adx: number[] = new Array(n).fill(NaN);
+  const plusDI: number[] = new Array(n).fill(NaN);
+  const minusDI: number[] = new Array(n).fill(NaN);
+  if (n < period * 2 + 1) return { adx, plusDI, minusDI };
+
+  // ดัชนี i ของ tr/plusDM/minusDM ตรงกับแท่งที่ i+1 (คำนวณจากคู่แท่ง i กับ i+1)
+  const tr: number[] = [];
+  const pDM: number[] = [];
+  const mDM: number[] = [];
+  for (let i = 1; i < n; i++) {
+    const c = candles[i];
+    const p = candles[i - 1];
+    tr.push(Math.max(c.high - c.low, Math.abs(c.high - p.close), Math.abs(c.low - p.close)));
+    const up = c.high - p.high;
+    const down = p.low - c.low;
+    pDM.push(up > down && up > 0 ? up : 0);
+    mDM.push(down > up && down > 0 ? down : 0);
+  }
+
+  /** ผลรวมแบบ Wilder — รอบแรกเป็นผลรวมตรง ๆ จากนั้นค่อยทบ (causal: ค่าที่ i ใช้แค่ 0..i) */
+  const wilder = (a: number[]): number[] => {
+    const out: number[] = new Array(a.length).fill(NaN);
+    let acc = 0;
+    for (let i = 0; i < a.length; i++) {
+      if (i < period - 1) { acc += a[i]; continue; }
+      if (i === period - 1) { acc += a[i]; out[i] = acc; continue; }
+      acc = acc - acc / period + a[i];
+      out[i] = acc;
+    }
+    return out;
+  };
+
+  const trS = wilder(tr);
+  const pS = wilder(pDM);
+  const mS = wilder(mDM);
+
+  const dx: number[] = new Array(tr.length).fill(NaN);
+  for (let i = 0; i < trS.length; i++) {
+    if (!Number.isFinite(trS[i]) || trS[i] === 0) continue;
+    const pdi = (pS[i] / trS[i]) * 100;
+    const mdi = (mS[i] / trS[i]) * 100;
+    plusDI[i + 1] = pdi;
+    minusDI[i + 1] = mdi;
+    const sum = pdi + mdi;
+    if (sum > 0) dx[i] = (Math.abs(pdi - mdi) / sum) * 100;
+  }
+
+  // ADX = ค่าเฉลี่ยแบบ Wilder ของ DX โดยเริ่มนับจาก DX ตัวแรกที่ใช้ได้
+  const first = dx.findIndex(Number.isFinite);
+  if (first < 0 || first + period > dx.length) return { adx, plusDI, minusDI };
+  let acc = 0;
+  for (let i = first; i < first + period; i++) acc += dx[i];
+  let cur = acc / period;
+  adx[first + period] = cur;
+  for (let i = first + period; i < dx.length; i++) {
+    if (!Number.isFinite(dx[i])) continue;
+    cur = (cur * (period - 1) + dx[i]) / period;
+    adx[i + 1] = cur;
+  }
+  return { adx, plusDI, minusDI };
+}
+
+/**
+ * วอลุ่มแท่งล่าสุดเทียบค่าเฉลี่ยของ period แท่งก่อนหน้า
+ *
+ * 1.0 = ปกติ · 2.0 = มากกว่าปกติเท่าตัว
+ * ใช้ตอบคำถามว่า "การเคลื่อนไหวนี้มีคนร่วมด้วยจริงไหม" ซึ่งราคาอย่างเดียวไม่บอก
+ *
+ * ⚠ ค่าเฉลี่ย **ไม่รวมแท่งล่าสุด** โดยตั้งใจ ไม่งั้นแท่งที่วอลุ่มพุ่งจะดันค่าเฉลี่ยของ
+ *   ตัวเองขึ้นไปด้วย แล้วอัตราส่วนจะต่ำกว่าความจริงเสมอ
+ * ⚠ ค่าเงินสปอตบน Yahoo ส่งวอลุ่มเป็น 0 มาทั้งชุด — ผู้เรียกต้องเช็ค NaN ไม่ใช่สมมติว่ามีค่า
+ */
+export function volumeRatio(candles: CandleData[], period = 20): number {
+  if (candles.length < period + 1) return NaN;
+  const prev = candles.slice(-(period + 1), -1);
+  let sum = 0;
+  for (const c of prev) {
+    if (!Number.isFinite(c.volume)) return NaN;
+    sum += c.volume;
+  }
+  const avg = sum / prev.length;
+  const last = candles[candles.length - 1].volume;
+  if (!(avg > 0) || !Number.isFinite(last)) return NaN;
+  return last / avg;
+}
 // <<< END COPY OF src/lib/indicators.ts
 
 // >>> BEGIN COPY OF src/lib/signal-engine.ts — ห้ามแก้เฉพาะที่นี่ ต้องแก้ต้นฉบับด้วย

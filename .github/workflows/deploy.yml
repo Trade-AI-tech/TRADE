@@ -44,6 +44,7 @@ jobs:
       - run: npm run test:resolver
       - run: npm run test:scorecard
       - run: npm run test:costs
+      - run: npm run test:indicators
 
       - run: npm run build
         env:
