@@ -68,12 +68,14 @@ export const COST_BPS = {
  * เลือกให้กว้างไว้ก่อนโดยตั้งใจ เพราะ bars_held ถูกบันทึกไว้ทุกไม้ ใครอยากรู้ว่า
  * "ถ้าตัดจบที่ 5 แท่งจะเป็นยังไง" ก็กรองเอาทีหลังได้ แต่ข้อมูลที่ไม่ได้เก็บ ย้อนไปเก็บไม่ได้
  */
-const MAX_HOLD_BARS = { '1H': 24, '1D': 20 };
+const MAX_HOLD_BARS = { '15m': 96, '1H': 24, '1D': 20 };
 
 /** timeframe → interval/range ของ Yahoo — ต้องตรงกับ scan-universe.mjs */
 const TIMEFRAMES = {
   '1D': { interval: '1d', range: '1y' },
   '1H': { interval: '1h', range: '3mo' },
+  // Yahoo ให้ 15m ย้อนหลังได้สูงสุด 1 เดือน (ขอมากกว่านั้นตอบ Unprocessable Entity)
+  '15m': { interval: '15m', range: '1mo' },
 };
 
 const CHART_HOSTS = [
@@ -274,12 +276,36 @@ async function main() {
   let stillOpen = 0;
   let failed = 0;
   let fetchFail = 0;
+  let unknownTf = 0;
   const tally = { tp: 0, sl: 0, timeout: 0, unresolvable: 0 };
   const rs = [];
 
   for (const [k, sigs] of groups) {
     const [symbol, market, tf] = k.split('|');
-    const spec = TIMEFRAMES[tf] ?? TIMEFRAMES['1D'];
+    // ⚠ ห้ามใส่ค่าเริ่มต้นตรงนี้เด็ดขาด
+    //
+    // เดิมเขียนว่า TIMEFRAMES[tf] ?? TIMEFRAMES['1D'] ซึ่งทำให้สัญญาณ 15m ถูกตัดสิน
+    // ด้วยแท่งเทียน "รายวัน" ตอนที่ 15m ถูกเพิ่มเข้าตัวสแกนแต่ยังไม่ได้เพิ่มที่นี่
+    // ผลคือไม้ที่ SL ห่าง 1.308% โดน "ชน SL" ทันทีในแท่งแรก เพราะแท่งวันเดียวของทอง
+    // แกว่ง 1.999% ขณะที่แท่ง 15m จริงแกว่งแค่ 0.121–0.161% และไม่ชนสักแท่ง
+    // ตัวเลขผลงานที่เจ้าของเห็นจึงเป็นของปลอมทั้งชุด โดยไม่มี error ให้ใครเห็นเลย
+    //
+    // timeframe ที่ไม่รู้จักต้องกลายเป็น unresolvable ที่มีเหตุผลกำกับ ไม่ใช่เดาแล้วเดินต่อ
+    const spec = TIMEFRAMES[tf];
+    if (!spec) {
+      unknownTf += sigs.length;
+      console.log(`  ไม่รู้จัก timeframe "${tf}" (${symbol}) — ตีตรา unresolvable แทนการเดา`);
+      if (!DRY_RUN) {
+        for (const sig of sigs) {
+          await fetch(`${URL_}/rest/v1/signals?id=eq.${sig.id}`, {
+            method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' },
+            body: JSON.stringify({ outcome: 'unresolvable', resolve_note: `ตัวเก็บผลไม่รู้จัก timeframe "${tf}"` }),
+          });
+        }
+      }
+      tally.unresolvable += sigs.length;
+      continue;
+    }
     const bars = await fetchCandles(symbol, market, spec.interval, spec.range);
     if (!bars.length) {
       fetchFail += sigs.length;
@@ -331,7 +357,7 @@ async function main() {
   console.log('');
   console.log(
     `ค้างอยู่ ${open.length} · ปิดบัญชีรอบนี้ ${resolved} · ยังไม่ถึงเวลา ${stillOpen} · ` +
-      `ดึงราคาไม่ได้ ${fetchFail} · ล้ม ${failed}`
+      `ดึงราคาไม่ได้ ${fetchFail} · timeframe ไม่รู้จัก ${unknownTf} · ล้ม ${failed}`
   );
   console.log(
     `ผล    แตะเป้า ${tally.tp} · โดนตัดขาดทุน ${tally.sl} · หมดเวลา ${tally.timeout} · ` +

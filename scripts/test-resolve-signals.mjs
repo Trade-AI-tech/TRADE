@@ -177,6 +177,40 @@ console.log('── การแปลงชื่อ symbol ต้องตร�
   checkEq('PTT → PTT.BK', toYahooSymbol('PTT', 'TH_STOCK'), 'PTT.BK');
 }
 
+
+// ── ตัวสแกนกับตัวเก็บผลต้องรู้จัก timeframe ชุดเดียวกัน ──────────────────────
+//
+// บั๊กที่เทสต์นี้มาดัก (เกิดจริงเมื่อ 2026-08-26): 15m ถูกเพิ่มเข้า scan-universe.mjs
+// แต่ไม่ได้เพิ่มใน resolve-signals.mjs ซึ่งตอนนั้นมี `TIMEFRAMES[tf] ?? TIMEFRAMES['1D']`
+// สัญญาณ 15m จึงถูกตัดสินด้วยแท่งรายวัน ไม้ที่ SL ห่าง 1.308% ถูกบันทึกว่า "ชน SL"
+// ทันทีในแท่งแรก เพราะแท่งวันเดียวของทองแกว่ง 1.999% ขณะที่แท่ง 15m จริงแกว่ง 0.12–0.16%
+// หน้าผลงานจึงแสดง −0.79 R/ไม้ ซึ่งเป็นของปลอมทั้งชุด และไม่มี error ให้ใครเห็น
+console.log('── ตัวสแกนกับตัวเก็บผลต้องครอบ timeframe เดียวกัน ──');
+{
+  const fs = await import('node:fs');
+  const pathMod = await import('node:path');
+  const url = await import('node:url');
+  const ROOT = pathMod.resolve(pathMod.dirname(url.fileURLToPath(import.meta.url)), '..');
+
+  /** ดึงคีย์ของ const TIMEFRAMES = { ... } ออกจากซอร์สโดยไม่ต้อง import ทั้งไฟล์ */
+  const tfKeys = (rel) => {
+    const src = fs.readFileSync(pathMod.join(ROOT, rel), 'utf8');
+    const m = /const TIMEFRAMES = \{([\s\S]*?)\n\};/.exec(src);
+    if (!m) throw new Error(`หา TIMEFRAMES ใน ${rel} ไม่เจอ`);
+    return [...m[1].matchAll(/^\s*'([^']+)':/gm)].map((x) => x[1]);
+  };
+
+  const scanner = tfKeys('scripts/scan-universe.mjs').sort();
+  const resolver = tfKeys('scripts/resolve-signals.mjs').sort();
+  checkEq('timeframe ของตัวเก็บผลครอบของตัวสแกนครบ', resolver.join(','), scanner.join(','));
+
+  // เพดานการถือต้องมีครบทุก timeframe ด้วย ไม่งั้นจะตกไปใช้ค่าเริ่มต้นเงียบ ๆ อีกแบบ
+  const src = fs.readFileSync(pathMod.join(ROOT, 'scripts/resolve-signals.mjs'), 'utf8');
+  const hold = /const MAX_HOLD_BARS = \{([^}]*)\}/.exec(src);
+  const holdKeys = [...hold[1].matchAll(/'([^']+)':/g)].map((x) => x[1]).sort();
+  checkEq('เพดานการถือมีครบทุก timeframe', holdKeys.join(','), scanner.join(','));
+}
+
 console.log('');
 console.log(`ผ่าน ${pass} · ไม่ผ่าน ${fail}`);
 if (fail > 0) process.exitCode = 1;
