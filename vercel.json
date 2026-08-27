@@ -3,5 +3,10 @@
   "buildCommand": "next build",
   "installCommand": "npm install",
   "outputDirectory": ".next",
-  "regions": ["sin1"]
+  "regions": ["sin1"],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "memory": 512
+    }
+  }
 }
