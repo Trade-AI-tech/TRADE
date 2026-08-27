@@ -45,6 +45,7 @@ jobs:
       - run: npm run test:scorecard
       - run: npm run test:costs
       - run: npm run test:indicators
+      - run: npm run test:health
 
       - run: npm run build
         env:

@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSignals } from '@/hooks/useData';
+import { useSignals, usePrices } from '@/hooks/useData';
 import { cn } from '@/lib/utils';
 import { summarize } from '@/lib/scorecard-stats';
-import { ClipboardList, AlertTriangle, Hourglass } from 'lucide-react';
+import { scanHealth } from '@/lib/scan-health';
+import { ClipboardList, AlertTriangle, Hourglass, Activity, WifiOff } from 'lucide-react';
 
 /**
  * หน้าผลจริง — สัญญาณที่ระบบเคยยิงออกไป จบลงยังไงบ้าง
@@ -62,6 +63,17 @@ export default function ScorecardPage() {
   const { n, open, unresolvable, wins, winRate, avgR: avg, ci, byOutcome, groups } = s;
   const enough = n >= MIN_N_FOR_ANY_READ;
 
+  // ตัวสแกนยังเดินอยู่ไหม — ใช้เวลาที่ราคาถูกอัปเดตล่าสุดเป็นตัวชี้ เพราะตัวสแกน
+  // เขียนราคาทุกรอบเสมอ แม้รอบนั้นไม่มีสัญญาณผ่านเกณฑ์เลยก็ตาม
+  const { data: prices } = usePrices();
+  const health = useMemo(() => {
+    const latest = (prices ?? []).reduce<string | null>(
+      (acc, p) => (p.updated_at && (!acc || p.updated_at > acc) ? p.updated_at : acc),
+      null
+    );
+    return scanHealth(latest);
+  }, [prices]);
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <header>
@@ -73,6 +85,37 @@ export default function ScorecardPage() {
           สัญญาณที่ระบบยิงออกไปจริง แล้วราคาเดินต่อจนปิดบัญชี — ไม่ใช่ตัวเลขจากการทดสอบย้อนหลัง
         </p>
       </header>
+
+      {/* ตัวสแกนยังเดินอยู่ไหม — ต้องอยู่บนสุดเพราะถ้ามันหยุด ตัวเลขทุกตัวข้างล่างก็หยุดตาม
+          และหน้าตาของ "เงียบเพราะไม่มีสัญญาณ" กับ "เงียบเพราะระบบตาย" เหมือนกันทุกประการ
+          (เกิดขึ้นจริงเมื่อ 2026-08-26: GitHub หยุดยิงตัวจับเวลาไป 24 ชม. โดยไม่มี error ที่ไหนเลย) */}
+      {health.level !== 'unknown' && (
+        <div
+          className={cn(
+            'flex gap-3 rounded-xl border p-3',
+            health.level === 'stalled'
+              ? 'border-red-500/30 bg-red-500/5'
+              : health.level === 'slow'
+                ? 'border-amber-500/30 bg-amber-500/5'
+                : 'border-black/[0.06] bg-[rgb(var(--surface-2))] dark:border-white/[0.06]'
+          )}
+        >
+          {health.level === 'stalled' ? (
+            <WifiOff className="h-5 w-5 shrink-0 text-red-700 dark:text-down" />
+          ) : (
+            <Activity
+              className={cn(
+                'h-5 w-5 shrink-0',
+                health.level === 'slow' ? 'text-amber-700 dark:text-amber-400' : 'text-up'
+              )}
+            />
+          )}
+          <div className="text-sm">
+            <p className="font-medium text-[rgb(var(--text-primary))]">{health.label}</p>
+            <p className="mt-0.5 text-[rgb(var(--text-secondary))]">{health.detail}</p>
+          </div>
+        </div>
+      )}
 
       {loading && <div className="text-sm text-[rgb(var(--text-secondary))]">กำลังโหลด…</div>}
 
