@@ -85,6 +85,71 @@ const MIN_CANDLES = 50;
 /** ดึงข้อมูลล้มเกินสัดส่วนนี้ = พังทั้งระบบ (Yahoo บล็อก/เน็ตขาด) ไม่ใช่ "บางตัวไม่มีข้อมูล" */
 const SYSTEMIC_FAILURE_RATIO = 0.5;
 
+// ═══════════════════ หลักฐานย้อนหลังของเซ็ตอัพ (ไม่บังคับ — ไม่มีไฟล์ก็สแกนต่อได้) ═══════════════════
+//
+// ตาราง "เมื่อเกิดเซ็ตอัพแบบนี้ในอดีต ราคาไป TP ก่อนหรือโดน SL ก่อนกี่ %" สร้างโดย
+// scripts/research/build-signal-evidence.mjs — อ่านไฟล์ JSON ตรง ๆ เพราะสคริปต์นี้
+// เป็น node ล้วน (JSON โหลดได้เลย ไม่ต้องผ่านตัว transpile)
+// ⚠ ต้นฉบับของลำดับชั้น fallback คือ src/lib/signal-evidence.ts — ตัวช่วยข้างล่างลอกลำดับ
+//   symbol → timeframe → global มาเท่านั้น ถ้าฝั่งนั้นเปลี่ยนกติกา ต้องตามมาแก้ที่นี่ด้วย
+//   (npm run test:evidence คุมฝั่ง .ts · ฝั่งนี้เป็น "ป้ายแนบ" ไม่ใช่ตัวตัดสินอะไร)
+// ตัวเลขนี้คือความถี่ในอดีตของเรขาคณิต SL/TP แบบเดียวกัน ไม่ใช่การพยากรณ์ผลไม้นี้
+
+const EVIDENCE_JSON = path.join(ROOT, 'src', 'lib', 'signal-evidence.data.json');
+
+function loadEvidenceTable() {
+  try {
+    const j = JSON.parse(readFileSync(EVIDENCE_JSON, 'utf8'));
+    return j?.cells ? j : null;
+  } catch {
+    return null; // ไม่มีไฟล์/ไฟล์เพี้ยน = ไม่แนบหลักฐาน ไม่ใช่เหตุให้ตัวสแกนล้ม
+  }
+}
+const EVIDENCE_TABLE = loadEvidenceTable();
+
+/** 15m ไม่มีประวัติให้เดิน — ใช้ข้อมูล 1H แล้วประกาศผ่าน sourceTimeframe (เหมือนตัวอ่าน .ts) */
+const evidenceDataTf = (tf) => (String(tf).toLowerCase() === '15m' ? '1H' : String(tf).toUpperCase());
+
+function evidenceFor(signal) {
+  if (!EVIDENCE_TABLE) return null;
+  if (signal.action !== 'BUY' && signal.action !== 'SELL') return null;
+  const tf = evidenceDataTf(signal.timeframe);
+  const c = EVIDENCE_TABLE.cells;
+  const attempts = [
+    ['symbol', c.symbol?.[`${signal.symbol}|${tf}|${signal.action}|${signal.strength}`]],
+    ['timeframe', c.timeframe?.[`${tf}|${signal.action}|${signal.strength}`]],
+    ['global', c.global?.[`${tf}|${signal.action}`]],
+  ];
+  for (const [level, cell] of attempts) {
+    if (!cell || !Number.isFinite(cell.n)) continue;
+    return {
+      level,
+      n: cell.n,
+      tpFirstPct: cell.tpFirstPct,
+      slFirstPct: cell.slFirstPct,
+      timeoutPct: cell.timeoutPct,
+      sourceTimeframe: cell.sourceTimeframe,
+      spanYears: cell.spanYears,
+    };
+  }
+  return null;
+}
+
+/**
+ * ที่นั่งที่ "จอง" ไว้ให้ตลาด GOLD ภายในเพดาน maxSignalsPerRun ของแต่ละคน
+ *
+ * ทำไมต้องมี: เจ้าของเทรดทองเป็นหลัก และสั่งเมื่อ 2026-08-28 ให้เน้นทอง —
+ * เพดาน 5 สัญญาณ/รอบ/คนตัดตามคะแนนรวมอย่างเดียว วันที่ตลาดขยับพร้อมกันทั้งกระดาน
+ * สัญญาณทองที่ผ่านเกณฑ์จึงโดนคู่ FOREX คะแนนสูงกว่าเบียดตกได้ทั้งที่เจ้าของอยากเห็นมันก่อน
+ *
+ * กติกา (ดูวิธีใช้ตรงบล็อก "การเน้นทอง" ในขั้นที่ 6):
+ *   · จองให้เฉพาะทองที่ "ผ่านเกณฑ์คุณภาพเดิมครบ" — ไม่มีการผ่อนเกณฑ์ให้ทอง
+ *   · ทองไม่ผ่านเกณฑ์ = ที่จองคืนให้ตลาดอื่นทั้งหมด · เพดานรวมต่อรอบไม่เปลี่ยน
+ *   · ที่จองเป็น "ขั้นต่ำ" ของทอง ไม่ใช่เพดาน — ทองตัวที่เกินโควตาจองยังกลับไป
+ *     แข่งกับตลาดอื่นตามการเรียงเดิมได้ (นโยบายนี้ต้องไม่ทำให้ทองได้น้อยกว่าเดิม)
+ */
+const GOLD_RESERVED_SLOTS = 2;
+
 // ═══════════════════════════════ อ่านอาร์กิวเมนต์ ═══════════════════════════════
 
 const argv = process.argv.slice(2);
@@ -591,6 +656,11 @@ async function main() {
   }
 
   // ── 4. สร้างสัญญาณดิบ (ยังไม่ตัดสินคุณภาพ — นั่นเป็นงานของ selectSignals) ───────
+  //
+  // หลักฐานย้อนหลังถูกแนบเป็น field ใหม่ `evidence` ที่นี่ (field เดิมไม่ถูกแตะ)
+  // เพื่อให้ทุกชั้นถัดไปในหน่วยความจำเห็นมัน — แต่ตาราง signals ไม่มีคอลัมน์นี้
+  // จึงถูกถอดออกก่อน insert (ดูขั้นที่ 6) ไม่งั้น Postgres ปฏิเสธทั้ง batch
+  let evidenceAttached = 0;
   const cpuComputeStart = process.cpuUsage();
   const candidates = []; // { signal: Signal|null, target }
   for (let i = 0; i < jobs.length; i++) {
@@ -598,14 +668,22 @@ async function main() {
     if (!candles) continue; // ดึงไม่สำเร็จ — นับไว้ใน fetchStats แล้ว ไม่เอามาปนกับ "ไม่มีสัญญาณ"
     const { target, tf } = jobs[i];
     try {
-      const signal = lib.generateSignal({
+      let signal = lib.generateSignal({
         symbol: target.symbol,
         name: target.name,
         market: target.market,
         candles,
         timeframe: tf,
       });
-      candidates.push({ signal: signal ? applyCostPolicy(signal, tf) : null, target });
+      if (signal) {
+        signal = applyCostPolicy(signal, tf);
+        const evidence = evidenceFor(signal);
+        if (evidence) {
+          signal = { ...signal, evidence };
+          evidenceAttached++;
+        }
+      }
+      candidates.push({ signal, target });
     } catch (e) {
       // เครื่องคำนวณพังกับข้อมูลตัวเดียว ต้องไม่ล้มทั้งรอบ
       ghaWarn(`generateSignal ล้มที่ ${target.symbol} ${tf}: ${e?.message ?? e}`);
@@ -621,7 +699,8 @@ async function main() {
   //
   // ⚠ ตัวสแกนนี้ / route บน Vercel / Edge Function `scan-signals` ใช้ตาราง signals ใบเดียวกัน
   //   จึงเห็นของกันและกัน ใครเขียนก่อนได้ ใครมาทีหลังเจอแล้วข้าม — แต่ "อ่านแล้วค่อยเขียน"
-  //   กันไม่ได้ถ้ารันวินาทีเดียวกัน จึงตั้งตารางเวลาให้คนละนาที (นาทีที่ 25 ไม่ใช่นาทีที่ 0)
+  //   กันไม่ได้ถ้ารันวินาทีเดียวกัน จึงตั้งตารางเวลาให้คนละนาที (หน้าปัด 2,17,32,47
+  //   เลี่ยงนาทีที่ 0 ที่ pg_cron ใช้ — ระยะกันชนเหลือ 2 นาที ดูคำเตือนในหัวไฟล์ workflow)
   //   เหตุผลเต็มอยู่ในหัวไฟล์ .github/workflows/scan-universe.yml
   const seen = new Set();
   if (sb) {
@@ -673,7 +752,56 @@ async function main() {
       return true;
     });
 
-    const selection = lib.selectSignals(notDuplicate.map((c) => c.signal));
+    // ── การเน้นทอง (เจ้าของสั่ง 2026-08-28 — เหตุผลเต็มที่คอมเมนต์ GOLD_RESERVED_SLOTS) ──
+    // แยกทองออกมาจองที่ก่อน แล้วให้ที่เหลือแข่งกันตามการเรียงเดิม:
+    //   1) ทองแข่งกันเองชิงที่จอง (สูงสุด GOLD_RESERVED_SLOTS ที่ · เกณฑ์คุณภาพชุดเดิมเป๊ะ)
+    //   2) ทองที่ผ่านคุณภาพแต่ล้นที่จอง ถูกส่งกลับไปแข่งกับตลาดอื่นในรอบเรียงปกติ
+    //   3) เพดานรวมต่อคนยังเท่า maxSignalsPerRun เดิม — รอบเรียงปกติได้เฉพาะที่ที่เหลือ
+    const goldPool = [];
+    const restPool = [];
+    for (const { signal } of notDuplicate) {
+      if (signal && signal.market === 'GOLD') goldPool.push(signal);
+      else restPool.push(signal ?? null); // null ต้องถึงมือ selectSignals เพื่อถูกนับเป็น no_signal เหมือนเดิม
+    }
+
+    const gate = lib.SIGNAL_GATE;
+    const goldPick = lib.selectSignals(goldPool, {
+      ...gate,
+      maxSignalsPerRun: Math.min(GOLD_RESERVED_SLOTS, gate.maxSignalsPerRun),
+    });
+
+    // ทองที่ตกด้วยเหตุผลเดียวคือ over_run_limit = ผ่านคุณภาพครบแล้วแต่ล้นที่จอง
+    // จับคู่กลับเป็น Signal ตัวเต็มด้วย symbol:timeframe:action ได้เพราะ generateSignal
+    // ให้สัญญาณเดียวต่อ symbol ต่อ timeframe — ไม่มีทางชนกันเองในรอบเดียว
+    const reservedGold = new Set(goldPick.accepted);
+    const overflowGold = goldPick.rejected
+      .filter((r) => r.rejections.length && r.rejections.every((x) => x.code === 'over_run_limit'))
+      .map((r) =>
+        goldPool.find(
+          (s) => !reservedGold.has(s) && s.symbol === r.symbol && s.timeframe === r.timeframe && s.action === r.action
+        )
+      )
+      .filter(Boolean);
+
+    const restPick = lib.selectSignals([...overflowGold, ...restPool], {
+      ...gate,
+      maxSignalsPerRun: gate.maxSignalsPerRun - goldPick.accepted.length,
+    });
+
+    // รวมผลสองรอบให้หน้าตาเหมือนการเรียกครั้งเดียว — ตัวที่ล้นที่จองถูกป้อนซ้ำสองรอบ
+    // จึงหักออกจาก evaluated และไม่นับ over_run_limit ของรอบทอง (ไปนับผลจริงในรอบเรียงปกติ)
+    const mergedSummary = {};
+    for (const [code, n] of Object.entries(goldPick.summary)) {
+      if (code === 'over_run_limit') continue;
+      mergedSummary[code] = (mergedSummary[code] ?? 0) + n;
+    }
+    for (const [code, n] of Object.entries(restPick.summary)) mergedSummary[code] = (mergedSummary[code] ?? 0) + n;
+
+    const selection = {
+      accepted: [...goldPick.accepted, ...restPick.accepted],
+      evaluated: goldPick.evaluated + restPick.evaluated - overflowGold.length,
+      summary: mergedSummary,
+    };
     evaluated += selection.evaluated;
     for (const [code, n] of Object.entries(selection.summary)) gateSummary[code] = (gateSummary[code] ?? 0) + n;
     overCapacity += selection.summary.over_run_limit ?? 0;
@@ -687,7 +815,13 @@ async function main() {
       // push_sent = false = "ตัวส่งกลางยังไม่ได้แจ้งแถวนี้" ตัวสแกนตัวนี้เป็นตัวเดียวที่เขียนค่านี้
       // (ค่าเริ่มต้นของคอลัมน์คือ true เพราะตัวเขียนอื่น ๆ แจ้งเตือนเองตอน insert — ดูเหตุผลเต็ม
       //  ในหัวไฟล์ migration 006) ใส่เฉพาะตอนที่คอลัมน์มีจริง ไม่งั้น insert ล้มทั้ง batch
-      rows.push({ ...signal, id: randomUUID(), user_id: userId, ...(pushStateReady ? { push_sent: false } : {}) });
+      //
+      // `evidence` เป็น field ในหน่วยความจำเท่านั้น — ตาราง signals ไม่มีคอลัมน์นี้
+      // ถอดออกก่อน insert ด้วยเหตุผลเดียวกับ push_sent/cost_r: ฟิลด์ที่ตารางไม่รู้จัก
+      // ทำให้ Postgres ปฏิเสธทั้ง batch แล้วสัญญาณทั้งรอบหายเงียบ
+      // (หน้าเว็บไม่เสียอะไร — SignalCard คำนวณหลักฐานเองจาก src/lib/signal-evidence.ts)
+      const { evidence: _evidence, ...dbSignal } = signal;
+      rows.push({ ...dbSignal, id: randomUUID(), user_id: userId, ...(pushStateReady ? { push_sent: false } : {}) });
     }
     if (rows.length) rowsByUser.set(userId, rows);
   }
@@ -851,6 +985,8 @@ async function main() {
     pricesUpdated,
     pushStateReady,
     speedScoreSource: lib.speedScoreSource,
+    evidenceTable: EVIDENCE_TABLE ? 'src/lib/signal-evidence.data.json' : null,
+    evidenceAttached,
     ...notify,
     dbErrors,
     notifyNotes,
@@ -865,6 +1001,7 @@ async function main() {
     console.log(`เกณฑ์  พิจารณา ${evaluated} · ผ่าน ${allRows.length} · ${rejectionLine}`);
     console.log(`บันทึก ${DRY_RUN ? `${allRows.length} (dry run ไม่ได้เขียน)` : signalsInserted} แถว · ซ้ำของเดิมข้าม ${dedupeSkipped} · ราคาอัปเดต ${pricesUpdated} · ผู้รับ ${recipients.size} คน`);
     console.log(`ต้นทุน ขยาย SL ของ 15m ${stopsWidened} ตัว (เพดานต้นทุน ${lib.MAX_COST_R} R/ไม้) · ${costColumnReady ? 'ติดตัวเลขต้นทุนไปกับทุกสัญญาณ' : 'ยังไม่มีคอลัมน์ cost_r'}`);
+    console.log(`หลักฐาน ${EVIDENCE_TABLE ? `แนบความถี่ในอดีตของเซ็ตอัพให้ ${evidenceAttached} สัญญาณ (ตาราง src/lib/signal-evidence.data.json)` : 'ไม่มีตาราง signal-evidence.data.json — สแกนต่อโดยไม่แนบ'}`);
     if (!NO_NOTIFY) {
       console.log(`แจ้ง   เด้ง ${notify.notifications} ครั้ง (ถึงเครื่อง ${notify.sent}) · เก็บตกของค้าง ${notify.pendingPicked} · ปั๊มว่าแจ้งแล้ว ${notify.marked} · โดนกันความถี่ ${notify.throttled} คน · ล้ม ${notify.failed} · telegram ${notify.telegramSent}/${notify.telegramSent + notify.telegramFailed}`);
       console.log(`สถานะ  คอลัมน์ push_sent ${pushStateReady ? 'พร้อม (เก็บตกรอบหน้าได้)' : 'ยังไม่มี — ยังไม่ได้รัน migration 006 (สัญญาณที่พลาดจะหายเหมือนเดิม)'}`);
