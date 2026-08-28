@@ -324,6 +324,11 @@ async function main() {
     return; // ไม่ใช่ความผิดพลาด แค่ยังไม่พร้อม — อย่าทำให้ CI แดง
   }
 
+  // ⚠ flipped ≠ closed — ห้ามเพิ่มเงื่อนไขกรอง flipped_at ที่นี่เด็ดขาด (migration 009)
+  // ใบที่โดนปั๊มป้ายกลับทิศเป็นแค่ "คำเตือนให้เจ้าของพิจารณาปิดไม้เอง" เราไม่รู้ว่า
+  // เขาปิดจริงไหม ledger จึงต้องเดินต่อและปิดบัญชีใบนั้นตามกติกาเดิมทุกอย่าง
+  // เพื่อบันทึก "สิ่งที่สัญญาณทำ" ไม่ใช่ "สิ่งที่เจ้าของอาจจะทำ" — ถ้ากรองทิ้ง
+  // ตัวเลข realized_r ของระบบจะเอนเข้าข้างตัวเอง (ตัดไม้ที่เครื่องยนต์กลับใจทิ้งเงียบ ๆ)
   const cols = 'id,symbol,market,action,timeframe,entry_price,stop_loss,take_profit,created_at,expires_at';
   const res = await fetch(
     `${URL_}/rest/v1/signals?select=${cols}&outcome=eq.open&order=created_at.asc&limit=500`,

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import SignalCard from '@/components/trading/SignalCard';
 import { useSignals } from '@/hooks/useData';
 import { cn } from '@/lib/utils';
+import { flipReversalIndex } from '@/lib/signal-flips';
 import { Zap, Filter } from 'lucide-react';
 
 const MARKET_FILTERS = [
@@ -61,6 +62,11 @@ export default function SignalsPage() {
     }
     return base;
   }, [signals, market, action, timeframe, sortBy]);
+
+  // ใบใหม่ใบไหน "กลับทิศ" ใบเก่า — ป้าย flipped_by อยู่บนใบเก่า การ์ดใบเดียวหาเองไม่ได้
+  // จึงประกอบ map ครั้งเดียวจากสัญญาณทั้งชุดที่โหลดมา แล้วส่งเข้าการ์ดเป็น prop
+  // (โหมดถอย: ยังไม่ได้รัน migration 009 = ไม่มีแถวไหนมี flipped_by = map ว่าง ไม่พัง)
+  const reversals = useMemo(() => flipReversalIndex(signals), [signals]);
 
   // แถวสรุปนับจากสัญญาณที่โหลดมาจริงเท่านั้น ไม่ใช่ตัวเลขคงที่จากที่ไหน
   const summary = useMemo(() => {
@@ -201,7 +207,7 @@ export default function SignalsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(s => (
-            <SignalCard key={s.id} signal={s} />
+            <SignalCard key={s.id} signal={s} reversal={reversals.get(s.id) ?? null} />
           ))}
         </div>
       )}

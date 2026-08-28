@@ -16,6 +16,12 @@ export type ResolvedSignal = Signal & {
   outcome: 'tp' | 'sl' | 'timeout';
 };
 
+// ⚠ flipped ≠ closed — ห้ามเอา flipped_at/flipped_by (migration 009) มาเป็นเงื่อนไข
+// กรองหรือแยกนับในไฟล์นี้เด็ดขาด ป้ายกลับทิศเป็นแค่คำเตือนให้เจ้าของพิจารณาปิดไม้เอง
+// เราไม่รู้ว่าเขาปิดจริงไหม — ไม้ที่โดนปั๊มป้ายยังถูก resolve ตามปกติและต้องเข้าเลข
+// ทุกตัวบนหน้า /scorecard เหมือนไม้อื่น ไม่งั้นตัวเลขจะเอนเข้าข้างตัวเอง
+// (ตัดไม้ที่เครื่องยนต์กลับใจออกจากบัญชี = โกงข้อสอบของตัวเอง)
+
 export function isResolved(s: Signal): s is ResolvedSignal {
   return (
     (s.outcome === 'tp' || s.outcome === 'sl' || s.outcome === 'timeout') &&

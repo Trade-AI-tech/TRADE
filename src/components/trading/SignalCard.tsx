@@ -3,13 +3,21 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { lookupEvidence } from '@/lib/signal-evidence';
+import { thTimeHHmm } from '@/lib/signal-flips';
+import type { FlipReversalNote } from '@/lib/signal-flips';
 import {
-  TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2,
+  TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import type { Signal } from '@/types';
 
 interface Props {
   signal: Signal;
+  /**
+   * ใบเก่าที่สัญญาณใบนี้ "กลับทิศ" — มาจาก flipReversalIndex(...) ของหน้าแม่
+   * (ป้าย flipped_by อยู่บนใบเก่า การ์ดใบเดียวจึงหาเองไม่ได้ ต้องให้หน้าแม่ประกอบส่งมา)
+   * ไม่ส่ง/null = ใบนี้ไม่ได้กลับทิศใคร
+   */
+  reversal?: FlipReversalNote | null;
 }
 
 /**
@@ -72,7 +80,7 @@ function expiresInTh(iso: string | null, now: number): { text: string; expired: 
   return { text: `หมดอายุในอีก ${Math.floor(h / 24)} วัน`, expired: false };
 }
 
-export default function SignalCard({ signal }: Props) {
+export default function SignalCard({ signal, reversal }: Props) {
   const cfg = actionConfig[signal.action];
   const Icon = cfg.icon;
   const stars = strengthStars[signal.strength];
@@ -151,6 +159,17 @@ export default function SignalCard({ signal }: Props) {
 
   const conf = Math.max(0, Math.min(100, signal.confidence));
 
+  // ── ป้ายกลับทิศ (migration 009) ─────────────────────────────────────────────
+  // flipped_at ถูกปั๊มโดยตัวสแกนเมื่อเครื่องยนต์ออกสัญญาณทิศตรงข้ามบน
+  // symbol+timeframe เดียวกันขณะใบนี้ยังเปิดอยู่ — แถบนี้บอก "ข้อเท็จจริง + เวลา"
+  // แล้วส่งการตัดสินใจคืนเจ้าของ (พิจารณาปิดไม้เอง) จงใจไม่อ้างว่าการปิดตอนนี้
+  // จะลดขาดทุน/เพิ่มกำไร เพราะไม่เคยวัด
+  // เวลาเป็นโซนไทย (UTC+7 ตายตัว — deterministic ทั้ง SSR และ browser จึงไม่มี
+  // hydration mismatch) · parse ไม่ได้ = ไม่แสดงเวลา ห้ามเดา
+  // โหมดถอย: ยังไม่ได้รัน 009 = field ไม่มากับแถว = ไม่ขึ้นแถบ การ์ดทำงานปกติ
+  const isFlipped = Boolean(signal.flipped_at);
+  const flippedTime = signal.flipped_at ? thTimeHHmm(signal.flipped_at) : null;
+
   return (
     <div
       className={cn(
@@ -190,6 +209,14 @@ export default function SignalCard({ signal }: Props) {
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5 truncate">{signal.name}</p>
+            {/* ใบนี้เป็น "ตัวกลับทิศ" ของใบเก่า — บอก action เดิมของจริงจากใบนั้น
+                คำว่า "ที่ยังเปิดอยู่" พูดเฉพาะเมื่อ ledger ยังไม่ปิดใบเก่า (outcome ยัง open)
+                ถ้าตัวเก็บผลปิดบัญชีใบเก่าไปแล้ว การอ้างว่ามันยังเปิดคือคำอ้างที่ข้อมูลค้าน */}
+            {reversal && (
+              <p className="text-[11px] mt-0.5 text-amber-700 [.dark_&]:text-amber-400">
+                สวนทางกับ {reversal.prevAction} ใบเดิม{reversal.prevStillOpen ? 'ที่ยังเปิดอยู่' : ''}
+              </p>
+            )}
           </div>
         </div>
 
@@ -204,6 +231,19 @@ export default function SignalCard({ signal }: Props) {
           </div>
         </div>
       </div>
+
+      {/* แถบเตือนกลับทิศ — ใบนี้โดนเครื่องยนต์อ่านกลับทิศแล้ว ต้องเห็นก่อนราคา
+          เพราะมันเปลี่ยนความหมายของทั้งการ์ด: entry/TP/SL ข้างล่างคือของใบที่
+          เครื่องยนต์ไม่ได้ยืนอยู่ข้างเดิมแล้ว · โทนเหลืองเตือนชุดเดียวกับป้าย
+          "เริ่มเก่าแล้ว" (amber-700 ธีมสว่าง / amber-400 ธีมมืด — ผ่านคอนทราสต์ทั้งคู่) */}
+      {isFlipped && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-2.5 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-700 [.dark_&]:text-amber-400" />
+          <span className="text-[11px] leading-relaxed font-medium text-amber-700 [.dark_&]:text-amber-400">
+            เครื่องยนต์อ่านกลับทิศแล้ว{flippedTime ? `เมื่อ ${flippedTime} น.` : ''} — พิจารณาปิดไม้
+          </span>
+        </div>
+      )}
 
       {ladder ? (
         <div className="relative h-36 mb-4">

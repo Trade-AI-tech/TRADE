@@ -1,5 +1,6 @@
-import type { Signal } from '@/types';
+import type { Signal, SignalFlipNote } from '@/types';
 import type { PushPayload } from './push-server';
+import { flipWarningLine } from './signal-flips';
 
 /**
  * รวมสัญญาณของ "หนึ่งรอบสแกน" ให้เป็นแจ้งเตือนก้อนเดียว + จัดลำดับ + กันเด้งซ้ำในชั่วโมงเดียว
@@ -391,20 +392,50 @@ export function rankSignals(signals: Signal[], scorer?: SpeedScorer | null): Sig
 }
 
 /**
+ * เลือกโน้ตกลับทิศที่ "ใบเก่าใหม่กว่า" ระหว่างโน้ตของใบที่รอดกับใบที่โดนยุบ
+ *
+ * นโยบายเดียวกับ findFlipTargets: ข้อความเตือนอ้างใบล่าสุดเสมอ
+ * เทียบเวลาไม่ได้ (parse ไม่ออก) = ไม่มีหลักฐานว่าใครใหม่กว่า → คงของใบที่รอดไว้ ไม่เดา
+ */
+function laterFlip(kept: SignalFlipNote | null | undefined, dropped: SignalFlipNote): SignalFlipNote {
+  if (!kept) return dropped;
+  const tk = kept.prev_created_at ? new Date(kept.prev_created_at).getTime() : NaN;
+  const td = dropped.prev_created_at ? new Date(dropped.prev_created_at).getTime() : NaN;
+  if (!Number.isFinite(td)) return kept;
+  if (!Number.isFinite(tk)) return dropped;
+  return td > tk ? dropped : kept;
+}
+
+/**
  * ยุบสัญญาณที่เป็น "การตัดสินใจเดียวกัน" ให้เหลือตัวเดียว
  *
  * XAUUSD ซื้อ 1D กับ XAUUSD ซื้อ 1H ที่โผล่รอบเดียวกัน สำหรับคนเทรดคือเรื่องเดียวกัน
  * ถ้าไม่ยุบ ชุดแจ้งเตือนจะเปลืองบรรทัดไปกับชื่อซ้ำ แล้วดันตัวอื่นตกขอบ
  * ต้องเรียกหลัง rankSignals เสมอ — ตัวที่เก็บไว้คือตัวคะแนนสูงสุดของคู่นั้น
+ *
+ * ⚠ ใบที่โดนยุบอาจถือ field `flip` (คำเตือนกลับทิศ) อยู่ — เช่น SELL 1H เป็นตัวกลับทิศ
+ *   แต่ SELL 1D ของ symbol เดียวกันคะแนนสูงกว่า (บั๊กจริงที่เคยเกิด: คำเตือนหายเงียบ
+ *   จากใบแจ้งเตือนทั้งที่ flipsDetected นับและป้ายถูกปั๊มตามปกติ)
+ *   คีย์ยุบไม่มี timeframe แต่การกลับทิศผูกกับ timeframe จึงต้องย้าย flip ไปเกาะ
+ *   ใบที่รอดเสมอ — คำเตือนไม่พูดถึง timeframe อยู่แล้ว ข้อความจึงยังจริงทุกคำ
+ *   ทั้งคู่มี flip → เก็บตัวที่ใบเก่าใหม่กว่า (ดู laterFlip) ได้หนึ่งบรรทัดต่อ symbol|action
+ *   ไม่มี flip เกี่ยวข้อง → คืน object เดิมไม่แตะต้อง ข้อความทุกตัวอักษรเหมือนเดิม
  */
 export function collapseDuplicates(rankedSignals: Signal[]): Signal[] {
-  const seen = new Set<string>();
+  const keptAt = new Map<string, number>();
   const out: Signal[] = [];
   for (const s of rankedSignals) {
     const key = `${s.symbol}|${s.action}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(s);
+    const at = keptAt.get(key);
+    if (at === undefined) {
+      keptAt.set(key, out.length);
+      out.push(s);
+      continue;
+    }
+    if (s.flip) {
+      const kept = out[at];
+      out[at] = { ...kept, flip: laterFlip(kept.flip, s.flip) };
+    }
   }
   return out;
 }
@@ -538,6 +569,27 @@ export function buildDigestPayload(signals: Signal[], nowMs: number, scorer?: Sp
   const hidden = list.length - shown.length;
   // "ตัดทิ้งเงียบ" คือสิ่งที่ห้ามที่สุด — ถ้าโชว์ไม่หมดต้องบอกจำนวนเสมอ
   if (hidden > 0) lines.push(clip(`+ อีก ${hidden} ตัว · ${summaryLine(list)}`, budget));
+
+  // ── คำเตือนกลับทิศ (เจ้าของสั่ง 2026-08-28) ──────────────────────────────────
+  // ใบใหม่ที่กลับทิศใบเก่า (ตัวสแกนแนบ field `flip` ไว้ในหน่วยความจำ — ดู @/types)
+  // ต้องมีบรรทัดเตือนต่อท้ายใบแจ้งเตือน หนึ่งการกลับทิศ = หนึ่งบรรทัด
+  //
+  //  · ไล่ทั้ง list ไม่ใช่แค่ shown — สัญญาณที่ล้นจำนวนบรรทัดยังกลับทิศใบเก่าได้จริง
+  //    และคำเตือนนี้คือเหตุผลที่เจ้าของต้องเปิดแอปดูต่อ ห้ามหายไปกับการตัดบรรทัด
+  //    (การยุบตัวซ้ำก็ทิ้งคำเตือนไม่ได้เช่นกัน — collapseDuplicates ย้าย flip
+  //     ไปเกาะใบที่รอดให้แล้ว list ที่มาถึงตรงนี้จึงถือคำเตือนครบ)
+  //  · จงใจ "ไม่ clip" บรรทัดนี้ด้วยงบ 48 ตัวอักษร — ท้ายบรรทัดคือคำแนะนำการตัดสินใจ
+  //    ("พิจารณาปิด/ตัดขาดทุน") การตัดกลางประโยคเปลี่ยนคำเตือนเป็นเสียงรบกวน
+  //    OS จะพับบรรทัดยาวให้เอง ไม่ได้ทิ้งข้อความ (ต่างจากการ clip ที่ทิ้งจริง)
+  //  · ใส่ symbol เมื่อใบแจ้งเตือนมีหลายสัญญาณ เหตุผลเดียวกับเลขอันดับใน signalLine
+  //  · แถวที่อ่านกลับจาก DB (ของค้างจากรอบที่ถูกกันความถี่/ส่งล้ม) ไม่มี field นี้
+  //    ติดมาเอง — push-server เป็นคนประกอบคืนจากป้าย flipped_by ก่อนส่งเข้ามา
+  //    (ดู sendPendingSignalsToUser) · ยังไม่ได้รัน migration 009 = ไม่มีป้ายให้
+  //    ประกอบคืน ใบเก็บตกจะไม่มีบรรทัดเตือน — log ของตัวสแกนบอกข้อจำกัดนี้ตรง ๆ
+  for (const s of list) {
+    if (!s.flip) continue;
+    lines.push(flipWarningLine(s.flip.prev_action, s.flip.prev_created_at, list.length > 1 ? s.symbol : null));
+  }
 
   return {
     title,

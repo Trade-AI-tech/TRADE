@@ -124,8 +124,11 @@ function loadModules() {
   }
 
   // universe.ts อยู่ในรายการเพราะเทสต์ความยาวข้อความต้องใช้ "สัญลักษณ์จริง" ไม่ใช่ชื่อสมมติ
+  // signal-flips.ts เข้ามาเพราะ push-digest.ts import มัน (บรรทัดเตือนกลับทิศ) —
+  // เทสต์ในไฟล์นี้ไม่แตะฟีเจอร์นั้นโดยตรง (ไปอยู่ scripts/test-signal-flips.mjs)
+  // แค่ต้องให้โมดูลโหลดติด
   // (ไฟล์ของคนอื่นทั้งหมดในนี้ — อ่านอย่างเดียว ไม่แก้)
-  const required = ['src/lib/errors.ts', 'src/lib/push-digest.ts', 'src/lib/push-server.ts', 'src/lib/universe.ts'];
+  const required = ['src/lib/errors.ts', 'src/lib/push-digest.ts', 'src/lib/push-server.ts', 'src/lib/universe.ts', 'src/lib/signal-flips.ts'];
   const optional = OPTIONAL_MODULES.filter((rel) => existsSync(path.join(ROOT, ...rel.split('/'))));
   for (const rel of [...required, ...optional]) {
     const abs = path.join(ROOT, ...rel.split('/'));

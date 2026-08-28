@@ -6,6 +6,7 @@ import SignalCard from '@/components/trading/SignalCard';
 import MarketRow from '@/components/trading/MarketRow';
 import { useSignals, usePrices, useDashboardStats, useWatchlist } from '@/hooks/useData';
 import { isDemoMode } from '@/lib/supabase';
+import { flipReversalIndex } from '@/lib/signal-flips';
 import Link from 'next/link';
 import {
   Zap, Activity, ArrowRight, Compass, FlaskConical, TrendingUp, TrendingDown,
@@ -30,6 +31,9 @@ export default function DashboardPage() {
   );
 
   const topSignals = signals.slice(0, 6);
+  // ใบใหม่ใบไหนกลับทิศใบเก่า — ประกอบจากชุด active ทั้งหมด (ใบเก่าที่โดนกลับทิศ
+  // ยัง active อยู่จึงอยู่ในชุดนี้ด้วย) ไม่ใช่แค่ 6 ใบที่โชว์
+  const reversals = useMemo(() => flipReversalIndex(signals), [signals]);
   const topMovers = [...prices].sort((a, b) => Math.abs(b.change_percent) - Math.abs(a.change_percent)).slice(0, 5);
   const needsSetup = !demo && !watchlistLoading && watchlist.length === 0;
 
@@ -152,7 +156,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {topSignals.map((s) => (
-              <SignalCard key={s.id} signal={s} />
+              <SignalCard key={s.id} signal={s} reversal={reversals.get(s.id) ?? null} />
             ))}
           </div>
         )}

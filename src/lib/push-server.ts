@@ -12,6 +12,8 @@ import {
   throttleVerdict,
 } from './push-digest';
 import type { SpeedScorer } from './push-digest';
+import { flipNotesFromMarkedRows } from './signal-flips';
+import type { FlippedOldRow } from './signal-flips';
 
 /**
  * ตัวส่ง Web Push ฝั่งเซิร์ฟเวอร์ — ยิงแจ้งเตือนเข้าเครื่องผู้ใช้ตรง ๆ
@@ -248,6 +250,58 @@ export async function loadPendingSignals(
     return { signals: [], columnMissing: false, error: errorMessage(error) };
   }
   return { signals: (data ?? []) as Signal[], columnMissing: false, error: null };
+}
+
+/**
+ * error นี้แปลว่า "ยังไม่ได้รัน migration 009" หรือเปล่า (คอลัมน์ flipped_by ไม่มี)
+ * แบบแผนเดียวกับ isMissingPushColumn ข้างบน — คอลัมน์หายคือโหมดถอย ไม่ใช่ความล้มเหลว
+ */
+function isMissingFlipLinkColumn(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  if (code === UNDEFINED_COLUMN) return true;
+  const msg = errorMessage(error).toLowerCase();
+  return msg.includes('flipped_by') && (msg.includes('column') || msg.includes('does not exist'));
+}
+
+/**
+ * เติม field `flip` คืนให้ "ใบเก็บตก" ที่อ่านกลับมาจากตาราง signals
+ *
+ * ทำไมต้องมี: field `flip` เป็นของในหน่วยความจำ ถูกถอดก่อน insert เสมอ (ดู @/types)
+ * สัญญาณที่รอบของมันถูกกันความถี่หรือ push ล้ม จะถูกส่งจริงรอบถัดไปจากแถวใน DB
+ * ซึ่งไม่มี field นี้ — ถ้าไม่ประกอบคืน บรรทัดเตือนกลับทิศจะหายจากใบแจ้งเตือน
+ * ที่ถึงมือจริง ทั้งที่การกลับทิศเกิดจริงและป้ายถูกปั๊มไว้แล้วตั้งแต่รอบ insert
+ * (ป้ายอยู่บน "ใบเก่า": flipped_by ชี้กลับมาที่ใบใหม่ จึง query ย้อนทางได้)
+ *
+ * โหมดถอย (ยังไม่ได้รัน 009): query ตอบ 42703 → คืน columnMissing ไม่แตะสัญญาณ
+ * ในโหมดนั้นไม่มีป้ายให้ประกอบคืน ใบเก็บตกจึงแจ้งโดยไม่มีบรรทัดเตือน — ผู้เรียก
+ * เป็นคนบอกความจริงข้อนี้ใน log (ห้ามเงียบ เพราะเจ้าของจะเข้าใจว่าไม่มีการกลับทิศ)
+ */
+async function attachFlipNotesFromDb(
+  supabase: SupabaseClient,
+  signals: Signal[]
+): Promise<{ attached: number; columnMissing: boolean; error: string | null }> {
+  if (!signals.length) return { attached: 0, columnMissing: false, error: null };
+
+  const { data, error } = await supabase
+    .from('signals')
+    .select('id, action, created_at, flipped_by')
+    .in('flipped_by', signals.map((s) => s.id));
+
+  if (error) {
+    if (isMissingFlipLinkColumn(error)) return { attached: 0, columnMissing: true, error: null };
+    return { attached: 0, columnMissing: false, error: errorMessage(error) };
+  }
+
+  const notes = flipNotesFromMarkedRows((data ?? []) as FlippedOldRow[]);
+  let attached = 0;
+  for (const s of signals) {
+    const note = notes.get(s.id);
+    if (note) {
+      s.flip = note;
+      attached++;
+    }
+  }
+  return { attached, columnMissing: false, error: null };
 }
 
 /**
@@ -502,6 +556,26 @@ export async function sendPendingSignalsToUser(
   const wanted = [...byId.values()].filter(allow);
   result.signalCount = wanted.length;
   result.pendingPicked = Math.max(0, pickedFromDb);
+
+  // ── ประกอบคำเตือนกลับทิศคืนให้ใบเก็บตก ─────────────────────────────────────────
+  // ของใหม่รอบนี้ถือ field `flip` ในหน่วยความจำมาแล้ว แต่ของค้างจากรอบก่อน
+  // (รอบที่ถูกกันความถี่/ส่งล้ม) อ่านกลับจากตารางซึ่งไม่มี field นี้ — ประกอบคืน
+  // จากป้าย flipped_by ก่อนจัดลำดับ/ยุบซ้ำ เพื่อให้ collapseDuplicates ย้ายคำเตือน
+  // ไปเกาะใบที่รอดได้ · รอบปกติที่ไม่มีของค้าง = ไม่ยิง query เพิ่มเลย
+  const freshIds = new Set(freshSignals.map((s) => s.id));
+  const carried = wanted.filter((s) => !freshIds.has(s.id) && !s.flip);
+  if (carried.length) {
+    const flipBack = await attachFlipNotesFromDb(supabase, carried);
+    if (flipBack.error) {
+      // ประกอบคืนไม่ได้ = ใบเก็บตกรอบนี้อาจไม่มีบรรทัดเตือนทั้งที่ควรมี — ต้องเห็นใน log
+      result.errors.push(`อ่านป้ายกลับทิศของใบเก็บตกไม่สำเร็จ (ใบแจ้งเตือนรอบนี้อาจไม่มีบรรทัดเตือน): ${flipBack.error}`);
+    } else if (flipBack.columnMissing) {
+      result.errors.push(
+        'ยังไม่ได้รัน supabase/migrations/009_signal_flips.sql — ' +
+          'ใบเก็บตกจากรอบก่อนแจ้งโดยไม่มีบรรทัดเตือนกลับทิศ (ไม่มีป้ายในตารางให้ตรวจย้อน)'
+      );
+    }
+  }
 
   const ranked = collapseDuplicates(rankSignals(wanted, options.speedScore));
   if (ranked.length === 0) {

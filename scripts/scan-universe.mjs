@@ -373,12 +373,14 @@ async function loadRealModules() {
       costs: path.join(ROOT, 'src', 'lib', 'costs.ts'),
       push: path.join(ROOT, 'src', 'lib', 'push-server.ts'),
       telegram: path.join(ROOT, 'src', 'lib', 'telegram.ts'),
+      // ตรรกะ "แจ้งกลับทิศ" — pure ทั้งไฟล์ ทดสอบด้วย scripts/test-signal-flips.mjs
+      flips: path.join(ROOT, 'src', 'lib', 'signal-flips.ts'),
     };
     for (const p of Object.values(paths)) if (!existsSync(p)) fail(`ไม่พบไฟล์ต้นฉบับ ${p}`);
 
     transpileGraph(Object.values(paths), tmpDir);
     const load = (abs) => import(pathToFileURL(path.join(tmpDir, flatName(abs))).href);
-    const [universe, marketData, engine, costs, push, telegram] = await Promise.all(Object.values(paths).map(load));
+    const [universe, marketData, engine, costs, push, telegram, flips] = await Promise.all(Object.values(paths).map(load));
 
     // ── ตัวให้คะแนนความเร็ว (ไม่บังคับ) ────────────────────────────────────────────
     // ทุกอย่างในบล็อกนี้ห่อ try ไว้ทั้งก้อนโดยตั้งใจ: ไฟล์ของคนอื่นที่ยังเขียนไม่เสร็จ
@@ -419,6 +421,7 @@ async function loadRealModules() {
       ...pick(costs, ['applyStopFloor', 'costRFor', 'MAX_COST_R'], 'src/lib/costs.ts'),
       ...pick(push, ['sendPendingSignalsToUser', 'pushStateColumnAvailable'], 'src/lib/push-server.ts'),
       ...pick(telegram, ['sendSignalAlert'], 'src/lib/telegram.ts'),
+      ...pick(flips, ['findFlipTargets', 'markFlipTargets'], 'src/lib/signal-flips.ts'),
       speedScore,
       speedScoreSource,
     };
@@ -490,6 +493,28 @@ async function main() {
     costColumnReady = !error;
     if (!costColumnReady) {
       ghaWarn('ยังไม่ได้รัน supabase/migrations/007_signal_outcomes.sql — สัญญาณจะไม่มีตัวเลขต้นทุนกำกับ');
+    }
+  }
+
+  // ── ตาราง signals มีคอลัมน์ป้ายกลับทิศแล้วหรือยัง (migration 009) ───────────────
+  // ต้องรู้ "ก่อน" ยิง query กันซ้ำ เพราะรอบนี้จะขอคอลัมน์ flipped_at/outcome เพิ่ม
+  // จาก query เดิม — ขอคอลัมน์ที่ไม่มีจริง query กันซ้ำจะล้ม แล้วทั้งรอบล้มตาม (fail)
+  // ซึ่งแย่กว่าการไม่มีป้ายมาก · โหมดถอย: ไม่มีคอลัมน์ = ข้ามการปั๊มป้าย แต่คำเตือน
+  // กลับทิศในแจ้งเตือนยังออกครบ (มันประกอบจาก field ในหน่วยความจำ ไม่ใช่คอลัมน์)
+  let flipColumnReady = false;
+  if (sb) {
+    const { error } = await sb.from('signals').select('flipped_at').limit(1);
+    flipColumnReady = !error;
+    if (!flipColumnReady) {
+      // ⚠ ถ้อยคำนี้ต้องบอกข้อจำกัดครบ: ไม่มีป้าย = ใบเก็บตก (รอบที่ถูกกันความถี่/ส่งล้ม)
+      //   ประกอบคำเตือนคืนไม่ได้ด้วย (ดู attachFlipNotesFromDb ใน push-server.ts)
+      //   เวอร์ชันก่อนเขียนว่า "ยังออกตามปกติ" ซึ่งจริงเฉพาะรอบที่ push สำเร็จรอบแรก
+      const msg =
+        'ยังไม่ได้รัน supabase/migrations/009_signal_flips.sql — คำเตือนกลับทิศออกเฉพาะใบแจ้งเตือนของรอบที่ตรวจพบ ' +
+        '(รอบที่ถูกกันความถี่หรือส่งล้ม จะเก็บตกแบบไม่มีบรรทัดเตือน) และใบเก่าไม่ถูกปั๊มป้าย ' +
+        '(แถบเตือนบนหน้าเว็บยังไม่ขึ้น) · เปิด Supabase → SQL Editor แล้ววางไฟล์นั้นทั้งไฟล์';
+      ghaWarn(msg);
+      console.log(`⚠ ${msg}`);
     }
   }
 
@@ -703,21 +728,67 @@ async function main() {
   //   เลี่ยงนาทีที่ 0 ที่ pg_cron ใช้ — ระยะกันชนเหลือ 2 นาที ดูคำเตือนในหัวไฟล์ workflow)
   //   เหตุผลเต็มอยู่ในหัวไฟล์ .github/workflows/scan-universe.yml
   const seen = new Set();
+  /**
+   * แถว active ดิบจาก query กันซ้ำ — เก็บไว้ให้ตัวตรวจกลับทิศ (ขั้นที่ 6) ใช้ต่อ
+   * โดยไม่ยิง query เพิ่มแม้แต่ครั้งเดียว · จงใจเก็บ "ก่อน" ตัวกรองหน้าต่าง 1H ข้างล่าง
+   * เพราะใบ 1H อายุ 10 ชม. หลุดหน้าต่างกันซ้ำแล้ว (ออกใหม่ได้) แต่ยัง active อยู่จริง
+   * — โดนกลับทิศได้ และต้องถูกเตือน
+   *
+   * ทำไมตัวตรวจกลับทิศถึงได้ query ของตัวเองอีกใบ (FLIP_LOOKBACK_HOURS ข้างล่าง):
+   * หน้าต่าง 20 ชม. ของ query กันซ้ำสั้นกว่าอายุจริงของใบ 1D (7 วัน) มาก — วัดจากไม้ฐาน
+   * ในอดีต: 400 จาก 2,663 สัญญาณ 1D (15.0%) กลับทิศใบเก่าที่ยังเปิดอยู่ แต่ 0 ใน 400
+   * อยู่ในหน้าต่าง 20 ชม. เพราะแท่งรายวันห่างกันอย่างน้อย 24 ชม. — ถ้าพิงหน้าต่างกันซ้ำ
+   * อย่างเดียว ฟีเจอร์นี้จะไม่เคยทำงานบน 1D เลย จึงยอมจ่ายเพิ่มหนึ่ง roundtrip ต่อรอบ
+   * (กติกากันซ้ำไม่ถูกแตะ — query ใหม่นี้ป้อนเฉพาะ findFlipTargets เท่านั้น)
+   */
+  const FLIP_LOOKBACK_HOURS = 7 * 24; // = อายุยาวสุดของใบ (1D/15m หมดอายุที่ 7 วัน · 1H ที่ 48 ชม.)
+  let recentActive = [];
   if (sb) {
     const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
+    // ตัวตรวจกลับทิศต้องรู้ id (ไว้ปั๊มป้าย) + flipped_at (กันปั๊มซ้ำ) + outcome
+    // (กรองใบที่ ledger ปิดแล้ว — status='active' ไม่ได้แปลว่ายังเปิด ดู resolve-signals.mjs)
+    // สองคอลัมน์หลังขอเฉพาะเมื่อ probe ยืนยันว่ามีจริง ไม่งั้น query ล้มทั้งรอบ
+    // การขยายรายการ select นี้ไม่แตะกติกากันซ้ำ — เงื่อนไข/หน้าต่าง/คีย์ เหมือนเดิมทุกตัว
+    const dedupeCols =
+      'user_id, symbol, action, timeframe, created_at, id' +
+      (flipColumnReady ? ', flipped_at' : '') +
+      (costColumnReady ? ', outcome' : '');
     const { data: recent, error } = await sb
       .from('signals')
-      .select('user_id, symbol, action, timeframe, created_at')
+      .select(dedupeCols)
       .eq('status', 'active')
       .gte('created_at', since);
     if (error) {
       // อ่านของเดิมไม่ได้ = กันซ้ำไม่ได้ = เสี่ยงเด้งซ้ำ — หยุดดีกว่าปล่อยให้สแปม
       fail(`อ่านสัญญาณเดิมเพื่อกันซ้ำไม่สำเร็จ: ${error.message} — หยุดรอบนี้ ไม่บันทึกอะไรเลย`);
     }
+    recentActive = recent ?? [];
     const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;
     for (const r of recent ?? []) {
       if (r.timeframe === '1H' && new Date(r.created_at).getTime() < cutoff1H) continue;
       seen.add(`${r.user_id}:${r.symbol}:${r.action}:${r.timeframe}`);
+    }
+  }
+
+  // แถวสำหรับตัวตรวจกลับทิศโดยเฉพาะ — หน้าต่างยาวเท่าอายุใบจริง (เหตุผลในคอมเมนต์ข้างบน)
+  // ล้มแล้วไม่หยุดรอบ: การกันซ้ำ (ความถูกต้องของสัญญาณ) สำคัญกว่าการเตือนกลับทิศ (ของแถม)
+  // จึงถอยไปใช้ recentActive 20 ชม. แทน — บน 1H ยังเห็นเกือบครบ บน 1D จะพลาดจนกว่ารอบถัดไป
+  let flipCandidates = recentActive;
+  if (sb) {
+    const flipSince = new Date(Date.now() - FLIP_LOOKBACK_HOURS * 3600_000).toISOString();
+    const flipCols =
+      'user_id, symbol, action, timeframe, created_at, id' +
+      (flipColumnReady ? ', flipped_at' : '') +
+      (costColumnReady ? ', outcome' : '');
+    const { data: flipRows, error: flipErr } = await sb
+      .from('signals')
+      .select(flipCols)
+      .eq('status', 'active')
+      .gte('created_at', flipSince);
+    if (flipErr) {
+      console.warn(`อ่านสัญญาณเดิมสำหรับตัวตรวจกลับทิศไม่สำเร็จ: ${flipErr.message} — ถอยไปใช้หน้าต่าง 20 ชม. ของ query กันซ้ำแทน`);
+    } else {
+      flipCandidates = flipRows ?? [];
     }
   }
 
@@ -733,6 +804,11 @@ async function main() {
   let evaluated = 0;
   let dedupeSkipped = 0;
   let overCapacity = 0;
+  // การกลับทิศ: นับเป็น "จำนวนใบเก่าที่โดนกลับทิศ" ไม่ใช่จำนวนใบใหม่ —
+  // ใบใหม่ใบเดียวกลับทิศใบเก่าได้หลายใบ และสิ่งที่เจ้าของสนใจคือไม้เก่ากี่ไม้ที่ต้องไปดู
+  let flipsDetected = 0;
+  let flipsMarked = 0;
+  const flipNotes = [];
 
   for (const userId of recipients) {
     const mine = candidates.filter(({ target }) => {
@@ -821,7 +897,31 @@ async function main() {
       // ทำให้ Postgres ปฏิเสธทั้ง batch แล้วสัญญาณทั้งรอบหายเงียบ
       // (หน้าเว็บไม่เสียอะไร — SignalCard คำนวณหลักฐานเองจาก src/lib/signal-evidence.ts)
       const { evidence: _evidence, ...dbSignal } = signal;
-      rows.push({ ...dbSignal, id: randomUUID(), user_id: userId, ...(pushStateReady ? { push_sent: false } : {}) });
+      const row = { ...dbSignal, id: randomUUID(), user_id: userId, ...(pushStateReady ? { push_sent: false } : {}) };
+
+      // ── ตรวจกลับทิศ (เจ้าของสั่ง 2026-08-28) ─────────────────────────────────
+      // ใบ active เดิมของคนเดียวกัน symbol+timeframe เดียวกัน ที่ action ตรงข้าม
+      // = ใบที่กำลังโดนใบใหม่นี้กลับทิศ — เกณฑ์เต็มอยู่ใน findFlipTargets
+      // (src/lib/signal-flips.ts) ใช้ flipCandidates ที่หน้าต่างยาวเท่าอายุใบจริง
+      //
+      // `flip` เป็น field ในหน่วยความจำแบบเดียวกับ `evidence` ข้างบน:
+      // push-digest เห็นมันแล้วต่อบรรทัดเตือนในใบแจ้งเตือน แต่ตาราง signals
+      // ไม่มีคอลัมน์นี้ — ถูกถอดออกก่อน insert ในขั้นที่ 7 เสมอ
+      // ส่วน "ป้ายบนใบเก่า" (flipped_at/flipped_by) ปั๊มหลัง insert สำเร็จเท่านั้น
+      const flipTargets = lib.findFlipTargets(
+        { user_id: userId, symbol: signal.symbol, action: signal.action, timeframe: signal.timeframe },
+        flipCandidates
+      );
+      if (flipTargets.length) {
+        flipsDetected += flipTargets.length;
+        row.flip = {
+          // ข้อความเตือนอ้าง "ใบล่าสุด" — findFlipTargets เรียงใหม่สุดขึ้นก่อนให้แล้ว
+          prev_action: flipTargets[0].action,
+          prev_created_at: flipTargets[0].created_at,
+          target_ids: flipTargets.map((t) => t.id),
+        };
+      }
+      rows.push(row);
     }
     if (rows.length) rowsByUser.set(userId, rows);
   }
@@ -845,7 +945,9 @@ async function main() {
     }
 
     for (const [userId, rows] of rowsByUser) {
-      const { error } = await sb.from('signals').insert(rows);
+      // `flip` เป็น field ในหน่วยความจำ (เหตุผลเดียวกับ `evidence` ในขั้นที่ 6) —
+      // ตาราง signals ไม่มีคอลัมน์นี้ ต้องถอดก่อน insert ไม่งั้น Postgres ปฏิเสธทั้ง batch
+      const { error } = await sb.from('signals').insert(rows.map(({ flip: _flip, ...r }) => r));
       if (error) {
         dbErrors.push(`signals(${userId}): ${error.message}`);
         // แจ้งเตือนเฉพาะแถวที่ "บันทึกสำเร็จจริง" — ถ้าเด้งแจ้งเตือนของแถวที่เขียนไม่ลง
@@ -853,6 +955,32 @@ async function main() {
         rowsByUser.delete(userId);
       } else {
         signalsInserted += rows.length;
+
+        // ── ปั๊มป้ายกลับทิศบนใบเก่า — "หลัง" insert ใบใหม่สำเร็จเท่านั้น ─────────────
+        // flipped_by ต้องชี้ไปแถวที่มีอยู่จริง · ปั๊มไม่สำเร็จ = เสียป้ายบนเว็บ
+        // และเสียบรรทัดเตือนของ "ใบเก็บตก" (push-server ประกอบคำเตือนคืนจากป้ายนี้
+        // เมื่อรอบแจ้งเตือนถูกกันความถี่/ส่งล้ม — ไม่มีป้ายก็ไม่มีอะไรให้ประกอบ)
+        // ยังเป็น warning ไม่ใช่ dbError ที่ทำให้รอบแดง — คำเตือนของรอบนี้ออกไปแล้ว
+        // จาก field ในหน่วยความจำ ห้ามให้การปั๊มป้ายฆ่ารอบสแกนทั้งรอบ
+        //
+        // .is('flipped_at', null): สองรอบสแกนซ้อนกันได้จริง (watchdog + cron) —
+        // ใบที่โดนรอบอื่นปั๊มตัดหน้าแล้วห้ามปั๊มทับ (ป้ายแรกคือความจริงของเวลาที่ตรวจพบ)
+        // .select('id'): ให้ markFlipTargets นับจากแถวที่อัปเดตจริง ไม่ใช่จำนวนที่ตั้งใจ
+        // — ตัวเลข "ปั๊มแล้ว" ในสรุปท้ายรอบต้องไม่โกหกเมื่อมีการปั๊มตัดหน้า
+        if (flipColumnReady) {
+          const res = await lib.markFlipTargets(
+            rows,
+            (ids, patch) => sb.from('signals').update(patch).in('id', ids).is('flipped_at', null).select('id'),
+            new Date().toISOString()
+          );
+          flipsMarked += res.marked;
+          if (res.missingColumn) {
+            // probe ตอนต้นรอบเห็นคอลัมน์ แต่ตอนปั๊มไม่เห็น (แทบเป็นไปไม่ได้ แต่กันไว้)
+            flipColumnReady = false;
+            flipNotes.push('ปั๊มป้ายกลับทิศเจอ 42703 กลางรอบ — รัน supabase/migrations/009_signal_flips.sql แล้วป้ายบนเว็บจะกลับมา');
+          }
+          for (const e of res.errors) flipNotes.push(e);
+        }
       }
     }
   }
@@ -987,6 +1115,10 @@ async function main() {
     speedScoreSource: lib.speedScoreSource,
     evidenceTable: EVIDENCE_TABLE ? 'src/lib/signal-evidence.data.json' : null,
     evidenceAttached,
+    flipsDetected,
+    flipsMarked,
+    flipColumnReady,
+    flipNotes,
     ...notify,
     dbErrors,
     notifyNotes,
@@ -1002,6 +1134,14 @@ async function main() {
     console.log(`บันทึก ${DRY_RUN ? `${allRows.length} (dry run ไม่ได้เขียน)` : signalsInserted} แถว · ซ้ำของเดิมข้าม ${dedupeSkipped} · ราคาอัปเดต ${pricesUpdated} · ผู้รับ ${recipients.size} คน`);
     console.log(`ต้นทุน ขยาย SL ของ 15m ${stopsWidened} ตัว (เพดานต้นทุน ${lib.MAX_COST_R} R/ไม้) · ${costColumnReady ? 'ติดตัวเลขต้นทุนไปกับทุกสัญญาณ' : 'ยังไม่มีคอลัมน์ cost_r'}`);
     console.log(`หลักฐาน ${EVIDENCE_TABLE ? `แนบความถี่ในอดีตของเซ็ตอัพให้ ${evidenceAttached} สัญญาณ (ตาราง src/lib/signal-evidence.data.json)` : 'ไม่มีตาราง signal-evidence.data.json — สแกนต่อโดยไม่แนบ'}`);
+    // ตัวเลขสองตัวนี้ต่างกันได้จริง (ตรวจพบแต่ยังไม่ได้ปั๊ม): dry run · insert ล้ม ·
+    // ยังไม่ได้รัน 009 — ต้องเห็นทั้งคู่ ไม่งั้นแยกไม่ออกว่าคำเตือนหายเพราะไม่มีการกลับทิศ
+    // หรือเพราะปั๊มป้ายไม่ลง
+    console.log(
+      `กลับทิศ ${flipsDetected === 0
+        ? 'ไม่มีใบเก่าโดนกลับทิศรอบนี้'
+        : `พบใบเก่าทิศตรงข้ามที่ยังเปิดอยู่ ${flipsDetected} ใบ · ปั๊มป้ายแล้ว ${DRY_RUN ? '0 (dry run ไม่ได้เขียน)' : flipsMarked} ใบ${flipColumnReady ? '' : ' · ยังไม่ได้รัน migration 009 — คำเตือนอยู่ในแจ้งเตือนแล้ว แต่แถบเตือนบนเว็บยังไม่ขึ้น'}`}`
+    );
     if (!NO_NOTIFY) {
       console.log(`แจ้ง   เด้ง ${notify.notifications} ครั้ง (ถึงเครื่อง ${notify.sent}) · เก็บตกของค้าง ${notify.pendingPicked} · ปั๊มว่าแจ้งแล้ว ${notify.marked} · โดนกันความถี่ ${notify.throttled} คน · ล้ม ${notify.failed} · telegram ${notify.telegramSent}/${notify.telegramSent + notify.telegramFailed}`);
       console.log(`สถานะ  คอลัมน์ push_sent ${pushStateReady ? 'พร้อม (เก็บตกรอบหน้าได้)' : 'ยังไม่มี — ยังไม่ได้รัน migration 006 (สัญญาณที่พลาดจะหายเหมือนเดิม)'}`);
@@ -1013,6 +1153,7 @@ async function main() {
     }
     for (const e of dbErrors) console.log(`  [DB] ${e}`);
     for (const e of notifyNotes) console.log(`  [แจ้งเตือน] ${e}`);
+    for (const e of flipNotes) console.log(`  [กลับทิศ] ${e}`);
   }
 
   // ── 11. สรุปขึ้นหน้า run ของ GitHub Actions ─────────────────────────────────────
@@ -1032,6 +1173,7 @@ async function main() {
   }
   for (const e of dbErrors) ghaWarn(`DB: ${e}`);
   for (const e of notifyNotes) ghaWarn(`แจ้งเตือน: ${e}`);
+  for (const e of flipNotes) ghaWarn(`กลับทิศ: ${e}`);
 
   // ── 12. exit code ────────────────────────────────────────────────────────────────
   // ล้มบางตัว = ไม่แดง (สัญลักษณ์หลุดกระดาน/ตลาดปิดเป็นเรื่องปกติ แต่ต้องเห็นเป็น warning)
