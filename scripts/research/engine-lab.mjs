@@ -314,6 +314,58 @@ function pctText(fraction) {
 }
 
 /**
+ * ด่านตรวจแท่งราคา — สำเนา JS ของ src/lib/candle-sanitizer.ts (sanitizeCandles)
+ * ต้นฉบับเพิ่มเข้า generateSignal เมื่อ 2026-08-28 ไฟล์นี้จึงต้องมีด่านเดียวกัน
+ * ไม่งั้น lab:parity แดง (เคส "ข้อมูลเสีย" ของ check-lab-parity จะได้ผลคนละทาง)
+ * เกณฑ์/เหตุผล/ตัวเลขที่วัดได้ทั้งหมดอยู่ในคอมเมนต์ของไฟล์ต้นฉบับ — อย่าแก้เฉพาะที่นี่
+ */
+const SPIKE_PCT = { GOLD: 0.18, FOREX: 0.065, TH_STOCK: 0.35, US_STOCK: 0.18, CRYPTO: 0.5 };
+const SPIKE_PCT_DEFAULT = 0.5;
+
+function sanitizeCandles(input, market) {
+  const spikePct = SPIKE_PCT[market] ?? SPIKE_PCT_DEFAULT;
+  const finitePositive = (v) => Number.isFinite(v) && v > 0;
+
+  const framed = [];
+  let dropped = 0;
+  let repaired = 0;
+  for (const c of input) {
+    if (!finitePositive(c.open) || !finitePositive(c.high) || !finitePositive(c.low) || !finitePositive(c.close)) {
+      dropped++;
+      continue;
+    }
+    const high = Math.max(c.open, c.high, c.close);
+    const low = Math.min(c.open, c.low, c.close);
+    if (high === c.high && low === c.low) framed.push(c);
+    else {
+      framed.push({ ...c, high, low });
+      repaired++;
+    }
+  }
+
+  const out = [];
+  for (let i = 0; i < framed.length; i++) {
+    const c = framed[i];
+    const isLast = i === framed.length - 1;
+    const prevClose = out.length > 0 ? out[out.length - 1].close : NaN;
+    if (!isLast && Number.isFinite(prevClose)) {
+      const jumpedUp = c.low > prevClose * (1 + spikePct);
+      const jumpedDown = c.high < prevClose * (1 - spikePct);
+      if (jumpedUp || jumpedDown) {
+        const jump = Math.abs(c.close - prevClose);
+        if (Math.abs(framed[i + 1].close - prevClose) < jump * 0.5) {
+          dropped++;
+          continue;
+        }
+      }
+    }
+    out.push(c);
+  }
+
+  return { candles: out, dropped, repaired };
+}
+
+/**
  * generateSignal เวอร์ชันรับ config
  *
  * โครงเรียงตรงกับ src/lib/signal-engine.ts บล็อกต่อบล็อก เพื่อให้ diff ตอนซิงก์อ่านง่าย
@@ -322,7 +374,10 @@ function pctText(fraction) {
  * @param {object} ind     namespace ของ src/lib/indicators.ts
  */
 export function generateSignalLab(input, cfg, ind) {
-  const { symbol, name, market, candles, timeframe = '1D', newsSentiment } = input;
+  const { symbol, name, market, timeframe = '1D', newsSentiment } = input;
+
+  // ด่านตรวจแท่งชั้นที่สอง — บล็อกเดียวกับต้นฉบับ (ดูคอมเมนต์ใน src/lib/signal-engine.ts)
+  const { candles } = sanitizeCandles(input.candles, market);
 
   if (candles.length < cfg.minCandles) return null;
 

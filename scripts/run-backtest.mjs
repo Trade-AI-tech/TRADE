@@ -199,7 +199,8 @@ async function loadBacktestModule(tmpDir) {
   // types เป็น type ล้วน ถูกลอกออกตอน transpile — เขียน stub ว่างกัน import ค้าง
   writeFileSync(path.join(tmpDir, 'types.mjs'), 'export {};\n', 'utf8');
 
-  for (const rel of ['src/lib/indicators.ts', 'src/lib/signal-engine.ts', 'src/lib/backtest.ts']) {
+  // candle-sanitizer ต้องมาก่อน signal-engine (เป็น dependency ใหม่ของด่านตรวจแท่ง)
+  for (const rel of ['src/lib/candle-sanitizer.ts', 'src/lib/indicators.ts', 'src/lib/signal-engine.ts', 'src/lib/backtest.ts']) {
     const abs = path.join(ROOT, ...rel.split('/'));
     const base = path.basename(rel, '.ts');
     writeFileSync(path.join(tmpDir, `${base}.mjs`), transpile(readFileSync(abs, 'utf8'), `${base}.ts`), 'utf8');

@@ -1,6 +1,7 @@
 import type { MarketPrice, CandleData } from '@/types';
 import { DEMO_PRICES, generateCandleData } from './demo-data';
 import { isDemoMode } from './supabase';
+import { sanitizeCandles } from './candle-sanitizer';
 
 /**
  * Market data fetcher using Yahoo Finance public chart API (v8).
@@ -92,7 +93,7 @@ export async function fetchChart(
       const ohlc = result.indicators?.quote?.[0];
       if (!ohlc) continue;
 
-      const candles: CandleData[] = timestamps
+      const rawCandles: CandleData[] = timestamps
         .map((ts, i) => ({
           timestamp: new Date(ts * 1000).toISOString(),
           open: ohlc.open?.[i] ?? 0,
@@ -102,6 +103,17 @@ export async function fetchChart(
           volume: ohlc.volume?.[i] ?? 0,
         }))
         .filter((c) => c.close > 0);
+
+      // ด่านตรวจแท่ง — บรรทัดข้างบนคือคอขวดเดียวที่ raw JSON ของ Yahoo กลายเป็น CandleData
+      // ของทุกเส้นทางโปรดักชัน (ตัวสแกน GitHub Actions โหลดไฟล์นี้ตัวจริง + ทุก API route)
+      // Yahoo ส่งแท่งเป็นไปไม่ได้มาจริง ~3.3% ของแคชวิจัย จึงต้องกรองตรงนี้ครั้งเดียวให้คลุมหมด
+      // เหตุผลเต็มและเกณฑ์ต่อตลาดอยู่ใน candle-sanitizer.ts
+      const { candles, dropped, repaired } = sanitizeCandles(rawCandles, market);
+      if (dropped > 0 || repaired > 0) {
+        // รายงานเป็น warning ไม่ใช่ error — แท่งเสียประปรายเป็นเรื่องปกติของ Yahoo
+        // แต่ต้องเห็นใน log เสมอ ข้อมูลเสียที่ถูกซ่อมเงียบ ๆ จะไม่มีใครตามไปแก้ที่ต้นทาง
+        console.warn(`fetchChart ${yahooSymbol} ${interval}: ซ่อมกรอบ ${repaired} แท่ง · ทิ้งแท่งเสีย ${dropped} แท่ง`);
+      }
 
       const price = Number(meta.regularMarketPrice ?? candles[candles.length - 1]?.close);
       if (!price || !Number.isFinite(price)) return { quote: null, candles, regularStart };

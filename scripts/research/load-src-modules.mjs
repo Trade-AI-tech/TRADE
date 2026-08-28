@@ -65,6 +65,14 @@ export async function loadSrcModules(relPaths = ['src/lib/indicators.ts', 'src/l
     throw new Error('ไม่พบ typescript ใน node_modules — สั่ง `npm install` ก่อนแล้วรันใหม่');
   }
 
+  // signal-engine.ts เริ่ม import ./candle-sanitizer (ด่านตรวจแท่ง เพิ่ม 2026-08-28)
+  // สคริปต์วิจัยทุกตัวระบุรายชื่อไฟล์ไว้ก่อนหน้านั้น จึงเติม dependency ให้เองตรงนี้
+  // แทนการไล่แก้ทุกไฟล์ — วางไว้หน้าสุดเพราะ loader นี้เขียนไฟล์ตามลำดับรายชื่อ
+  // และ signal-engine ต้อง import มันเจอ
+  if (relPaths.includes('src/lib/signal-engine.ts') && !relPaths.includes('src/lib/candle-sanitizer.ts')) {
+    relPaths = ['src/lib/candle-sanitizer.ts', ...relPaths];
+  }
+
   for (const rel of relPaths) {
     const abs = path.join(ROOT, ...rel.split('/'));
     if (!existsSync(abs)) throw new Error(`หาไฟล์ต้นฉบับไม่เจอ: ${abs}`);

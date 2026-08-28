@@ -105,6 +105,74 @@ export function costBpsFor(symbol, market) {
   return bps;
 }
 
+/**
+ * ด่านตรวจแท่งราคา — สำเนา JS ของ src/lib/candle-sanitizer.ts ปรับรูปให้เข้ากับแท่ง
+ * {t,o,h,l,c} ของไฟล์นี้ (ต้นฉบับใช้ {timestamp,open,high,low,close})
+ * ⚠ ต้องให้ผลตรงกันเป๊ะ — check-resolver-parity.mjs ป้อนแท่งชุดเดียวกันให้ทั้งสองฝั่ง
+ *   แล้วเทียบผลทุกแท่ง แก้กติกาที่นี่โดยไม่แก้ต้นฉบับ = CI แดง
+ *
+ * ทำไมตัวเก็บผลต้องมีด่านนี้เท่ากับตัวสแกน: แท่ง OHLC ที่นี่คือสิ่งที่ตัดสินว่า SL/TP โดนก่อนหลัง
+ * แท่งเสียหนึ่งแท่ง (เช่นระดับวาร์ปไป 7% แบบ EURUSD 2008-02-08) = ไม้นั้นถูกตีตรา "ชน SL"
+ * ทั้งที่ราคาจริงไม่เคยไปแตะ → realized_r ผิดโดยไม่มี error และตัวเลขที่เจ้าของใช้ตัดสินใจ
+ * เรื่องเงินจะยืนอยู่บนแท่งที่ไม่เคยเกิดขึ้นจริง
+ *
+ * เกณฑ์ SPIKE_PCT ต่อตลาด: ที่มา/ตัวเลขที่วัดได้อยู่ในคอมเมนต์ของต้นฉบับ candle-sanitizer.ts
+ */
+export const SPIKE_PCT = {
+  GOLD: 0.18,
+  FOREX: 0.065,
+  TH_STOCK: 0.35,
+  US_STOCK: 0.18,
+  CRYPTO: 0.5,
+};
+export const SPIKE_PCT_DEFAULT = 0.5;
+
+export function sanitizeBars(input, market) {
+  const spikePct = SPIKE_PCT[market] ?? SPIKE_PCT_DEFAULT;
+  const finitePositive = (v) => Number.isFinite(v) && v > 0;
+
+  // ขั้นที่ 1+2 (ตามต้นฉบับ): ทิ้งแท่งที่ไม่ใช่ตัวเลขบวก finite แล้วซ่อมกรอบที่เหลือ
+  const framed = [];
+  let dropped = 0;
+  let repaired = 0;
+  for (const b of input) {
+    if (!finitePositive(b.o) || !finitePositive(b.h) || !finitePositive(b.l) || !finitePositive(b.c)) {
+      dropped++;
+      continue;
+    }
+    const h = Math.max(b.o, b.h, b.c);
+    const l = Math.min(b.o, b.l, b.c);
+    if (h === b.h && l === b.l) framed.push(b);
+    else {
+      framed.push({ ...b, h, l });
+      repaired++;
+    }
+  }
+
+  // ขั้นที่ 3+4: interior spike — ทั้งกรอบวาร์ปหนี close ของแท่งที่รอดล่าสุดเกิน SPIKE_PCT
+  // แล้วแท่งถัดไปถอยกลับเกินครึ่ง = ระดับผิดทั้งแท่ง · แท่งสุดท้ายห้ามทิ้ง (ไม่มีเพื่อนบ้านขวา)
+  const out = [];
+  for (let i = 0; i < framed.length; i++) {
+    const b = framed[i];
+    const isLast = i === framed.length - 1;
+    const prevClose = out.length > 0 ? out[out.length - 1].c : NaN;
+    if (!isLast && Number.isFinite(prevClose)) {
+      const jumpedUp = b.l > prevClose * (1 + spikePct);
+      const jumpedDown = b.h < prevClose * (1 - spikePct);
+      if (jumpedUp || jumpedDown) {
+        const jump = Math.abs(b.c - prevClose);
+        if (Math.abs(framed[i + 1].c - prevClose) < jump * 0.5) {
+          dropped++;
+          continue;
+        }
+      }
+    }
+    out.push(b);
+  }
+
+  return { bars: out, dropped, repaired };
+}
+
 /** ดึงแท่งเทียนจาก Yahoo — คืน [{ t (วินาที), o, h, l, c }] เรียงตามเวลา */
 async function fetchCandles(symbol, market, interval, range) {
   const ys = toYahooSymbol(symbol, market);
@@ -129,7 +197,15 @@ async function fetchCandles(symbol, market, interval, range) {
         if ([o, h, l, c].some((v) => v === null || v === undefined || !Number.isFinite(v))) continue;
         out.push({ t: r.timestamp[i], o, h, l, c });
       }
-      return out.sort((a, b) => a.t - b.t);
+      out.sort((a, b) => a.t - b.t);
+
+      // ด่านตรวจแท่ง — ต้อง sort ก่อนเสมอ เพราะกติกา interior spike อาศัยลำดับเวลา
+      // ของเพื่อนบ้านซ้าย/ขวา (เหตุผลเต็มอยู่ที่คอมเมนต์ของ sanitizeBars ด้านบน)
+      const { bars, dropped, repaired } = sanitizeBars(out, market);
+      if (dropped > 0 || repaired > 0) {
+        console.log(`  ด่านแท่ง ${symbol} ${interval}: ซ่อมกรอบ ${repaired} · ทิ้งแท่งเสีย ${dropped}`);
+      }
+      return bars;
     } catch {
       /* ลองโฮสต์ถัดไป */
     }

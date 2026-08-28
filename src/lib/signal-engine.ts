@@ -3,6 +3,7 @@ import {
   RSI, MACD, EMA, SMA, BollingerBands, ATR,
   findSupportResistance, detectPatterns, determineTrend,
 } from './indicators';
+import { sanitizeCandles } from './candle-sanitizer';
 
 interface SignalInput {
   symbol: string;
@@ -50,7 +51,14 @@ function roundPrice(value: number, market: Signal['market']): number {
  * รวม technical analysis → คำนวณสัญญาณเข้า/ออก พร้อม SL/TP และเหตุผล
  */
 export function generateSignal(input: SignalInput): Signal | null {
-  const { symbol, name, market, candles, timeframe = '1D', newsSentiment } = input;
+  const { symbol, name, market, timeframe = '1D', newsSentiment } = input;
+
+  // ด่านตรวจแท่งชั้นที่สอง — เส้นทางหลัก (fetchChart ใน market-data.ts) กรองมาแล้ว
+  // แต่ generateSignal ยังถูกเรียกจากสำเนา Edge Function ที่ประกอบแท่งเอง การกรองซ้ำตรงนี้
+  // ทำให้ "ทุกทางเข้า" เจอด่านเดียวกัน และบล็อกนี้อยู่ใต้ check:parity:scan จึงบังคับให้สำเนาใน
+  // scan-signals/index.ts ต้องมีด่านตามไปด้วยเสมอ — ข้อมูลที่สะอาดอยู่แล้วผ่านโดยไม่ถูกแตะ
+  // (sanitizeCandles ไม่แก้อินพุต จึงไม่กระทบผู้เรียกที่ใช้ candles เดิมต่อ)
+  const { candles } = sanitizeCandles(input.candles, market);
 
   if (candles.length < 50) return null;
 

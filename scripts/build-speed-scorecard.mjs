@@ -158,7 +158,8 @@ async function loadSrcModules() {
   const tmpDir = mkdtempSync(path.join(tmpdir(), 'speed-scorecard-'));
   try {
     writeFileSync(path.join(tmpDir, 'types.mjs'), 'export {};\n', 'utf8');
-    for (const rel of ['src/lib/indicators.ts', 'src/lib/signal-engine.ts', 'src/lib/backtest.ts', 'src/lib/universe.ts']) {
+    // candle-sanitizer ต้องมาก่อน signal-engine (เป็น dependency ใหม่ของด่านตรวจแท่ง)
+    for (const rel of ['src/lib/candle-sanitizer.ts', 'src/lib/indicators.ts', 'src/lib/signal-engine.ts', 'src/lib/backtest.ts', 'src/lib/universe.ts']) {
       const abs = path.join(ROOT, ...rel.split('/'));
       const base = path.basename(rel, '.ts');
       writeFileSync(path.join(tmpDir, `${base}.mjs`), transpile(readFileSync(abs, 'utf8'), `${base}.ts`), 'utf8');

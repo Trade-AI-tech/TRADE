@@ -39,8 +39,14 @@ import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** ไฟล์ต้นฉบับสองไฟล์ที่ฝั่ง Edge ต้องมีสำเนาครบทั้งคู่ ตามลำดับพึ่งพา (engine ใช้ indicators) */
+/**
+ * ไฟล์ต้นฉบับที่ฝั่ง Edge ต้องมีสำเนาครบทุกไฟล์ ตามลำดับพึ่งพา
+ * (engine ใช้ indicators และ candle-sanitizer — สองตัวหลังจึงต้องมาก่อนตอนโหลดเป็นโมดูล)
+ * candle-sanitizer เข้ามาเมื่อ 2026-08-28 ตอน generateSignal เริ่มกรองแท่งเสียก่อนคำนวณ —
+ * ถ้าไม่บังคับสำเนาที่นี่ ฝั่ง Edge จะ ReferenceError ตอนรันจริงโดยไม่มีด่านไหนจับได้ก่อน deploy
+ */
 const CANONICAL_FILES = [
+  { rel: 'src/lib/candle-sanitizer.ts', abs: path.join(ROOT, 'src', 'lib', 'candle-sanitizer.ts') },
   { rel: 'src/lib/indicators.ts', abs: path.join(ROOT, 'src', 'lib', 'indicators.ts') },
   { rel: 'src/lib/signal-engine.ts', abs: path.join(ROOT, 'src', 'lib', 'signal-engine.ts') },
 ];
@@ -177,12 +183,11 @@ const MARKER_HOWTO = [
   'ให้ฝั่ง Edge Function คั่นบล็อกที่คัดลอกมาด้วยคอมเมนต์รูปแบบนี้ (ขึ้นต้นบรรทัดพอดี',
   'อย่างละหนึ่งบรรทัดต่อไฟล์ — ต่อท้ายด้วยคำอธิบายเพิ่มได้ เช่น "— ห้ามแก้เฉพาะที่นี่"):',
   '',
-  `    ${beginMarkerOf('src/lib/indicators.ts')}`,
-  '    ... เนื้อ src/lib/indicators.ts หลังบรรทัด import ...',
-  `    ${endMarkerOf('src/lib/indicators.ts')}`,
-  `    ${beginMarkerOf('src/lib/signal-engine.ts')}`,
-  '    ... เนื้อ src/lib/signal-engine.ts หลังบรรทัด import ...',
-  `    ${endMarkerOf('src/lib/signal-engine.ts')}`,
+  ...CANONICAL_FILES.flatMap((f) => [
+    `    ${beginMarkerOf(f.rel)}`,
+    `    ... เนื้อ ${f.rel} หลังบรรทัด import ...`,
+    `    ${endMarkerOf(f.rel)}`,
+  ]),
 ].join('\n');
 
 /**

@@ -46,6 +46,12 @@ jobs:
       - run: npm run test:costs
       - run: npm run test:indicators
       - run: npm run test:health
+      # ด่านตรวจแท่งราคา — กติกาของด่าน + ยืนยันว่ายังเสียบอยู่จริงใน fetchChart/สำเนาทุกจุด
+      # (Yahoo ส่งแท่งเป็นไปไม่ได้มาจริง ~3.3% ของแคชวิจัย ถอดด่านออกเมื่อไหร่เทสต์นี้แดง)
+      - run: npm run test:sanitizer
+      # ตัวอ่านหลักฐานย้อนหลังของเซ็ตอัพ — คุมทั้งชั้น fallback และถ้อยคำบน UI
+      # (ห้ามมีคำที่อ้างอนาคตอย่าง "โอกาสชนะ"/"ความแม่น" ในไฟล์ที่ใช้ตัวเลขชุดนี้)
+      - run: npm run test:evidence
 
       - run: npm run build
         env:
