@@ -1,0 +1,1122 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-28T09:03:07.600Z",
+  "elapsedMs": 716522,
+  "scope": {
+    "kind": "สถิติบรรยายของ product — ความถี่ในอดีตของเซ็ตอัพ ไม่ใช่การพยากรณ์และไม่ใช่ผลงานวิจัย",
+    "includesResearchTestSplit": true,
+    "warning": "เดินเต็มช่วงแคชรวมช่วง test ของงานวิจัย — ห้ามใช้ตัวเลขชุดนี้ในการอ้างสิทธิ์เชิงวิจัย หรือเทียบกับรายงานใน scripts/research/reports อื่น ๆ ที่วัดบน train+validation เท่านั้น",
+    "edgeDisclosure": "งานวิจัยของ repo นี้วัดแล้ว: ไม่มีเซ็ตอัพไหนพิสูจน์ edge หลังหักต้นทุนได้ ตัวเลขในตารางนี้จึงเป็นการบรรยายอดีต ไม่ใช่คำสัญญาว่าจะเกิดซ้ำ"
+  },
+  "method": {
+    "engine": "src/lib/signal-engine.ts ตัวจริงผ่าน engine-lab (config เริ่มต้น = parity กับ production)",
+    "gate": "src/lib/universe.ts · evaluateSignal() + SIGNAL_GATE ตัวจริง",
+    "entry": "ราคาเปิดของแท่งถัดไปจากแท่งสัญญาณ",
+    "stopLoss": "sig.stop_loss (ค่าจากสัญญาณจริง)",
+    "takeProfit": "sig.take_profit (ค่าจากสัญญาณจริง)",
+    "slWinsOnSameBar": true,
+    "rDenominator": "plannedRisk = |sig.entry_price − sig.stop_loss|",
+    "maxHoldBars": {
+      "1D": 20,
+      "1H": 24
+    },
+    "costs": {
+      "byMarket": {
+        "GOLD": 5,
+        "FOREX": 1.5,
+        "TH_STOCK": 40,
+        "US_STOCK": 5,
+        "CRYPTO": 25
+      },
+      "bySymbol": {
+        "XAUUSD": 3,
+        "XAGUSD": 15,
+        "PL=F": 12,
+        "PA=F": 20,
+        "HG=F": 10,
+        "EURJPY": 2.5,
+        "GBPJPY": 2.5,
+        "USDMXN": 3,
+        "USDZAR": 5,
+        "USDTHB": 15,
+        "EURTHB": 20,
+        "JPYTHB": 20,
+        "GBPTHB": 20,
+        "AUDTHB": 20
+      }
+    },
+    "censoring": "ไม้ที่ข้อมูลหมดก่อนครบเพดานถือ (dataEnd) ไม่ถูกนับใน n — ดู censoredDataEnd รายกรอบเวลา",
+    "walker": "simulateTradeFromLevels ของ veto-lab.mjs (โหลดผ่าน probe — ตัวอักษรเดียวกับต้นฉบับ)",
+    "minNShip": 30,
+    "fifteenMinutes": "15m ไม่มีประวัติในแคช — ตัวอ่าน src/lib/signal-evidence.ts ถอยไปใช้ชั้น 1H และรายงาน sourceTimeframe ให้ UI บอกผู้ใช้ตรง ๆ"
+  },
+  "filteredBySymbols": null,
+  "timeframes": {
+    "1D": {
+      "universe": [
+        "GOLD/XAUUSD",
+        "GOLD/XAGUSD",
+        "FOREX/EURUSD",
+        "FOREX/GBPUSD",
+        "FOREX/USDJPY",
+        "FOREX/AUDUSD",
+        "FOREX/USDCHF",
+        "FOREX/USDCAD",
+        "FOREX/NZDUSD",
+        "FOREX/EURJPY",
+        "FOREX/GBPJPY",
+        "FOREX/EURGBP",
+        "FOREX/AUDJPY"
+      ],
+      "spanFirst": "1996-10-30T00:00:00.000Z",
+      "spanLast": "2026-08-17T23:00:00.000Z",
+      "decisions": 79433,
+      "engineNull": 455,
+      "hold": 67581,
+      "directional": 11397,
+      "gatePassed": 3232,
+      "gateRejected": 8165,
+      "rejectByCode": {
+        "below_min_strength": 8154,
+        "below_min_confidence": 8154,
+        "stop_too_wide": 41
+      },
+      "tradeOpenFailed": 0,
+      "censoredDataEnd": 1,
+      "gapPastStop": 78,
+      "gapPastTarget": 2,
+      "trades": 3231
+    },
+    "1H": {
+      "universe": [
+        "GOLD/XAUUSD",
+        "GOLD/XAGUSD",
+        "FOREX/EURUSD",
+        "FOREX/GBPUSD",
+        "FOREX/USDJPY",
+        "FOREX/AUDUSD",
+        "FOREX/USDCHF",
+        "FOREX/USDCAD",
+        "FOREX/NZDUSD",
+        "FOREX/EURJPY",
+        "FOREX/GBPJPY",
+        "FOREX/EURGBP",
+        "FOREX/AUDJPY"
+      ],
+      "spanFirst": "2023-10-31T00:00:00.000Z",
+      "spanLast": "2026-08-19T15:00:00.000Z",
+      "decisions": 215671,
+      "engineNull": 455,
+      "hold": 168708,
+      "directional": 46508,
+      "gatePassed": 15008,
+      "gateRejected": 31500,
+      "rejectByCode": {
+        "below_min_strength": 31449,
+        "below_min_confidence": 31449,
+        "stop_too_wide": 1,
+        "stop_too_tight": 118
+      },
+      "tradeOpenFailed": 0,
+      "censoredDataEnd": 16,
+      "gapPastStop": 1,
+      "gapPastTarget": 0,
+      "trades": 14992
+    }
+  },
+  "cellCounts": {
+    "symbol": 86,
+    "timeframe": 8,
+    "global": 4,
+    "total": 98,
+    "shipped": 62
+  },
+  "cells": {
+    "symbol": {
+      "XAUUSD|1D|BUY|strong": {
+        "n": 163,
+        "tpFirstPct": 0.3987730061349693,
+        "slFirstPct": 0.5337423312883436,
+        "timeoutPct": 0.06748466257668712,
+        "meanR": 0.33385463081902944,
+        "medianBarsHeld": 6,
+        "spanYears": "2001–2026",
+        "sourceTimeframe": "1D"
+      },
+      "XAUUSD|1D|SELL|strong": {
+        "n": 73,
+        "tpFirstPct": 0.2328767123287671,
+        "slFirstPct": 0.684931506849315,
+        "timeoutPct": 0.0821917808219178,
+        "meanR": 0.03632014463266137,
+        "medianBarsHeld": 4,
+        "spanYears": "2001–2026",
+        "sourceTimeframe": "1D"
+      },
+      "XAUUSD|1D|SELL|very_strong": {
+        "n": 1,
+        "tpFirstPct": 0,
+        "slFirstPct": 1,
+        "timeoutPct": 0,
+        "meanR": -1.1042223751459856,
+        "medianBarsHeld": 11,
+        "spanYears": "2012",
+        "sourceTimeframe": "1D"
+      },
+      "XAGUSD|1D|BUY|strong": {
+        "n": 96,
+        "tpFirstPct": 0.3645833333333333,
+        "slFirstPct": 0.6145833333333334,
+        "timeoutPct": 0.020833333333333332,
+        "meanR": 0.061300943298349814,
+        "medianBarsHeld": 5,
+        "spanYears": "2001–2025",
+        "sourceTimeframe": "1D"
+      },
+      "XAGUSD|1D|SELL|strong": {
+        "n": 75,
+        "tpFirstPct": 0.3466666666666667,
+        "slFirstPct": 0.6266666666666667,
+        "timeoutPct": 0.02666666666666667,
+        "meanR": 0.25330055110711064,
+        "medianBarsHeld": 5,
+        "spanYears": "2001–2025",
+        "sourceTimeframe": "1D"
+      },
+      "EURUSD|1D|SELL|strong": {
+        "n": 128,
+        "tpFirstPct": 0.234375,
+        "slFirstPct": 0.4765625,
+        "timeoutPct": 0.2890625,
+        "meanR": 0.07421068981510641,
+        "medianBarsHeld": 9,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURUSD|1D|BUY|strong": {
+        "n": 118,
+        "tpFirstPct": 0.2033898305084746,
+        "slFirstPct": 0.559322033898305,
+        "timeoutPct": 0.23728813559322035,
+        "meanR": 0.06694970109278003,
+        "medianBarsHeld": 9,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURUSD|1D|BUY|very_strong": {
+        "n": 1,
+        "tpFirstPct": 1,
+        "slFirstPct": 0,
+        "timeoutPct": 0,
+        "meanR": 1.9798484386094644,
+        "medianBarsHeld": 6,
+        "spanYears": "2008",
+        "sourceTimeframe": "1D"
+      },
+      "GBPUSD|1D|SELL|strong": {
+        "n": 120,
+        "tpFirstPct": 0.21666666666666667,
+        "slFirstPct": 0.525,
+        "timeoutPct": 0.25833333333333336,
+        "meanR": 0.0732933762398624,
+        "medianBarsHeld": 8,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "GBPUSD|1D|BUY|strong": {
+        "n": 128,
+        "tpFirstPct": 0.15625,
+        "slFirstPct": 0.6484375,
+        "timeoutPct": 0.1953125,
+        "meanR": -0.09824671803318005,
+        "medianBarsHeld": 8,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "GBPUSD|1D|BUY|very_strong": {
+        "n": 1,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": 0.4409051141619458,
+        "medianBarsHeld": 20,
+        "spanYears": "2007",
+        "sourceTimeframe": "1D"
+      },
+      "USDJPY|1D|SELL|strong": {
+        "n": 175,
+        "tpFirstPct": 0.15428571428571428,
+        "slFirstPct": 0.5828571428571429,
+        "timeoutPct": 0.26285714285714284,
+        "meanR": -0.09232278206804574,
+        "medianBarsHeld": 9,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDJPY|1D|BUY|strong": {
+        "n": 174,
+        "tpFirstPct": 0.21839080459770116,
+        "slFirstPct": 0.5747126436781609,
+        "timeoutPct": 0.20689655172413793,
+        "meanR": 0.02430626941049687,
+        "medianBarsHeld": 8.5,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDJPY|1D|BUY|very_strong": {
+        "n": 1,
+        "tpFirstPct": 1,
+        "slFirstPct": 0,
+        "timeoutPct": 0,
+        "meanR": 2.0804161214804475,
+        "medianBarsHeld": 5,
+        "spanYears": "1998",
+        "sourceTimeframe": "1D"
+      },
+      "USDJPY|1D|SELL|very_strong": {
+        "n": 1,
+        "tpFirstPct": 1,
+        "slFirstPct": 0,
+        "timeoutPct": 0,
+        "meanR": 2.4591347590795496,
+        "medianBarsHeld": 3,
+        "spanYears": "2011",
+        "sourceTimeframe": "1D"
+      },
+      "AUDUSD|1D|BUY|strong": {
+        "n": 108,
+        "tpFirstPct": 0.17592592592592593,
+        "slFirstPct": 0.6296296296296297,
+        "timeoutPct": 0.19444444444444445,
+        "meanR": -0.09771904637794993,
+        "medianBarsHeld": 9,
+        "spanYears": "2006–2026",
+        "sourceTimeframe": "1D"
+      },
+      "AUDUSD|1D|SELL|strong": {
+        "n": 92,
+        "tpFirstPct": 0.21739130434782608,
+        "slFirstPct": 0.6086956521739131,
+        "timeoutPct": 0.17391304347826086,
+        "meanR": 0.023607180491129556,
+        "medianBarsHeld": 7,
+        "spanYears": "2006–2025",
+        "sourceTimeframe": "1D"
+      },
+      "USDCHF|1D|BUY|strong": {
+        "n": 110,
+        "tpFirstPct": 0.17272727272727273,
+        "slFirstPct": 0.5545454545454546,
+        "timeoutPct": 0.2727272727272727,
+        "meanR": 0.06006132682847649,
+        "medianBarsHeld": 9,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDCHF|1D|SELL|strong": {
+        "n": 128,
+        "tpFirstPct": 0.25,
+        "slFirstPct": 0.5078125,
+        "timeoutPct": 0.2421875,
+        "meanR": 0.15763096485023007,
+        "medianBarsHeld": 10.5,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDCAD|1D|BUY|strong": {
+        "n": 119,
+        "tpFirstPct": 0.16806722689075632,
+        "slFirstPct": 0.5294117647058824,
+        "timeoutPct": 0.3025210084033613,
+        "meanR": 0.08637015698181345,
+        "medianBarsHeld": 10,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDCAD|1D|SELL|strong": {
+        "n": 127,
+        "tpFirstPct": 0.14173228346456693,
+        "slFirstPct": 0.49606299212598426,
+        "timeoutPct": 0.36220472440944884,
+        "meanR": -0.042142924843525394,
+        "medianBarsHeld": 11,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "USDCAD|1D|BUY|very_strong": {
+        "n": 1,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": 0.6239913682301077,
+        "medianBarsHeld": 20,
+        "spanYears": "2019",
+        "sourceTimeframe": "1D"
+      },
+      "NZDUSD|1D|SELL|strong": {
+        "n": 99,
+        "tpFirstPct": 0.18181818181818182,
+        "slFirstPct": 0.6767676767676768,
+        "timeoutPct": 0.1414141414141414,
+        "meanR": -0.08938720454907516,
+        "medianBarsHeld": 6,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "NZDUSD|1D|BUY|strong": {
+        "n": 119,
+        "tpFirstPct": 0.12605042016806722,
+        "slFirstPct": 0.6974789915966386,
+        "timeoutPct": 0.17647058823529413,
+        "meanR": -0.267148429183893,
+        "medianBarsHeld": 7,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURJPY|1D|SELL|strong": {
+        "n": 120,
+        "tpFirstPct": 0.2,
+        "slFirstPct": 0.5916666666666667,
+        "timeoutPct": 0.20833333333333334,
+        "meanR": -0.07182376455198905,
+        "medianBarsHeld": 7.5,
+        "spanYears": "2003–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURJPY|1D|BUY|strong": {
+        "n": 168,
+        "tpFirstPct": 0.15476190476190477,
+        "slFirstPct": 0.5,
+        "timeoutPct": 0.34523809523809523,
+        "meanR": 0.06565812082612942,
+        "medianBarsHeld": 11,
+        "spanYears": "2003–2026",
+        "sourceTimeframe": "1D"
+      },
+      "GBPJPY|1D|BUY|strong": {
+        "n": 138,
+        "tpFirstPct": 0.21014492753623187,
+        "slFirstPct": 0.45652173913043476,
+        "timeoutPct": 0.3333333333333333,
+        "meanR": 0.2314086674043617,
+        "medianBarsHeld": 13,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "GBPJPY|1D|SELL|strong": {
+        "n": 88,
+        "tpFirstPct": 0.23863636363636365,
+        "slFirstPct": 0.6363636363636364,
+        "timeoutPct": 0.125,
+        "meanR": 0.04018050215990964,
+        "medianBarsHeld": 8,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "GBPJPY|1D|BUY|very_strong": {
+        "n": 1,
+        "tpFirstPct": 0,
+        "slFirstPct": 1,
+        "timeoutPct": 0,
+        "meanR": -0.5914977156969682,
+        "medianBarsHeld": 5,
+        "spanYears": "2012",
+        "sourceTimeframe": "1D"
+      },
+      "EURGBP|1D|BUY|strong": {
+        "n": 175,
+        "tpFirstPct": 0.15428571428571428,
+        "slFirstPct": 0.5257142857142857,
+        "timeoutPct": 0.32,
+        "meanR": -0.09457516572992467,
+        "medianBarsHeld": 12,
+        "spanYears": "1999–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURGBP|1D|SELL|strong": {
+        "n": 155,
+        "tpFirstPct": 0.12258064516129032,
+        "slFirstPct": 0.4645161290322581,
+        "timeoutPct": 0.4129032258064516,
+        "meanR": -0.05871195075740813,
+        "medianBarsHeld": 17,
+        "spanYears": "1999–2026",
+        "sourceTimeframe": "1D"
+      },
+      "EURGBP|1D|SELL|very_strong": {
+        "n": 2,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": 1.2743144592234126,
+        "medianBarsHeld": 20,
+        "spanYears": "1999–2012",
+        "sourceTimeframe": "1D"
+      },
+      "AUDJPY|1D|BUY|strong": {
+        "n": 134,
+        "tpFirstPct": 0.2462686567164179,
+        "slFirstPct": 0.5223880597014925,
+        "timeoutPct": 0.23134328358208955,
+        "meanR": 0.2510393287140101,
+        "medianBarsHeld": 8,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "AUDJPY|1D|SELL|strong": {
+        "n": 92,
+        "tpFirstPct": 0.2608695652173913,
+        "slFirstPct": 0.6413043478260869,
+        "timeoutPct": 0.09782608695652174,
+        "meanR": 0.05902455060525488,
+        "medianBarsHeld": 6,
+        "spanYears": "2004–2026",
+        "sourceTimeframe": "1D"
+      },
+      "XAUUSD|1H|BUY|strong": {
+        "n": 562,
+        "tpFirstPct": 0.11209964412811388,
+        "slFirstPct": 0.3291814946619217,
+        "timeoutPct": 0.5587188612099644,
+        "meanR": 0.08904551469940523,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAUUSD|1H|SELL|strong": {
+        "n": 342,
+        "tpFirstPct": 0.19005847953216373,
+        "slFirstPct": 0.37719298245614036,
+        "timeoutPct": 0.4327485380116959,
+        "meanR": 0.048436496064412075,
+        "medianBarsHeld": 20,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAUUSD|1H|BUY|very_strong": {
+        "n": 14,
+        "tpFirstPct": 0.21428571428571427,
+        "slFirstPct": 0.14285714285714285,
+        "timeoutPct": 0.6428571428571429,
+        "meanR": 0.41035008846446314,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAUUSD|1H|SELL|very_strong": {
+        "n": 11,
+        "tpFirstPct": 0.09090909090909091,
+        "slFirstPct": 0.36363636363636365,
+        "timeoutPct": 0.5454545454545454,
+        "meanR": 0.03318887227578953,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAGUSD|1H|BUY|strong": {
+        "n": 375,
+        "tpFirstPct": 0.264,
+        "slFirstPct": 0.5093333333333333,
+        "timeoutPct": 0.22666666666666666,
+        "meanR": -0.00017001250623563516,
+        "medianBarsHeld": 11,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAGUSD|1H|SELL|strong": {
+        "n": 268,
+        "tpFirstPct": 0.27611940298507465,
+        "slFirstPct": 0.5261194029850746,
+        "timeoutPct": 0.19776119402985073,
+        "meanR": -0.016491232785200836,
+        "medianBarsHeld": 10,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "XAGUSD|1H|BUY|very_strong": {
+        "n": 4,
+        "tpFirstPct": 0.25,
+        "slFirstPct": 0.5,
+        "timeoutPct": 0.25,
+        "meanR": 0.1015150649774233,
+        "medianBarsHeld": 6,
+        "spanYears": "2024–2025",
+        "sourceTimeframe": "1H"
+      },
+      "XAGUSD|1H|SELL|very_strong": {
+        "n": 1,
+        "tpFirstPct": 0,
+        "slFirstPct": 1,
+        "timeoutPct": 0,
+        "meanR": -1.1977517249736374,
+        "medianBarsHeld": 1,
+        "spanYears": "2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURUSD|1H|BUY|strong": {
+        "n": 466,
+        "tpFirstPct": 0.02145922746781116,
+        "slFirstPct": 0.07939914163090128,
+        "timeoutPct": 0.8991416309012875,
+        "meanR": 0.01241212337396207,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURUSD|1H|SELL|strong": {
+        "n": 517,
+        "tpFirstPct": 0.01160541586073501,
+        "slFirstPct": 0.07736943907156674,
+        "timeoutPct": 0.9110251450676983,
+        "meanR": -0.022078655012679003,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURUSD|1H|BUY|very_strong": {
+        "n": 6,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": 0.19775033001395373,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURUSD|1H|SELL|very_strong": {
+        "n": 17,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": -0.10416994793726364,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPUSD|1H|SELL|strong": {
+        "n": 601,
+        "tpFirstPct": 0.008319467554076539,
+        "slFirstPct": 0.05490848585690516,
+        "timeoutPct": 0.9367720465890182,
+        "meanR": -0.019657036362153348,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPUSD|1H|BUY|strong": {
+        "n": 653,
+        "tpFirstPct": 0.007656967840735069,
+        "slFirstPct": 0.07044410413476264,
+        "timeoutPct": 0.9218989280245024,
+        "meanR": -0.0069534132433938115,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPUSD|1H|BUY|very_strong": {
+        "n": 23,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.043478260869565216,
+        "timeoutPct": 0.9565217391304348,
+        "meanR": 0.09710810810411123,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPUSD|1H|SELL|very_strong": {
+        "n": 13,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.15384615384615385,
+        "timeoutPct": 0.8461538461538461,
+        "meanR": -0.09805060623139578,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDJPY|1H|SELL|strong": {
+        "n": 472,
+        "tpFirstPct": 0.036016949152542374,
+        "slFirstPct": 0.1271186440677966,
+        "timeoutPct": 0.836864406779661,
+        "meanR": 0.023842797195458603,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDJPY|1H|BUY|strong": {
+        "n": 712,
+        "tpFirstPct": 0.011235955056179775,
+        "slFirstPct": 0.12921348314606743,
+        "timeoutPct": 0.8595505617977528,
+        "meanR": 0.01992039308910988,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDJPY|1H|SELL|very_strong": {
+        "n": 4,
+        "tpFirstPct": 0.25,
+        "slFirstPct": 0.25,
+        "timeoutPct": 0.5,
+        "meanR": -0.17913641178389914,
+        "medianBarsHeld": 16.5,
+        "spanYears": "2023–2025",
+        "sourceTimeframe": "1H"
+      },
+      "USDJPY|1H|BUY|very_strong": {
+        "n": 22,
+        "tpFirstPct": 0.045454545454545456,
+        "slFirstPct": 0.09090909090909091,
+        "timeoutPct": 0.8636363636363636,
+        "meanR": -0.011097635193848192,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDUSD|1H|SELL|strong": {
+        "n": 623,
+        "tpFirstPct": 0.02247191011235955,
+        "slFirstPct": 0.13001605136436598,
+        "timeoutPct": 0.8475120385232745,
+        "meanR": -0.05318378997598714,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDUSD|1H|BUY|strong": {
+        "n": 608,
+        "tpFirstPct": 0.011513157894736841,
+        "slFirstPct": 0.09375,
+        "timeoutPct": 0.8947368421052632,
+        "meanR": -0.01869985812030096,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDUSD|1H|BUY|very_strong": {
+        "n": 13,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.07692307692307693,
+        "timeoutPct": 0.9230769230769231,
+        "meanR": -0.0032091592198008998,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDUSD|1H|SELL|very_strong": {
+        "n": 18,
+        "tpFirstPct": 0.05555555555555555,
+        "slFirstPct": 0.1111111111111111,
+        "timeoutPct": 0.8333333333333334,
+        "meanR": 0.06025666475875797,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCHF|1H|BUY|strong": {
+        "n": 625,
+        "tpFirstPct": 0.0128,
+        "slFirstPct": 0.1232,
+        "timeoutPct": 0.864,
+        "meanR": -0.060060231011882334,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCHF|1H|SELL|strong": {
+        "n": 501,
+        "tpFirstPct": 0.01996007984031936,
+        "slFirstPct": 0.10778443113772455,
+        "timeoutPct": 0.872255489021956,
+        "meanR": -0.012792425507336632,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCHF|1H|SELL|very_strong": {
+        "n": 13,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.07692307692307693,
+        "timeoutPct": 0.9230769230769231,
+        "meanR": -0.0071211689232825726,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCHF|1H|BUY|very_strong": {
+        "n": 22,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.045454545454545456,
+        "timeoutPct": 0.9545454545454546,
+        "meanR": 0.1083884075517596,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCAD|1H|BUY|strong": {
+        "n": 777,
+        "tpFirstPct": 0.009009009009009009,
+        "slFirstPct": 0.03732303732303732,
+        "timeoutPct": 0.9536679536679536,
+        "meanR": 0.005765278931746155,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCAD|1H|SELL|strong": {
+        "n": 517,
+        "tpFirstPct": 0.0019342359767891683,
+        "slFirstPct": 0.04642166344294004,
+        "timeoutPct": 0.9516441005802708,
+        "meanR": -0.06333672340023637,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "USDCAD|1H|SELL|very_strong": {
+        "n": 10,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.1,
+        "timeoutPct": 0.9,
+        "meanR": -0.09084268844011043,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2025",
+        "sourceTimeframe": "1H"
+      },
+      "USDCAD|1H|BUY|very_strong": {
+        "n": 29,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.034482758620689655,
+        "timeoutPct": 0.9655172413793104,
+        "meanR": 0.022467767920735918,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "NZDUSD|1H|SELL|strong": {
+        "n": 590,
+        "tpFirstPct": 0.0288135593220339,
+        "slFirstPct": 0.13898305084745763,
+        "timeoutPct": 0.8322033898305085,
+        "meanR": -0.010781337381072129,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "NZDUSD|1H|BUY|strong": {
+        "n": 532,
+        "tpFirstPct": 0.03571428571428571,
+        "slFirstPct": 0.14097744360902256,
+        "timeoutPct": 0.8233082706766918,
+        "meanR": -0.00036075715276958,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "NZDUSD|1H|BUY|very_strong": {
+        "n": 14,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.07142857142857142,
+        "timeoutPct": 0.9285714285714286,
+        "meanR": -0.1838044755899436,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "NZDUSD|1H|SELL|very_strong": {
+        "n": 18,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.1111111111111111,
+        "timeoutPct": 0.8888888888888888,
+        "meanR": 0.12388714781911864,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURJPY|1H|BUY|strong": {
+        "n": 752,
+        "tpFirstPct": 0.0013297872340425532,
+        "slFirstPct": 0.08643617021276596,
+        "timeoutPct": 0.9122340425531915,
+        "meanR": -0.00970855271076207,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURJPY|1H|SELL|strong": {
+        "n": 464,
+        "tpFirstPct": 0.034482758620689655,
+        "slFirstPct": 0.11637931034482758,
+        "timeoutPct": 0.8491379310344828,
+        "meanR": -0.04134658256814347,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURJPY|1H|BUY|very_strong": {
+        "n": 25,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.04,
+        "timeoutPct": 0.96,
+        "meanR": -0.05377674966760537,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURJPY|1H|SELL|very_strong": {
+        "n": 17,
+        "tpFirstPct": 0.058823529411764705,
+        "slFirstPct": 0.11764705882352941,
+        "timeoutPct": 0.8235294117647058,
+        "meanR": -0.17281459217366493,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPJPY|1H|SELL|strong": {
+        "n": 456,
+        "tpFirstPct": 0.043859649122807015,
+        "slFirstPct": 0.1425438596491228,
+        "timeoutPct": 0.8135964912280702,
+        "meanR": -0.03985506582287363,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPJPY|1H|BUY|strong": {
+        "n": 751,
+        "tpFirstPct": 0.006657789613848202,
+        "slFirstPct": 0.10386151797603196,
+        "timeoutPct": 0.8894806924101198,
+        "meanR": -0.02925094610604529,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPJPY|1H|BUY|very_strong": {
+        "n": 26,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.11538461538461539,
+        "timeoutPct": 0.8846153846153846,
+        "meanR": -0.06383834629616704,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "GBPJPY|1H|SELL|very_strong": {
+        "n": 11,
+        "tpFirstPct": 0.18181818181818182,
+        "slFirstPct": 0,
+        "timeoutPct": 0.8181818181818182,
+        "meanR": 0.5502044178802082,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2025",
+        "sourceTimeframe": "1H"
+      },
+      "EURGBP|1H|SELL|strong": {
+        "n": 662,
+        "tpFirstPct": 0.0030211480362537764,
+        "slFirstPct": 0.021148036253776436,
+        "timeoutPct": 0.9758308157099698,
+        "meanR": -0.017929108901900796,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURGBP|1H|BUY|strong": {
+        "n": 538,
+        "tpFirstPct": 0.011152416356877323,
+        "slFirstPct": 0.016728624535315983,
+        "timeoutPct": 0.9721189591078067,
+        "meanR": -0.028659484750135862,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURGBP|1H|BUY|very_strong": {
+        "n": 18,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": -0.06169754844461996,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "EURGBP|1H|SELL|very_strong": {
+        "n": 15,
+        "tpFirstPct": 0,
+        "slFirstPct": 0,
+        "timeoutPct": 1,
+        "meanR": -0.009546868258081277,
+        "medianBarsHeld": 24,
+        "spanYears": "2024–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDJPY|1H|BUY|strong": {
+        "n": 765,
+        "tpFirstPct": 0.01045751633986928,
+        "slFirstPct": 0.13333333333333333,
+        "timeoutPct": 0.8562091503267973,
+        "meanR": -0.01996303624232739,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDJPY|1H|SELL|strong": {
+        "n": 469,
+        "tpFirstPct": 0.053304904051172705,
+        "slFirstPct": 0.1812366737739872,
+        "timeoutPct": 0.7654584221748401,
+        "meanR": -0.03273947161175901,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDJPY|1H|BUY|very_strong": {
+        "n": 21,
+        "tpFirstPct": 0.047619047619047616,
+        "slFirstPct": 0,
+        "timeoutPct": 0.9523809523809523,
+        "meanR": 0.22525933513893082,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "AUDJPY|1H|SELL|very_strong": {
+        "n": 9,
+        "tpFirstPct": 0,
+        "slFirstPct": 0.1111111111111111,
+        "timeoutPct": 0.8888888888888888,
+        "meanR": -0.2437285227055657,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      }
+    },
+    "timeframe": {
+      "1D|BUY|strong": {
+        "n": 1750,
+        "tpFirstPct": 0.21142857142857144,
+        "slFirstPct": 0.5594285714285714,
+        "timeoutPct": 0.22914285714285715,
+        "meanR": 0.05397201261375404,
+        "medianBarsHeld": 8,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "1D|SELL|strong": {
+        "n": 1472,
+        "tpFirstPct": 0.20516304347826086,
+        "slFirstPct": 0.5652173913043478,
+        "timeoutPct": 0.2296195652173913,
+        "meanR": 0.01574774226023943,
+        "medianBarsHeld": 8,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "1D|SELL|very_strong": {
+        "n": 4,
+        "tpFirstPct": 0.25,
+        "slFirstPct": 0.25,
+        "timeoutPct": 0.5,
+        "meanR": 0.9758853255950973,
+        "medianBarsHeld": 15.5,
+        "spanYears": "1999–2012",
+        "sourceTimeframe": "1D"
+      },
+      "1D|BUY|very_strong": {
+        "n": 5,
+        "tpFirstPct": 0.4,
+        "slFirstPct": 0.2,
+        "timeoutPct": 0.4,
+        "meanR": 0.9067326653569996,
+        "medianBarsHeld": 6,
+        "spanYears": "1998–2019",
+        "sourceTimeframe": "1D"
+      },
+      "1H|BUY|strong": {
+        "n": 8116,
+        "tpFirstPct": 0.030310497782158698,
+        "slFirstPct": 0.12851158206012814,
+        "timeoutPct": 0.8411779201577132,
+        "meanR": -0.004826473852262053,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "1H|SELL|strong": {
+        "n": 6482,
+        "tpFirstPct": 0.04196235729713051,
+        "slFirstPct": 0.1329836470225239,
+        "timeoutPct": 0.8250539956803455,
+        "meanR": -0.02207039493121726,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "1H|BUY|very_strong": {
+        "n": 237,
+        "tpFirstPct": 0.02531645569620253,
+        "slFirstPct": 0.06329113924050633,
+        "timeoutPct": 0.9113924050632911,
+        "meanR": 0.04372829079693308,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "1H|SELL|very_strong": {
+        "n": 157,
+        "tpFirstPct": 0.03821656050955414,
+        "slFirstPct": 0.10828025477707007,
+        "timeoutPct": 0.8535031847133758,
+        "meanR": -0.009576684238920375,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      }
+    },
+    "global": {
+      "1D|BUY": {
+        "n": 1755,
+        "tpFirstPct": 0.21196581196581196,
+        "slFirstPct": 0.5584045584045584,
+        "timeoutPct": 0.22962962962962963,
+        "meanR": 0.05640153014293705,
+        "medianBarsHeld": 8,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "1D|SELL": {
+        "n": 1476,
+        "tpFirstPct": 0.20528455284552846,
+        "slFirstPct": 0.5643631436314364,
+        "timeoutPct": 0.23035230352303523,
+        "meanR": 0.01834974113106561,
+        "medianBarsHeld": 8,
+        "spanYears": "1997–2026",
+        "sourceTimeframe": "1D"
+      },
+      "1H|BUY": {
+        "n": 8353,
+        "tpFirstPct": 0.03016880162815755,
+        "slFirstPct": 0.12666107985155034,
+        "timeoutPct": 0.8431701185202921,
+        "meanR": -0.0034488275908159624,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      },
+      "1H|SELL": {
+        "n": 6639,
+        "tpFirstPct": 0.04187377617111011,
+        "slFirstPct": 0.13239945774966108,
+        "timeoutPct": 0.8257267660792288,
+        "meanR": -0.021774941914393855,
+        "medianBarsHeld": 24,
+        "spanYears": "2023–2026",
+        "sourceTimeframe": "1H"
+      }
+    }
+  }
+}

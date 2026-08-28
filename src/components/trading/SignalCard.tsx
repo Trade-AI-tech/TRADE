@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { lookupEvidence } from '@/lib/signal-evidence';
 import {
   TrendingUp, TrendingDown, Minus, Target, Shield, Clock, CheckCircle2,
 } from 'lucide-react';
@@ -126,6 +127,20 @@ export default function SignalCard({ signal }: Props) {
 
   const createdAgo = now !== null ? timeAgoTh(signal.created_at, now) : null;
   const expiry = now !== null ? expiresInTh(signal.expires_at, now) : null;
+
+  // หลักฐานย้อนหลังของเซ็ตอัพแบบเดียวกัน (สร้างจากประวัติจริงโดย
+  // scripts/research/build-signal-evidence.mjs) — เป็น "ความถี่ในอดีต" เท่านั้น
+  // ไม่ใช่การพยากรณ์ผลของไม้นี้ · ไม่มีข้อมูลถึงเกณฑ์ = ไม่แสดงบล็อกเลย ห้ามเดา
+  const evidence = tradeable
+    ? lookupEvidence(signal.symbol, signal.timeframe, signal.action, signal.strength)
+    : null;
+  // sourceTimeframe ต่างจากของสัญญาณ (เช่น 15m ที่ไม่มีประวัติ ต้องยืมข้อมูล 1H)
+  // ต้องบอกในวงเล็บตรง ๆ — ตัวเลขจากกรอบเวลาอื่นห้ามแปะเนียนเป็นของกรอบนี้
+  const evidenceTfNote = evidence
+    ? evidence.sourceTimeframe === (signal.timeframe ?? '').toUpperCase()
+      ? evidence.sourceTimeframe
+      : `ประมาณจากกรอบ ${evidence.sourceTimeframe}`
+    : null;
 
   // สัญญาณระยะสั้นเสื่อมเร็ว — 1H ที่อายุเกินกำหนดให้จางลง + ติดป้ายชัด ๆ
   const ageMs = now !== null ? now - new Date(signal.created_at).getTime() : NaN;
@@ -302,6 +317,31 @@ export default function SignalCard({ signal }: Props) {
             </div>
             <div className="text-sm font-mono font-semibold text-up mt-0.5">{signal.take_profit}</div>
           </div>
+        </div>
+      )}
+
+      {/* หลักฐานย้อนหลัง — สามตัวเลขในบรรทัดเดียวใต้ราคา
+          พูดในรูป "ในอดีต...%" เท่านั้น (ความถี่ที่วัดได้จริง ไม่ใช่คำสัญญาเรื่องอนาคต —
+          งานวิจัยของ repo วัดแล้วว่าไม่มีเซ็ตอัพไหนพิสูจน์ edge หลังต้นทุนได้) */}
+      {evidence && (
+        <div
+          className="mb-3 bg-surface-2 rounded-lg px-2.5 py-2 text-[11px] leading-relaxed"
+          title={`ความถี่ที่วัดจากประวัติช่วง ${evidence.spanYears} ของเซ็ตอัพ SL/TP แบบเดียวกัน — ไม่ใช่การพยากรณ์ผลของสัญญาณนี้`}
+        >
+          <span className="text-gray-400">ในอดีตเซ็ตอัพนี้: </span>
+          <span className="whitespace-nowrap text-up font-medium">
+            ถึง TP ก่อน {Math.round(evidence.tpFirstPct * 100)}%
+          </span>
+          <span className="text-gray-500"> · </span>
+          <span className="whitespace-nowrap text-red-700 [.dark_&]:text-down font-medium">
+            โดน SL ก่อน {Math.round(evidence.slFirstPct * 100)}%
+          </span>
+          <span className="text-gray-500"> · </span>
+          <span className="whitespace-nowrap text-gray-400">
+            หมดเวลา {Math.round(evidence.timeoutPct * 100)}%{' '}
+            (N={evidence.n}, {evidenceTfNote}
+            {evidence.level !== 'symbol' ? ', รวมทุกสินทรัพย์' : ''})
+          </span>
         </div>
       )}
 
