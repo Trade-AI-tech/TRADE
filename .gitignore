@@ -38,7 +38,21 @@ supabase/.temp/
 
 # คลังข้อมูลวิจัย — ไฟล์ใหญ่หลักร้อย MB สร้างใหม่ได้เสมอด้วย
 # node scripts/research/fetch-universe.mjs จึงไม่ควรอยู่ใน git
-.research-cache/
+#
+# ⚠ มีข้อยกเว้นไฟล์เดียว: .research-cache/candles/GOLD__XAUUSD__15m.json
+#   เหตุผลที่ไฟล์อื่นไม่ commit: รวมกัน 176 MB และ **สร้างใหม่ได้เสมอ** เพราะ Yahoo
+#   ให้ 1D/1H ย้อนหลังเป็นปี ๆ อยากได้เมื่อไหร่ก็ดึงใหม่ได้
+#   เหตุผลที่ไฟล์ 15m ต้อง commit: Yahoo ให้ 15m ย้อนหลัง **แค่ 1 เดือน** — แท่งที่เก่ากว่านั้น
+#   ดึงใหม่ไม่ได้อีกเลย ถ้าไม่ commit กลับเข้า repo ทุกวัน ข้อมูลจะหายไปกับ runner ทุกรอบ
+#   แล้วเลน 15m จะไม่มีวันมีชุดข้อมูลยาวพอให้แบ่ง train/validation/test ได้เลยตลอดกาล
+#   ตัวเก็บคือ scripts/collect-15m.mjs · ตัวเรียกคือ .github/workflows/collect-15m.yml
+#
+# กติกาของ git: ยกเว้นไฟล์ในโฟลเดอร์ที่ถูก ignore ทั้งก้อนไม่ได้ ต้องเปิดทางให้ git
+# เดินเข้าไปทีละชั้นก่อน (จึงเป็น `.research-cache/*` ไม่ใช่ `.research-cache/`)
+.research-cache/*
+!.research-cache/candles/
+.research-cache/candles/*
+!.research-cache/candles/GOLD__XAUUSD__15m.json
 
 # ผลผลิตจากการ build ที่ใช้ dist dir อื่น (NEXT_DIST_DIR) — เคยถูก commit เข้ามาโดยไม่ตั้งใจ
 # 220 ไฟล์ ทำให้ทุกครั้งที่ build แล้ว git status เต็มไปด้วยไฟล์ที่ไม่มีใครอ่าน

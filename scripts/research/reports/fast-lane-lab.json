@@ -1,0 +1,3269 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-01T06:27:24.905Z",
+  "elapsedMs": 2373,
+  "question": "เข้าเร็วออกเร็วบนทอง 15m ทำได้จริงแค่ไหน",
+  "universe": "GOLD/XAUUSD",
+  "timeframe": "15m",
+  "split": {
+    "scheme": "ไม่มี — ใช้ทั้งชุดเป็น in-sample",
+    "why": "Yahoo ให้ 15m ย้อนหลังสูงสุด 1 เดือน แบ่ง train/validation/test ไม่ได้",
+    "contrastWith1DAnd1H": "report/split.json แบ่ง 60/20/20 ให้ 1D/1H — เลนนี้ไม่มี"
+  },
+  "data": {
+    "source": ".research-cache/candles/GOLD__XAUUSD__15m.json",
+    "bars": 1960,
+    "first": "2026-08-02T22:00:00.000Z",
+    "last": "2026-09-01T05:30:00.000Z",
+    "firstClose": 4133.2998046875,
+    "lastClose": 4492.2001953125,
+    "spanDays": 29.3125,
+    "tradingDaysNote": "ช่องว่าง 22 จุด: พักรายวันของ CME 18 · สุดสัปดาห์ 4 · อธิบายไม่ได้ 0"
+  },
+  "pipeline": {
+    "order": [
+      "generateSignal",
+      "applyStopFloor (15m เท่านั้น)",
+      "กันซ้ำ",
+      "evaluateSignal"
+    ],
+    "matchesProduction": "scripts/scan-universe.mjs บรรทัด 821 → 943 → 958",
+    "dedupeKey": "symbol + action + timeframe (BUY/SELL มีนาฬิกาคนละเรือน)",
+    "dedupeClock": "ตั้งใหม่เฉพาะใบที่ประตูรับ",
+    "entry": "ราคาเปิดของแท่งถัดไปจากแท่งสัญญาณ",
+    "rDenominator": "plannedRisk = |sig.entry_price − sig.stop_loss| (หลังขยาย SL แล้ว)",
+    "slWinsOnSameBar": true,
+    "costs": {
+      "byMarket": {
+        "GOLD": 5,
+        "FOREX": 1.5,
+        "TH_STOCK": 40,
+        "US_STOCK": 5,
+        "CRYPTO": 25
+      },
+      "bySymbol": {
+        "XAUUSD": 3,
+        "XAGUSD": 15,
+        "PL=F": 12,
+        "PA=F": 20,
+        "HG=F": 10,
+        "EURJPY": 2.5,
+        "GBPJPY": 2.5,
+        "USDMXN": 3,
+        "USDZAR": 5,
+        "USDTHB": 15,
+        "EURTHB": 20,
+        "JPYTHB": 20,
+        "GBPTHB": 20,
+        "AUDTHB": 20
+      }
+    },
+    "maxCostR": 0.05,
+    "minStopPct": 0.005999999999999999
+  },
+  "gate": {
+    "source": "src/lib/universe.ts · evaluateSignal() + SIGNAL_GATE.perTimeframe[\"15m\"]",
+    "values": {
+      "minStrength": "moderate",
+      "minConfidence": 55,
+      "minRiskReward": 1.2,
+      "maxRiskReward": null,
+      "minStopDistancePct": 0.15,
+      "maxStopDistancePct": 8,
+      "maxSignalsPerRun": 8,
+      "perTimeframe": {
+        "15m": {
+          "minStrength": "moderate",
+          "minConfidence": 55,
+          "minRiskReward": 1.2,
+          "maxSignalsPerRun": 8
+        }
+      }
+    }
+  },
+  "baseline": {
+    "what": "ไม้ชุดเดียวกันเป๊ะ (แท่งเดียวกัน ระยะ SL/TP เท่ากัน RR เท่ากัน ต้นทุนเท่ากัน) ต่างแค่ทิศ",
+    "how": "ทิศ = ดัชนีคู่ → long · คี่ → short ในลำดับสัญญาณทั้งหมด (ไม่ดูข้อมูลใด ๆ)",
+    "whyFixedAcrossCells": "ผูกกับลำดับเต็ม ไม่ใช่ลำดับหลังกันซ้ำ เพื่อให้ทุกช่องเทียบกับจักรวาลคู่ขนานอันเดียวกัน",
+    "whyAlternateNotRandom": "สลับให้ long/short เท่ากันเป๊ะ กันไม่ให้เส้นฐานบังเอิญเอนตามเทรนด์ขาขึ้นของเดือนนี้",
+    "readAs": "กฎจริงไม่ชนะเส้นฐานนี้ = สิ่งที่วัดได้คือเรขาคณิต ไม่ใช่ความสามารถทำนาย"
+  },
+  "power": {
+    "method": "circular block bootstrap ตามเวลา",
+    "B": 4000,
+    "seed": 20260901,
+    "whyNotClusterBySymbol": "จักรวาลเหลือ symbol เดียว → G=1 → CI กว้างศูนย์ (self-test พิสูจน์ไว้)",
+    "blockLengthRule": "ค่ากลางของจำนวนไม้ที่ช่วง [เข้า, ออก] คาบเกี่ยวกัน = ระยะที่ไม้สัมพันธ์กันเชิงกลไก",
+    "mdeDefinition": {
+      "atSignificance": "1.96 × SE — ผลจริงต้องใหญ่เท่านี้ถึงจะผ่าน p<0.05 (อำนาจราว 50%)",
+      "at80Power": "2.8016 × SE — ผลจริงต้องใหญ่เท่านี้ถึงจะจับได้ 80% ของเวลา"
+    }
+  },
+  "multipleTesting": {
+    "method": "Holm-Bonferroni step-down (scripts/research/holm.mjs)",
+    "alpha": 0.05,
+    "familySize": 36,
+    "whyTwoFamilies": "vsBaseline ถามว่า \"ชนะเหรียญไหม\" · mixNull ถามว่า \"เลือกจังหวะเก่งไหม\" — คนละคำถาม",
+    "vsBaseline": {
+      "rawBelow05": 8,
+      "survivors": 0
+    },
+    "mixNull": {
+      "rawBelow05": 3,
+      "survivors": 0
+    }
+  },
+  "base": {
+    "decisions": 1945,
+    "engineNull": 35,
+    "hold": 1500,
+    "directional": 410,
+    "stopWidened": 27,
+    "gatePassed": 410,
+    "gateRejected": 0,
+    "rejectByCode": {}
+  },
+  "grid": [
+    {
+      "dedupeHours": 0,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0,
+      "pctSl": 0.014634146341463415,
+      "pctTimeout": 0.9829268292682927,
+      "pctDataEnd": 0.0024390243902439024,
+      "meanRNet": -0.015386822414789144,
+      "meanRRaw": 0.015486788553977301,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.4975609756097561,
+      "totalRNet": -6.308597190063549,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.050836184394282474,
+        "meanRRaw": -0.019962573425515998,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0,
+        "pctSl": 0.01707317073170732,
+        "pctTimeout": 0.9804878048780488,
+        "pctDataEnd": 0.0024390243902439024,
+        "medianHoldHours": 1,
+        "winRate": 0.4292682926829268
+      },
+      "alwaysLong": {
+        "meanRNet": -0.027592734924521814,
+        "winRate": 0.47560975609756095,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.04270969689141766,
+        "winRate": 0.4170731707317073,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.03544936197949333,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 137,
+        "se": 0.016711943851844473,
+        "lo95": -0.047842439288517544,
+        "hi95": 0.017070462460845856,
+        "pTwoTailed": 0.349,
+        "mdeAtSignificance": 0.03275540994961517,
+        "mdeAt80Power": 0.04682018189532748
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 137,
+        "se": 0.020863045457024183,
+        "lo95": -0.005368057823329896,
+        "hi95": 0.07581229748054788,
+        "pTwoTailed": 0.0905,
+        "mdeAtSignificance": 0.0408915690957674,
+        "mdeAt80Power": 0.05844990815239895
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": -0.03358172133968234,
+        "nullSd": 0.013813402164355646,
+        "pOneSided": 0.09922519370157461,
+        "timingEdge": 0.018194898924893198
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0905,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.09922519370157461,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 0,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0.007317073170731708,
+      "pctSl": 0.02926829268292683,
+      "pctTimeout": 0.9609756097560975,
+      "pctDataEnd": 0.0024390243902439024,
+      "meanRNet": 0.005961527611740114,
+      "meanRRaw": 0.03683513858050658,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.5195121951219512,
+      "totalRNet": 2.4442263208134465,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.038909868508942486,
+        "meanRRaw": -0.008036257540176044,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0.004878048780487805,
+        "pctSl": 0.036585365853658534,
+        "pctTimeout": 0.9560975609756097,
+        "pctDataEnd": 0.0024390243902439024,
+        "medianHoldHours": 2,
+        "winRate": 0.4682926829268293
+      },
+      "alwaysLong": {
+        "meanRNet": -0.009974428998579074,
+        "winRate": 0.4853658536585366,
+        "pctTp": 0.004878048780487805
+      },
+      "alwaysShort": {
+        "meanRNet": -0.05267169867930398,
+        "winRate": 0.45121951219512196,
+        "pctTp": 0.0024390243902439024
+      },
+      "vsBaseline": 0.0448713961206826,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 82,
+        "se": 0.02614516385864872,
+        "lo95": -0.04323721769452727,
+        "hi95": 0.058185038209342545,
+        "pTwoTailed": 0.8355,
+        "mdeAtSignificance": 0.051244521162951494,
+        "mdeAt80Power": 0.07324829106639026
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 82,
+        "se": 0.02872503659593013,
+        "lo95": -0.009454383488436848,
+        "hi95": 0.1013667407267537,
+        "pTwoTailed": 0.11,
+        "mdeAtSignificance": 0.05630107172802305,
+        "mdeAt80Power": 0.08047606252715786
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": -0.026237300142630652,
+        "nullSd": 0.020182279398082897,
+        "pOneSided": 0.0519870032491877,
+        "timingEdge": 0.03219882775437077
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.11,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.0519870032491877,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 0,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0.01707317073170732,
+      "pctSl": 0.07073170731707316,
+      "pctTimeout": 0.9048780487804878,
+      "pctDataEnd": 0.007317073170731708,
+      "meanRNet": 0.022926984474902087,
+      "meanRRaw": 0.05380059544366858,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5048780487804878,
+      "totalRNet": 9.400063634709856,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.03943554731491341,
+        "meanRRaw": -0.008561936346146928,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0.007317073170731708,
+        "pctSl": 0.09024390243902439,
+        "pctTimeout": 0.8951219512195122,
+        "pctDataEnd": 0.007317073170731708,
+        "medianHoldHours": 4,
+        "winRate": 0.4878048780487805
+      },
+      "alwaysLong": {
+        "meanRNet": 0.04168644482613577,
+        "winRate": 0.5146341463414634,
+        "pctTp": 0.01707317073170732
+      },
+      "alwaysShort": {
+        "meanRNet": -0.10186086199202576,
+        "winRate": 0.43902439024390244,
+        "pctTp": 0.004878048780487805
+      },
+      "vsBaseline": 0.0623625317898155,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 8,
+        "blocksPerSample": 52,
+        "se": 0.03997700314878825,
+        "lo95": -0.05468856181293188,
+        "hi95": 0.10355365151698462,
+        "pTwoTailed": 0.5655,
+        "mdeAtSignificance": 0.07835492617162497,
+        "mdeAt80Power": 0.11199957202164516
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 8,
+        "blocksPerSample": 52,
+        "se": 0.04044468224450997,
+        "lo95": -0.015217789652237548,
+        "hi95": 0.14321899275877678,
+        "pTwoTailed": 0.114,
+        "mdeAtSignificance": 0.07927157719923954,
+        "mdeAt80Power": 0.11330982177621914
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": -0.013883819982234282,
+        "nullSd": 0.02666895024375405,
+        "pOneSided": 0.08747813046738316,
+        "timingEdge": 0.03681080445713637
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.114,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.08747813046738316,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 0,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0.024390243902439025,
+      "pctSl": 0.11463414634146342,
+      "pctTimeout": 0.848780487804878,
+      "pctDataEnd": 0.012195121951219513,
+      "meanRNet": 0.03225031583654183,
+      "meanRRaw": 0.06312392680530834,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.4878048780487805,
+      "totalRNet": 13.22262949298215,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.038683061765529964,
+        "meanRRaw": -0.007809450796763512,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0.014634146341463415,
+        "pctSl": 0.13902439024390245,
+        "pctTimeout": 0.8341463414634146,
+        "pctDataEnd": 0.012195121951219513,
+        "medianHoldHours": 6,
+        "winRate": 0.4609756097560976
+      },
+      "alwaysLong": {
+        "meanRNet": 0.06771034303783152,
+        "winRate": 0.5219512195121951,
+        "pctTp": 0.026829268292682926
+      },
+      "alwaysShort": {
+        "meanRNet": -0.1356974128520101,
+        "winRate": 0.43414634146341463,
+        "pctTp": 0.004878048780487805
+      },
+      "vsBaseline": 0.0709333776020718,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 11,
+        "blocksPerSample": 38,
+        "se": 0.052479482440551686,
+        "lo95": -0.06838041269989296,
+        "hi95": 0.1377423283321786,
+        "pTwoTailed": 0.552,
+        "mdeAtSignificance": 0.1028597855834813,
+        "mdeAt80Power": 0.1470265180054496
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 11,
+        "blocksPerSample": 38,
+        "se": 0.0489231770415706,
+        "lo95": -0.021120472650033844,
+        "hi95": 0.17110394416026356,
+        "pTwoTailed": 0.1345,
+        "mdeAtSignificance": 0.09588942700147837,
+        "mdeAt80Power": 0.1370631727996642
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": -0.011738076241157728,
+        "nullSd": 0.03179442726056283,
+        "pOneSided": 0.08322919270182455,
+        "timingEdge": 0.043988392077699556
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.1345,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.08322919270182455,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 0,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0.08292682926829269,
+      "pctSl": 0.2121951219512195,
+      "pctTimeout": 0.6829268292682927,
+      "pctDataEnd": 0.02195121951219512,
+      "meanRNet": 0.1043320924515238,
+      "meanRRaw": 0.13520570342029048,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.4975609756097561,
+      "totalRNet": 42.77615790512476,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.033818310599405904,
+        "meanRRaw": -0.0029446996306394784,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0.06097560975609756,
+        "pctSl": 0.2682926829268293,
+        "pctTimeout": 0.6487804878048781,
+        "pctDataEnd": 0.02195121951219512,
+        "medianHoldHours": 12,
+        "winRate": 0.4634146341463415
+      },
+      "alwaysLong": {
+        "meanRNet": 0.20877099325467358,
+        "winRate": 0.5707317073170731,
+        "pctTp": 0.09268292682926829
+      },
+      "alwaysShort": {
+        "meanRNet": -0.26345930281189317,
+        "winRate": 0.3439024390243902,
+        "pctTp": 0.02926829268292683
+      },
+      "vsBaseline": 0.1381504030509297,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 19,
+        "blocksPerSample": 22,
+        "se": 0.09733963467866419,
+        "lo95": -0.07752790875946725,
+        "hi95": 0.30131840446890384,
+        "pTwoTailed": 0.302,
+        "mdeAtSignificance": 0.1907856839701818,
+        "mdeAt80Power": 0.2727067205157456
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 19,
+        "blocksPerSample": 22,
+        "se": 0.08020565895875242,
+        "lo95": -0.014360731811477727,
+        "hi95": 0.3007671352433131,
+        "pTwoTailed": 0.0785,
+        "mdeAtSignificance": 0.15720309155915474,
+        "mdeAt80Power": 0.2247041741388408
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": 0.023347179912434,
+        "nullSd": 0.03805378077011959,
+        "pOneSided": 0.01849537615596101,
+        "timingEdge": 0.0809849125390898
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0785,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.01849537615596101,
+        "pAdjusted": 0.6658335416145963,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 0,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": false,
+      "signalsPerDay": 13.98720682302772,
+      "trades": 410,
+      "longShare": 0.6073170731707317,
+      "pctTp": 0.1951219512195122,
+      "pctSl": 0.4121951219512195,
+      "pctTimeout": 0.35365853658536583,
+      "pctDataEnd": 0.03902439024390244,
+      "meanRNet": 0.06805247775062895,
+      "meanRRaw": 0.09892608871939546,
+      "meanCostR": 0.03087361096876644,
+      "medianHoldHours": 20.875,
+      "medianHoldBars": 74.5,
+      "winRate": 0.4024390243902439,
+      "totalRNet": 27.90151587775787,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 410,
+        "signalsPerDay": 13.98720682302772,
+        "meanRNet": -0.0077688157291487875,
+        "meanRRaw": 0.02310479523961763,
+        "meanCostR": 0.03087361096876644,
+        "pctTp": 0.15365853658536585,
+        "pctSl": 0.43658536585365854,
+        "pctTimeout": 0.37073170731707317,
+        "pctDataEnd": 0.03902439024390244,
+        "medianHoldHours": 19.75,
+        "winRate": 0.4292682926829268
+      },
+      "alwaysLong": {
+        "meanRNet": 0.2734377915549656,
+        "winRate": 0.5341463414634147,
+        "pctTp": 0.22682926829268293
+      },
+      "alwaysShort": {
+        "meanRNet": -0.2950152137977857,
+        "winRate": 0.3146341463414634,
+        "pctTp": 0.08536585365853659
+      },
+      "vsBaseline": 0.07582129347977773,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 28,
+        "blocksPerSample": 15,
+        "se": 0.16235113549687152,
+        "lo95": -0.24781667872109206,
+        "hi95": 0.395637264012568,
+        "pTwoTailed": 0.692,
+        "mdeAtSignificance": 0.3182082255738682,
+        "mdeAt80Power": 0.45484294120803526
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 28,
+        "blocksPerSample": 15,
+        "se": 0.13696515129995981,
+        "lo95": -0.18530398729798758,
+        "hi95": 0.3402563080268968,
+        "pTwoTailed": 0.597,
+        "mdeAtSignificance": 0.2684516965479212,
+        "mdeAt80Power": 0.38372156788196743
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 249,
+        "nShort": 161,
+        "nullMean": 0.049558517460127585,
+        "nullSd": 0.04847470126661795,
+        "pOneSided": 0.35766058485378655,
+        "timingEdge": 0.018493960290501363
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.597,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.35766058485378655,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0,
+      "pctSl": 0.024096385542168676,
+      "pctTimeout": 0.9718875502008032,
+      "pctDataEnd": 0.004016064257028112,
+      "meanRNet": -0.018231099895992718,
+      "meanRRaw": 0.015212334066193867,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.5220883534136547,
+      "totalRNet": -4.539543874102187,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.07359447411328762,
+        "meanRRaw": -0.040151040151101006,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0,
+        "pctSl": 0.024096385542168676,
+        "pctTimeout": 0.9718875502008032,
+        "pctDataEnd": 0.004016064257028112,
+        "medianHoldHours": 1,
+        "winRate": 0.42570281124497994
+      },
+      "alwaysLong": {
+        "meanRNet": -0.0292508050918705,
+        "winRate": 0.4859437751004016,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.05104853284926796,
+        "winRate": 0.41767068273092367,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.055363374217294904,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 249,
+        "se": 0.021328036817926194,
+        "lo95": -0.060518017097563014,
+        "hi95": 0.022412413789591266,
+        "pTwoTailed": 0.3865,
+        "mdeAtSignificance": 0.041802952163135336,
+        "mdeAt80Power": 0.05975262794910203
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 249,
+        "se": 0.03079966833549427,
+        "lo95": -0.0046827895497208154,
+        "hi95": 0.1171302233676384,
+        "pTwoTailed": 0.068,
+        "mdeAtSignificance": 0.060367349937568766,
+        "mdeAt80Power": 0.08628835080872074
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.0387087791443838,
+        "nullSd": 0.01972203342441589,
+        "pOneSided": 0.15096225943514122,
+        "timingEdge": 0.020477679248391084
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.068,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.15096225943514122,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0.008032128514056224,
+      "pctSl": 0.04417670682730924,
+      "pctTimeout": 0.9437751004016064,
+      "pctDataEnd": 0.004016064257028112,
+      "meanRNet": 0.003923477289913472,
+      "meanRRaw": 0.037366911252100024,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.5140562248995983,
+      "totalRNet": 0.9769458451884545,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.07173416639292937,
+        "meanRRaw": -0.038290732430742755,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0.004016064257028112,
+        "pctSl": 0.05220883534136546,
+        "pctTimeout": 0.9397590361445783,
+        "pctDataEnd": 0.004016064257028112,
+        "medianHoldHours": 2,
+        "winRate": 0.42971887550200805
+      },
+      "alwaysLong": {
+        "meanRNet": -0.018786991785313796,
+        "winRate": 0.4497991967871486,
+        "pctTp": 0.004016064257028112
+      },
+      "alwaysShort": {
+        "meanRNet": -0.05333979865602101,
+        "winRate": 0.46184738955823296,
+        "pctTp": 0.004016064257028112
+      },
+      "vsBaseline": 0.07565764368284285,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 125,
+        "se": 0.02703389377870532,
+        "lo95": -0.04818545966650593,
+        "hi95": 0.058440334762396025,
+        "pTwoTailed": 0.901,
+        "mdeAtSignificance": 0.052986431806262425,
+        "mdeAt80Power": 0.07573815681042083
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 125,
+        "se": 0.038390051791229424,
+        "lo95": 0.0023757452783304666,
+        "hi95": 0.14987250742228012,
+        "pTwoTailed": 0.0405,
+        "mdeAtSignificance": 0.07524450151080966,
+        "mdeAt80Power": 0.10755356909830836
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.0341140569383131,
+        "nullSd": 0.028002493274498767,
+        "pOneSided": 0.08622844288927768,
+        "timingEdge": 0.03803753422822657
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0405,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.08622844288927768,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0.020080321285140562,
+      "pctSl": 0.08433734939759036,
+      "pctTimeout": 0.8835341365461847,
+      "pctDataEnd": 0.012048192771084338,
+      "meanRNet": 0.04331821578977373,
+      "meanRRaw": 0.07676164975196038,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5261044176706827,
+      "totalRNet": 10.78623573165366,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.0670945333583806,
+        "meanRRaw": -0.03365109939619394,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0.008032128514056224,
+        "pctSl": 0.11244979919678715,
+        "pctTimeout": 0.8674698795180723,
+        "pctDataEnd": 0.012048192771084338,
+        "medianHoldHours": 4,
+        "winRate": 0.46987951807228917
+      },
+      "alwaysLong": {
+        "meanRNet": 0.045373162209514865,
+        "winRate": 0.5140562248995983,
+        "pctTp": 0.020080321285140562
+      },
+      "alwaysShort": {
+        "meanRNet": -0.11713229893919623,
+        "winRate": 0.43775100401606426,
+        "pctTp": 0.008032128514056224
+      },
+      "vsBaseline": 0.11041274914815433,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 4,
+        "blocksPerSample": 63,
+        "se": 0.03783760879222204,
+        "lo95": -0.027702841224631028,
+        "hi95": 0.11982121252111361,
+        "pTwoTailed": 0.2375,
+        "mdeAtSignificance": 0.0741617132327552,
+        "mdeAt80Power": 0.10600584479228926
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 4,
+        "blocksPerSample": 63,
+        "se": 0.047526653659897104,
+        "lo95": 0.018973115696096485,
+        "hi95": 0.20728387397146908,
+        "pTwoTailed": 0.0165,
+        "mdeAtSignificance": 0.09315224117339832,
+        "mdeAt80Power": 0.13315067289356775
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.025467479592844715,
+        "nullSd": 0.03676046935456813,
+        "pOneSided": 0.029742564358910272,
+        "timingEdge": 0.06878569538261844
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0165,
+        "pAdjusted": 0.528,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.029742564358910272,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0.028112449799196786,
+      "pctSl": 0.13654618473895583,
+      "pctTimeout": 0.8152610441767069,
+      "pctDataEnd": 0.020080321285140562,
+      "meanRNet": 0.0348990193452946,
+      "meanRRaw": 0.06834245330748114,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.4899598393574297,
+      "totalRNet": 8.689855816978357,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.047880073746789,
+        "meanRRaw": -0.014436639784602433,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0.01606425702811245,
+        "pctSl": 0.1646586345381526,
+        "pctTimeout": 0.7991967871485943,
+        "pctDataEnd": 0.020080321285140562,
+        "medianHoldHours": 6,
+        "winRate": 0.43775100401606426
+      },
+      "alwaysLong": {
+        "meanRNet": 0.06721759558944698,
+        "winRate": 0.5341365461847389,
+        "pctTp": 0.028112449799196786
+      },
+      "alwaysShort": {
+        "meanRNet": -0.1461838086399833,
+        "winRate": 0.40160642570281124,
+        "pctTp": 0.008032128514056224
+      },
+      "vsBaseline": 0.0827790930920836,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 6,
+        "blocksPerSample": 42,
+        "se": 0.04980124363579275,
+        "lo95": -0.0593090426690982,
+        "hi95": 0.1369640879533891,
+        "pTwoTailed": 0.4835,
+        "mdeAtSignificance": 0.09761043752615378,
+        "mdeAt80Power": 0.13952316417003696
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 6,
+        "blocksPerSample": 42,
+        "se": 0.05383267121004235,
+        "lo95": -0.022215155381820766,
+        "hi95": 0.18653274994318542,
+        "pTwoTailed": 0.132,
+        "mdeAtSignificance": 0.10551203557168301,
+        "mdeAt80Power": 0.15081761166205465
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.02653325236117038,
+        "nullSd": 0.04217569733551944,
+        "pOneSided": 0.07223194201449637,
+        "timingEdge": 0.06143227170646498
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.132,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.07223194201449637,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0.10040160642570281,
+      "pctSl": 0.2570281124497992,
+      "pctTimeout": 0.6104417670682731,
+      "pctDataEnd": 0.0321285140562249,
+      "meanRNet": 0.0625803361971582,
+      "meanRRaw": 0.0960237701593448,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.46184738955823296,
+      "totalRNet": 15.582503713092395,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.10139917106025327,
+        "meanRRaw": -0.06795573709806664,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0.06827309236947791,
+        "pctSl": 0.3333333333333333,
+        "pctTimeout": 0.5662650602409639,
+        "pctDataEnd": 0.0321285140562249,
+        "medianHoldHours": 12,
+        "winRate": 0.41365461847389556
+      },
+      "alwaysLong": {
+        "meanRNet": 0.16720806673268573,
+        "winRate": 0.5542168674698795,
+        "pctTp": 0.10843373493975904
+      },
+      "alwaysShort": {
+        "meanRNet": -0.266743227138181,
+        "winRate": 0.3373493975903614,
+        "pctTp": 0.03614457831325301
+      },
+      "vsBaseline": 0.16397950725741148,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 11,
+        "blocksPerSample": 23,
+        "se": 0.08350813297822512,
+        "lo95": -0.09141694478933962,
+        "hi95": 0.23080781788596216,
+        "pTwoTailed": 0.462,
+        "mdeAtSignificance": 0.16367594063732124,
+        "mdeAt80Power": 0.23395638535179553
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 11,
+        "blocksPerSample": 23,
+        "se": 0.06414002398147264,
+        "lo95": 0.04732239373124818,
+        "hi95": 0.2911055648862358,
+        "pTwoTailed": 0.006,
+        "mdeAtSignificance": 0.1257144470036864,
+        "mdeAt80Power": 0.17969469118649375
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.023232787760102905,
+        "nullSd": 0.05197064472952806,
+        "pOneSided": 0.04573856535866033,
+        "timingEdge": 0.08581312395726111
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.006,
+        "pAdjusted": 0.21,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.04573856535866033,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 1,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": false,
+      "signalsPerDay": 8.494669509594882,
+      "trades": 249,
+      "longShare": 0.5582329317269076,
+      "pctTp": 0.22088353413654618,
+      "pctSl": 0.42570281124497994,
+      "pctTimeout": 0.2931726907630522,
+      "pctDataEnd": 0.060240963855421686,
+      "meanRNet": 0.052212922933692126,
+      "meanRRaw": 0.08565635689587876,
+      "meanCostR": 0.03344343396218656,
+      "medianHoldHours": 17,
+      "medianHoldBars": 62,
+      "winRate": 0.3815261044176707,
+      "totalRNet": 13.001017810489339,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 249,
+        "signalsPerDay": 8.494669509594882,
+        "meanRNet": -0.055991143268673355,
+        "meanRRaw": -0.02254770930648672,
+        "meanCostR": 0.03344343396218656,
+        "pctTp": 0.17269076305220885,
+        "pctSl": 0.4779116465863454,
+        "pctTimeout": 0.2891566265060241,
+        "pctDataEnd": 0.060240963855421686,
+        "medianHoldHours": 16,
+        "winRate": 0.40562248995983935
+      },
+      "alwaysLong": {
+        "meanRNet": 0.24228501598922175,
+        "winRate": 0.5100401606425703,
+        "pctTp": 0.25301204819277107
+      },
+      "alwaysShort": {
+        "meanRNet": -0.3033121149205102,
+        "winRate": 0.2931726907630522,
+        "pctTp": 0.0963855421686747
+      },
+      "vsBaseline": 0.10820406620236547,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 17,
+        "blocksPerSample": 15,
+        "se": 0.13905075782137555,
+        "lo95": -0.20842828027575522,
+        "hi95": 0.3298751475089092,
+        "pTwoTailed": 0.718,
+        "mdeAtSignificance": 0.2725394853298961,
+        "mdeAt80Power": 0.38956460311236574
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 17,
+        "blocksPerSample": 15,
+        "se": 0.09713241945141173,
+        "lo95": -0.08599731010783175,
+        "hi95": 0.29632142052794824,
+        "pTwoTailed": 0.2785,
+        "mdeAtSignificance": 0.190379542124767,
+        "mdeAt80Power": 0.27212618633507507
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 139,
+        "nShort": 110,
+        "nullMean": -0.00034430269704331076,
+        "nullSd": 0.0639012132918357,
+        "pOneSided": 0.20644838790302425,
+        "timingEdge": 0.052557225630735435
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.2785,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.20644838790302425,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0,
+      "pctSl": 0.031413612565445025,
+      "pctTimeout": 0.9633507853403142,
+      "pctDataEnd": 0.005235602094240838,
+      "meanRNet": -0.051148274330500426,
+      "meanRRaw": -0.016712949438041125,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.47643979057591623,
+      "totalRNet": -9.76932039712558,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.08065534297334,
+        "meanRRaw": -0.0462200180808807,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0,
+        "pctSl": 0.031413612565445025,
+        "pctTimeout": 0.9633507853403142,
+        "pctDataEnd": 0.005235602094240838,
+        "medianHoldHours": 1,
+        "winRate": 0.4031413612565445
+      },
+      "alwaysLong": {
+        "meanRNet": -0.013781669710500457,
+        "winRate": 0.4973821989528796,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.07932686752664629,
+        "winRate": 0.39267015706806285,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.02950706864283957,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 191,
+        "se": 0.023640660574673875,
+        "lo95": -0.09897388263362458,
+        "hi95": -0.006196495143276914,
+        "pTwoTailed": 0.025,
+        "mdeAtSignificance": 0.046335694726360795,
+        "mdeAt80Power": 0.06623167466600634
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 191,
+        "se": 0.0343994342249326,
+        "lo95": -0.03871013201585546,
+        "hi95": 0.09719144991440423,
+        "pTwoTailed": 0.3865,
+        "mdeAtSignificance": 0.0674228910808679,
+        "mdeAt80Power": 0.09637345492457118
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.04286156290095418,
+        "nullSd": 0.02225740216355037,
+        "pOneSided": 0.6453386653336666,
+        "timingEdge": -0.008286711429546248
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.3865,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.6453386653336666,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0,
+      "pctSl": 0.05235602094240838,
+      "pctTimeout": 0.9424083769633508,
+      "pctDataEnd": 0.005235602094240838,
+      "meanRNet": -0.014631505939214853,
+      "meanRRaw": 0.01980381895324441,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.518324607329843,
+      "totalRNet": -2.794617634390037,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.08508092900516273,
+        "meanRRaw": -0.05064560411270351,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0,
+        "pctSl": 0.05759162303664921,
+        "pctTimeout": 0.93717277486911,
+        "pctDataEnd": 0.005235602094240838,
+        "medianHoldHours": 2,
+        "winRate": 0.42408376963350786
+      },
+      "alwaysLong": {
+        "meanRNet": -0.003930872814375514,
+        "winRate": 0.4712041884816754,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.08224929380179377,
+        "winRate": 0.4397905759162304,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.07044942306594788,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 96,
+        "se": 0.026154967649128665,
+        "lo95": -0.06572078759138707,
+        "hi95": 0.036120692197655895,
+        "pTwoTailed": 0.5765,
+        "mdeAtSignificance": 0.051263736592292185,
+        "mdeAt80Power": 0.07327575736579887
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 96,
+        "se": 0.04255339747292743,
+        "lo95": -0.011083068172521473,
+        "hi95": 0.1554876656550291,
+        "pTwoTailed": 0.093,
+        "mdeAtSignificance": 0.08340465904693777,
+        "mdeAt80Power": 0.1192175983601535
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.03884388113958455,
+        "nullSd": 0.0302963134838631,
+        "pOneSided": 0.21644588852786803,
+        "timingEdge": 0.024212375200369694
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.093,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.21644588852786803,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0.015706806282722512,
+      "pctSl": 0.09947643979057591,
+      "pctTimeout": 0.8743455497382199,
+      "pctDataEnd": 0.010471204188481676,
+      "meanRNet": 0.02730713670004849,
+      "meanRRaw": 0.0617424615925078,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5235602094240838,
+      "totalRNet": 5.215663109709261,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.10262933055336486,
+        "meanRRaw": -0.06819400566090546,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0.005235602094240838,
+        "pctSl": 0.13089005235602094,
+        "pctTimeout": 0.8534031413612565,
+        "pctDataEnd": 0.010471204188481676,
+        "medianHoldHours": 4,
+        "winRate": 0.4712041884816754
+      },
+      "alwaysLong": {
+        "meanRNet": 0.050500820610798004,
+        "winRate": 0.5235602094240838,
+        "pctTp": 0.020942408376963352
+      },
+      "alwaysShort": {
+        "meanRNet": -0.1375486898884332,
+        "winRate": 0.42408376963350786,
+        "pctTp": 0.005235602094240838
+      },
+      "vsBaseline": 0.12993646725341335,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 64,
+        "se": 0.03858578202015802,
+        "lo95": -0.04079856709727653,
+        "hi95": 0.1076696630979544,
+        "pTwoTailed": 0.4765,
+        "mdeAtSignificance": 0.07562813275950972,
+        "mdeAt80Power": 0.10810192690767471
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 64,
+        "se": 0.054254161717009634,
+        "lo95": 0.027177038537807768,
+        "hi95": 0.23826518542577427,
+        "pTwoTailed": 0.0125,
+        "mdeAtSignificance": 0.10633815696533888,
+        "mdeAt80Power": 0.1519984594663742
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.03171763805427548,
+        "nullSd": 0.041560137296487325,
+        "pOneSided": 0.07723069232691827,
+        "timingEdge": 0.059024774754323966
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0125,
+        "pAdjusted": 0.42500000000000004,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.07723069232691827,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0.020942408376963352,
+      "pctSl": 0.15706806282722513,
+      "pctTimeout": 0.8010471204188482,
+      "pctDataEnd": 0.020942408376963352,
+      "meanRNet": 0.010283996531345402,
+      "meanRRaw": 0.044719321423804644,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.4973821989528796,
+      "totalRNet": 1.9642433374869719,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.10627654485186398,
+        "meanRRaw": -0.07184121995940478,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0.010471204188481676,
+        "pctSl": 0.18848167539267016,
+        "pctTimeout": 0.7801047120418848,
+        "pctDataEnd": 0.020942408376963352,
+        "medianHoldHours": 6,
+        "winRate": 0.4031413612565445
+      },
+      "alwaysLong": {
+        "meanRNet": 0.05593397099793133,
+        "winRate": 0.518324607329843,
+        "pctTp": 0.02617801047120419
+      },
+      "alwaysShort": {
+        "meanRNet": -0.1589306127481767,
+        "winRate": 0.4083769633507853,
+        "pctTp": 0.005235602094240838
+      },
+      "vsBaseline": 0.11656054138320938,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 39,
+        "se": 0.042991378793792404,
+        "lo95": -0.0696033147011799,
+        "hi95": 0.09794156697378893,
+        "pTwoTailed": 0.7955,
+        "mdeAtSignificance": 0.08426310243583311,
+        "mdeAt80Power": 0.1204446468286888
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 39,
+        "se": 0.056645340989404006,
+        "lo95": 0.008080323180427335,
+        "hi95": 0.22575658413816643,
+        "pTwoTailed": 0.039,
+        "mdeAtSignificance": 0.11102486833923185,
+        "mdeAt80Power": 0.15869758731591427
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.03887827065792436,
+        "nullSd": 0.048659487225731234,
+        "pOneSided": 0.15321169707573107,
+        "timingEdge": 0.04916226718926976
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.039,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.15321169707573107,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0.08376963350785341,
+      "pctSl": 0.2879581151832461,
+      "pctTimeout": 0.5968586387434555,
+      "pctDataEnd": 0.031413612565445025,
+      "meanRNet": 0.01845258185554733,
+      "meanRRaw": 0.05288790674800659,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.4397905759162304,
+      "totalRNet": 3.52444313440954,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.10749171807542374,
+        "meanRRaw": -0.07305639318296446,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0.06282722513089005,
+        "pctSl": 0.3507853403141361,
+        "pctTimeout": 0.5549738219895288,
+        "pctDataEnd": 0.031413612565445025,
+        "medianHoldHours": 12,
+        "winRate": 0.4083769633507853
+      },
+      "alwaysLong": {
+        "meanRNet": 0.1457148022747352,
+        "winRate": 0.5445026178010471,
+        "pctTp": 0.09947643979057591
+      },
+      "alwaysShort": {
+        "meanRNet": -0.2839021601770684,
+        "winRate": 0.3298429319371728,
+        "pctTp": 0.03664921465968586
+      },
+      "vsBaseline": 0.12594429993097106,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 8,
+        "blocksPerSample": 24,
+        "se": 0.0711453848897266,
+        "lo95": -0.11919741046186617,
+        "hi95": 0.1565110225876726,
+        "pTwoTailed": 0.7835,
+        "mdeAtSignificance": 0.13944495438386414,
+        "mdeAt80Power": 0.19932091030705806
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 8,
+        "blocksPerSample": 24,
+        "se": 0.06513677103313635,
+        "lo95": 0.0038979225989703727,
+        "hi95": 0.257044368163811,
+        "pTwoTailed": 0.043,
+        "mdeAtSignificance": 0.12766807122494725,
+        "mdeAt80Power": 0.1824871777264348
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.042202244260472484,
+        "nullSd": 0.058636932907462684,
+        "pOneSided": 0.14596350912271933,
+        "timingEdge": 0.060654826116019814
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.043,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.14596350912271933,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 2,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": false,
+      "signalsPerDay": 6.515991471215352,
+      "trades": 191,
+      "longShare": 0.5602094240837696,
+      "pctTp": 0.21465968586387435,
+      "pctSl": 0.44502617801047123,
+      "pctTimeout": 0.2774869109947644,
+      "pctDataEnd": 0.06282722513089005,
+      "meanRNet": 0.02374320988785318,
+      "meanRRaw": 0.05817853478031248,
+      "meanCostR": 0.03443532489245925,
+      "medianHoldHours": 16.75,
+      "medianHoldBars": 60,
+      "winRate": 0.3717277486910995,
+      "totalRNet": 4.534953088579957,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 191,
+        "signalsPerDay": 6.515991471215352,
+        "meanRNet": -0.09613174434867783,
+        "meanRRaw": -0.06169641945621845,
+        "meanCostR": 0.03443532489245925,
+        "pctTp": 0.16753926701570682,
+        "pctSl": 0.4973821989528796,
+        "pctTimeout": 0.27225130890052357,
+        "pctDataEnd": 0.06282722513089005,
+        "medianHoldHours": 15,
+        "winRate": 0.3769633507853403
+      },
+      "alwaysLong": {
+        "meanRNet": 0.23902292674651018,
+        "winRate": 0.5026178010471204,
+        "pctTp": 0.25654450261780104
+      },
+      "alwaysShort": {
+        "meanRNet": -0.33976291004293885,
+        "winRate": 0.27225130890052357,
+        "pctTp": 0.09424083769633508
+      },
+      "vsBaseline": 0.11987495423653101,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 13,
+        "blocksPerSample": 15,
+        "se": 0.11512321663220834,
+        "lo95": -0.1962650056866736,
+        "hi95": 0.2600149468570093,
+        "pTwoTailed": 0.8515,
+        "mdeAtSignificance": 0.22564150459912835,
+        "mdeAt80Power": 0.3225292037167949
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 13,
+        "blocksPerSample": 15,
+        "se": 0.07288434688844,
+        "lo95": -0.025343960334083704,
+        "hi95": 0.26019187833544566,
+        "pTwoTailed": 0.102,
+        "mdeAtSignificance": 0.1428533199013424,
+        "mdeAt80Power": 0.20419278624265352
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 107,
+        "nShort": 84,
+        "nullMean": -0.014620282747744916,
+        "nullSd": 0.07059278623068867,
+        "pOneSided": 0.2991752061984504,
+        "timingEdge": 0.0383634926355981
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.102,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.2991752061984504,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0,
+      "pctSl": 0.03787878787878788,
+      "pctTimeout": 0.9545454545454546,
+      "pctDataEnd": 0.007575757575757576,
+      "meanRNet": -0.05598872176397967,
+      "meanRRaw": -0.020886724795980964,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.4621212121212121,
+      "totalRNet": -7.390511272845316,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.08590897044645224,
+        "meanRRaw": -0.05080697347845357,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0,
+        "pctSl": 0.03787878787878788,
+        "pctTimeout": 0.9545454545454546,
+        "pctDataEnd": 0.007575757575757576,
+        "medianHoldHours": 1,
+        "winRate": 0.3712121212121212
+      },
+      "alwaysLong": {
+        "meanRNet": -0.054363806233123146,
+        "winRate": 0.4621212121212121,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.04530697979139027,
+        "winRate": 0.4015151515151515,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.029920248682472568,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 132,
+        "se": 0.030268463043194402,
+        "lo95": -0.11620752037506132,
+        "hi95": 0.002092614263331238,
+        "pTwoTailed": 0.06,
+        "mdeAtSignificance": 0.05932618756466103,
+        "mdeAt80Power": 0.08480012606181343
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 132,
+        "se": 0.038342176142280235,
+        "lo95": -0.04403840660057899,
+        "hi95": 0.10643561048030709,
+        "pTwoTailed": 0.4325,
+        "mdeAtSignificance": 0.07515066523886926,
+        "mdeAt80Power": 0.10741944068021231
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.04984080042093718,
+        "nullSd": 0.026735102620773086,
+        "pOneSided": 0.6000999750062485,
+        "timingEdge": -0.006147921343042491
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.4325,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.6000999750062485,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0,
+      "pctSl": 0.06060606060606061,
+      "pctTimeout": 0.9318181818181818,
+      "pctDataEnd": 0.007575757575757576,
+      "meanRNet": -0.037105881859942236,
+      "meanRRaw": -0.0020038848919435464,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.4696969696969697,
+      "totalRNet": -4.897976405512375,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.10183146793933437,
+        "meanRRaw": -0.06672947097133575,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0,
+        "pctSl": 0.06818181818181818,
+        "pctTimeout": 0.9242424242424242,
+        "pctDataEnd": 0.007575757575757576,
+        "medianHoldHours": 2,
+        "winRate": 0.3939393939393939
+      },
+      "alwaysLong": {
+        "meanRNet": -0.034715739689725696,
+        "winRate": 0.45454545454545453,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.053023453514993144,
+        "winRate": 0.45454545454545453,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.06472558607939213,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 132,
+        "se": 0.03960293809134674,
+        "lo95": -0.11205413369459066,
+        "hi95": 0.044484651875904634,
+        "pTwoTailed": 0.3605,
+        "mdeAtSignificance": 0.07762175865903961,
+        "mdeAt80Power": 0.11095159135671703
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 132,
+        "se": 0.05621827116054692,
+        "lo95": -0.04590852324587475,
+        "hi95": 0.17325087620608925,
+        "pTwoTailed": 0.2475,
+        "mdeAtSignificance": 0.11018781147467197,
+        "mdeAt80Power": 0.15750110848338827
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.04334668394145515,
+        "nullSd": 0.03845442566968492,
+        "pOneSided": 0.4361409647588103,
+        "timingEdge": 0.006240802081512911
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.2475,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.4361409647588103,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0.022727272727272728,
+      "pctSl": 0.11363636363636363,
+      "pctTimeout": 0.8560606060606061,
+      "pctDataEnd": 0.007575757575757576,
+      "meanRNet": 0.017167155121692146,
+      "meanRRaw": 0.05226915208969085,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5227272727272727,
+      "totalRNet": 2.266064476063363,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.12413675032356955,
+        "meanRRaw": -0.08903475335557075,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0.007575757575757576,
+        "pctSl": 0.13636363636363635,
+        "pctTimeout": 0.8484848484848485,
+        "pctDataEnd": 0.007575757575757576,
+        "medianHoldHours": 4,
+        "winRate": 0.4166666666666667
+      },
+      "alwaysLong": {
+        "meanRNet": 0.020798657977818897,
+        "winRate": 0.5075757575757576,
+        "pctTp": 0.030303030303030304
+      },
+      "alwaysShort": {
+        "meanRNet": -0.10121606989451208,
+        "winRate": 0.4393939393939394,
+        "pctTp": 0.007575757575757576
+      },
+      "vsBaseline": 0.1413039054452617,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 66,
+        "se": 0.047852214720500746,
+        "lo95": -0.07418775048509557,
+        "hi95": 0.11096285673586857,
+        "pTwoTailed": 0.752,
+        "mdeAtSignificance": 0.09379034085218146,
+        "mdeAt80Power": 0.13406276476095488
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 66,
+        "se": 0.0626686664253361,
+        "lo95": 0.025065076874432404,
+        "hi95": 0.2666484934206952,
+        "pTwoTailed": 0.015,
+        "mdeAtSignificance": 0.12283058619365875,
+        "mdeAt80Power": 0.17557253585722163
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.0334201325806332,
+        "nullSd": 0.05409991381782282,
+        "pOneSided": 0.17695576105973507,
+        "timingEdge": 0.050587287702325345
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.015,
+        "pAdjusted": 0.495,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.17695576105973507,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0.030303030303030304,
+      "pctSl": 0.17424242424242425,
+      "pctTimeout": 0.7727272727272727,
+      "pctDataEnd": 0.022727272727272728,
+      "meanRNet": 0.0051264922258816206,
+      "meanRRaw": 0.04022848919388031,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.4621212121212121,
+      "totalRNet": 0.676696973816374,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.13527693754805953,
+        "meanRRaw": -0.10017494058006084,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0.015151515151515152,
+        "pctSl": 0.21212121212121213,
+        "pctTimeout": 0.75,
+        "pctDataEnd": 0.022727272727272728,
+        "medianHoldHours": 6,
+        "winRate": 0.38636363636363635
+      },
+      "alwaysLong": {
+        "meanRNet": 0.041868927249438886,
+        "winRate": 0.5075757575757576,
+        "pctTp": 0.03787878787878788
+      },
+      "alwaysShort": {
+        "meanRNet": -0.13775126544155702,
+        "winRate": 0.4090909090909091,
+        "pctTp": 0.007575757575757576
+      },
+      "vsBaseline": 0.14040342977394116,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 44,
+        "se": 0.05359916230718212,
+        "lo95": -0.09642537051917813,
+        "hi95": 0.11416662266423534,
+        "pTwoTailed": 0.9355,
+        "mdeAtSignificance": 0.10505435812207695,
+        "mdeAt80Power": 0.15016341311980144
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 44,
+        "se": 0.0760113645591196,
+        "lo95": -0.008492857717413437,
+        "hi95": 0.2906457637927109,
+        "pTwoTailed": 0.0685,
+        "mdeAtSignificance": 0.1489822745358744,
+        "mdeAt80Power": 0.21295343894882945
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.03771679518825212,
+        "nullSd": 0.0629183891723079,
+        "pOneSided": 0.2504373906523369,
+        "timingEdge": 0.04284328741413374
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0685,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.2504373906523369,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0.08333333333333333,
+      "pctSl": 0.3181818181818182,
+      "pctTimeout": 0.5681818181818182,
+      "pctDataEnd": 0.030303030303030304,
+      "meanRNet": -0.011459257324723884,
+      "meanRRaw": 0.02364273964327478,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.4318181818181818,
+      "totalRNet": -1.5126219668635525,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.20317542892858909,
+        "meanRRaw": -0.16807343196059032,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0.06060606060606061,
+        "pctSl": 0.4090909090909091,
+        "pctTimeout": 0.5,
+        "pctDataEnd": 0.030303030303030304,
+        "medianHoldHours": 12,
+        "winRate": 0.3409090909090909
+      },
+      "alwaysLong": {
+        "meanRNet": 0.08096522353129772,
+        "winRate": 0.5,
+        "pctTp": 0.10606060606060606
+      },
+      "alwaysShort": {
+        "meanRNet": -0.24168303660739351,
+        "winRate": 0.3484848484848485,
+        "pctTp": 0.03787878787878788
+      },
+      "vsBaseline": 0.1917161716038652,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 6,
+        "blocksPerSample": 22,
+        "se": 0.06179285983211232,
+        "lo95": -0.13135412213184053,
+        "hi95": 0.11436982009112415,
+        "pTwoTailed": 0.86,
+        "mdeAtSignificance": 0.12111400527094016,
+        "mdeAt80Power": 0.17311887610564589
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 6,
+        "blocksPerSample": 22,
+        "se": 0.07571673856896637,
+        "lo95": 0.049862098239642404,
+        "hi95": 0.3475936111399772,
+        "pTwoTailed": 0.005,
+        "mdeAtSignificance": 0.14840480759517408,
+        "mdeAt80Power": 0.2121280147748162
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.05883843108954161,
+        "nullSd": 0.07378571484650145,
+        "pOneSided": 0.2551862034491377,
+        "timingEdge": 0.04737917376481772
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.005,
+        "pAdjusted": 0.18,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.2551862034491377,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 4,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": false,
+      "signalsPerDay": 4.50319829424307,
+      "trades": 132,
+      "longShare": 0.5606060606060606,
+      "pctTp": 0.20454545454545456,
+      "pctSl": 0.45454545454545453,
+      "pctTimeout": 0.2803030303030303,
+      "pctDataEnd": 0.06060606060606061,
+      "meanRNet": -0.000043293887029910184,
+      "meanRRaw": 0.03505870308096878,
+      "meanCostR": 0.0351019969679987,
+      "medianHoldHours": 15.625,
+      "medianHoldBars": 59,
+      "winRate": 0.3560606060606061,
+      "totalRNet": -0.0057147930879481446,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 132,
+        "signalsPerDay": 4.50319829424307,
+        "meanRNet": -0.1294411178210088,
+        "meanRRaw": -0.09433912085301009,
+        "meanCostR": 0.0351019969679987,
+        "pctTp": 0.16666666666666666,
+        "pctSl": 0.5151515151515151,
+        "pctTimeout": 0.25757575757575757,
+        "pctDataEnd": 0.06060606060606061,
+        "medianHoldHours": 13.75,
+        "winRate": 0.3333333333333333
+      },
+      "alwaysLong": {
+        "meanRNet": 0.16652871069293548,
+        "winRate": 0.4621212121212121,
+        "pctTp": 0.23484848484848486
+      },
+      "alwaysShort": {
+        "meanRNet": -0.3009607004818243,
+        "winRate": 0.2878787878787879,
+        "pctTp": 0.10606060606060606
+      },
+      "vsBaseline": 0.1293978239339789,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 9,
+        "blocksPerSample": 15,
+        "se": 0.09654197896334792,
+        "lo95": -0.18176649501407569,
+        "hi95": 0.18799468747912923,
+        "pTwoTailed": 0.997,
+        "mdeAtSignificance": 0.18922227876816192,
+        "mdeAt80Power": 0.27047200826371554
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 9,
+        "blocksPerSample": 15,
+        "se": 0.09500387466241997,
+        "lo95": -0.05038330934527906,
+        "hi95": 0.3315099929022787,
+        "pTwoTailed": 0.1715,
+        "mdeAtSignificance": 0.18620759433834314,
+        "mdeAt80Power": 0.2661628552542358
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 74,
+        "nShort": 58,
+        "nullMean": -0.03772929037389984,
+        "nullSd": 0.08707106929927158,
+        "pOneSided": 0.3316670832291927,
+        "timingEdge": 0.03768599648686993
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.1715,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.3316670832291927,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0,
+      "pctSl": 0.0449438202247191,
+      "pctTimeout": 0.9550561797752809,
+      "pctDataEnd": 0,
+      "meanRNet": -0.06832598869130882,
+      "meanRRaw": -0.031789720714972956,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.47191011235955055,
+      "totalRNet": -6.081012993526485,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.065380916071613,
+        "meanRRaw": -0.02884464809527715,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0,
+        "pctSl": 0.033707865168539325,
+        "pctTimeout": 0.9662921348314607,
+        "pctDataEnd": 0,
+        "medianHoldHours": 1,
+        "winRate": 0.38202247191011235
+      },
+      "alwaysLong": {
+        "meanRNet": -0.04177820715505845,
+        "winRate": 0.48314606741573035,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.06962824749385724,
+        "winRate": 0.42696629213483145,
+        "pctTp": 0
+      },
+      "vsBaseline": -0.0029450726196958155,
+      "beatsBaseline": false,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 89,
+        "se": 0.038732785423947154,
+        "lo95": -0.1440135709199944,
+        "hi95": 0.004947637087155991,
+        "pTwoTailed": 0.072,
+        "mdeAtSignificance": 0.07591625943093643,
+        "mdeAt80Power": 0.10851377164373036
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 89,
+        "se": 0.0579576231215835,
+        "lo95": -0.11817754226129962,
+        "hi95": 0.1074702030767755,
+        "pTwoTailed": 0.946,
+        "mdeAtSignificance": 0.11359694131830365,
+        "mdeAt80Power": 0.16237407693742834
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.05445239919981747,
+        "nullSd": 0.03502323378991916,
+        "pOneSided": 0.6520869782554362,
+        "timingEdge": -0.013873589491491353
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.946,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.6520869782554362,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0,
+      "pctSl": 0.0898876404494382,
+      "pctTimeout": 0.9101123595505618,
+      "pctDataEnd": 0,
+      "meanRNet": -0.03811161209717196,
+      "meanRRaw": -0.0015753441208361208,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.5056179775280899,
+      "totalRNet": -3.3919334766483042,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.05802508285843449,
+        "meanRRaw": -0.021488814882098667,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0,
+        "pctSl": 0.06741573033707865,
+        "pctTimeout": 0.9325842696629213,
+        "pctDataEnd": 0,
+        "medianHoldHours": 2,
+        "winRate": 0.449438202247191
+      },
+      "alwaysLong": {
+        "meanRNet": -0.03425372282913789,
+        "winRate": 0.449438202247191,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.06490473075040805,
+        "winRate": 0.4157303370786517,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.019913470761262528,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 89,
+        "se": 0.05280304499320842,
+        "lo95": -0.13961226179935046,
+        "hi95": 0.06497606936488859,
+        "pTwoTailed": 0.4635,
+        "mdeAtSignificance": 0.1034939681866885,
+        "mdeAt80Power": 0.14793301085297272
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 89,
+        "se": 0.07885617003782174,
+        "lo95": -0.14034532872519667,
+        "hi95": 0.17254752488850267,
+        "pTwoTailed": 0.81,
+        "mdeAtSignificance": 0.1545580932741306,
+        "mdeAt80Power": 0.22092344597796137
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.048811182797890304,
+        "nullSd": 0.05205894936149188,
+        "pOneSided": 0.416895776055986,
+        "timingEdge": 0.010699570700718343
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.81,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.416895776055986,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0.011235955056179775,
+      "pctSl": 0.14606741573033707,
+      "pctTimeout": 0.8426966292134831,
+      "pctDataEnd": 0,
+      "meanRNet": 0.01227203604412625,
+      "meanRRaw": 0.04880830402046207,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5168539325842697,
+      "totalRNet": 1.0922112079272361,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.11564381388182886,
+        "meanRRaw": -0.07910754590549307,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0,
+        "pctSl": 0.15730337078651685,
+        "pctTimeout": 0.8426966292134831,
+        "pctDataEnd": 0,
+        "medianHoldHours": 4,
+        "winRate": 0.4606741573033708
+      },
+      "alwaysLong": {
+        "meanRNet": 0.04144243914959733,
+        "winRate": 0.5056179775280899,
+        "pctTp": 0.02247191011235955
+      },
+      "alwaysShort": {
+        "meanRNet": -0.18132648091977163,
+        "winRate": 0.42696629213483145,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.12791584992595512,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 45,
+        "se": 0.06430002186044881,
+        "lo95": -0.11079633597860958,
+        "hi95": 0.1418732301054579,
+        "pTwoTailed": 0.8335,
+        "mdeAtSignificance": 0.12602804284647967,
+        "mdeAt80Power": 0.18014294124423338
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 45,
+        "se": 0.08216846165566151,
+        "lo95": -0.030457355179228277,
+        "hi95": 0.2923550561895512,
+        "pTwoTailed": 0.1175,
+        "mdeAtSignificance": 0.16105018484509656,
+        "mdeAt80Power": 0.2302031621745013
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.061817216701143596,
+        "nullSd": 0.06599809076293456,
+        "pOneSided": 0.13246688327918021,
+        "timingEdge": 0.07408925274526984
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.1175,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.13246688327918021,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0.011235955056179775,
+      "pctSl": 0.2247191011235955,
+      "pctTimeout": 0.7528089887640449,
+      "pctDataEnd": 0.011235955056179775,
+      "meanRNet": -0.041662912902853774,
+      "meanRRaw": -0.005126644926517936,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.48314606741573035,
+      "totalRNet": -3.707999248353986,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.13591515033937798,
+        "meanRRaw": -0.09937888236304222,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0,
+        "pctSl": 0.24719101123595505,
+        "pctTimeout": 0.7415730337078652,
+        "pctDataEnd": 0.011235955056179775,
+        "medianHoldHours": 6,
+        "winRate": 0.4044943820224719
+      },
+      "alwaysLong": {
+        "meanRNet": 0.046630316686579625,
+        "winRate": 0.5056179775280899,
+        "pctTp": 0.02247191011235955
+      },
+      "alwaysShort": {
+        "meanRNet": -0.22702962862176418,
+        "winRate": 0.38202247191011235,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.09425223743652421,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 45,
+        "se": 0.07343769101042413,
+        "lo95": -0.18352748256066584,
+        "hi95": 0.10297702764665138,
+        "pTwoTailed": 0.562,
+        "mdeAtSignificance": 0.1439378743804313,
+        "mdeAt80Power": 0.20574303513480427
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 45,
+        "se": 0.10107526891427675,
+        "lo95": -0.1057008122035787,
+        "hi95": 0.2864189951163128,
+        "pTwoTailed": 0.344,
+        "mdeAtSignificance": 0.19810752707198243,
+        "mdeAt80Power": 0.28317247339023777
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.07784302821317964,
+        "nullSd": 0.07484175929277687,
+        "pOneSided": 0.31592101974506376,
+        "timingEdge": 0.03618011531032586
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.344,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.31592101974506376,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0.07865168539325842,
+      "pctSl": 0.3595505617977528,
+      "pctTimeout": 0.5393258426966292,
+      "pctDataEnd": 0.02247191011235955,
+      "meanRNet": -0.08175385015940767,
+      "meanRRaw": -0.04521758218307184,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.43820224719101125,
+      "totalRNet": -7.276092664187283,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.21373713173987086,
+        "meanRRaw": -0.17720086376353505,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0.0449438202247191,
+        "pctSl": 0.4044943820224719,
+        "pctTimeout": 0.5280898876404494,
+        "pctDataEnd": 0.02247191011235955,
+        "medianHoldHours": 12,
+        "winRate": 0.33707865168539325
+      },
+      "alwaysLong": {
+        "meanRNet": 0.03445850576100352,
+        "winRate": 0.4943820224719101,
+        "pctTp": 0.10112359550561797
+      },
+      "alwaysShort": {
+        "meanRNet": -0.27237701414154525,
+        "winRate": 0.33707865168539325,
+        "pctTp": 0.033707865168539325
+      },
+      "vsBaseline": 0.13198328158046319,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 4,
+        "blocksPerSample": 23,
+        "se": 0.08050481449049095,
+        "lo95": -0.23983131747243816,
+        "hi95": 0.08028555033269759,
+        "pTwoTailed": 0.288,
+        "mdeAtSignificance": 0.15778943640136225,
+        "mdeAt80Power": 0.22554228827655945
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 4,
+        "blocksPerSample": 23,
+        "se": 0.09266462742283209,
+        "lo95": -0.047338731317044656,
+        "hi95": 0.31380135199647174,
+        "pTwoTailed": 0.1485,
+        "mdeAtSignificance": 0.18162266974875088,
+        "mdeAt80Power": 0.2596092201878064
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.10494181596752607,
+        "nullSd": 0.08925439262529301,
+        "pOneSided": 0.4026493376655836,
+        "timingEdge": 0.023187965808118396
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.1485,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.4026493376655836,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 8,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": false,
+      "signalsPerDay": 3.0362473347547976,
+      "trades": 89,
+      "longShare": 0.5393258426966292,
+      "pctTp": 0.1797752808988764,
+      "pctSl": 0.4943820224719101,
+      "pctTimeout": 0.2808988764044944,
+      "pctDataEnd": 0.0449438202247191,
+      "meanRNet": -0.08193407567327998,
+      "meanRRaw": -0.04539780769694409,
+      "meanCostR": 0.03653626797633585,
+      "medianHoldHours": 14.5,
+      "medianHoldBars": 55,
+      "winRate": 0.34831460674157305,
+      "totalRNet": -7.2921327349219185,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 89,
+        "signalsPerDay": 3.0362473347547976,
+        "meanRNet": -0.19426135987479015,
+        "meanRRaw": -0.15772509189845443,
+        "meanCostR": 0.03653626797633584,
+        "pctTp": 0.14606741573033707,
+        "pctSl": 0.5393258426966292,
+        "pctTimeout": 0.2696629213483146,
+        "pctDataEnd": 0.0449438202247191,
+        "medianHoldHours": 14.25,
+        "winRate": 0.3595505617977528
+      },
+      "alwaysLong": {
+        "meanRNet": 0.13200448774126433,
+        "winRate": 0.4606741573033708,
+        "pctTp": 0.21348314606741572
+      },
+      "alwaysShort": {
+        "meanRNet": -0.3951207581858211,
+        "winRate": 0.2247191011235955,
+        "pctTp": 0.10112359550561797
+      },
+      "vsBaseline": 0.11232728420151017,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 18,
+        "se": 0.10638190701086392,
+        "lo95": -0.28942472361886756,
+        "hi95": 0.12332789055106506,
+        "pTwoTailed": 0.4315,
+        "mdeAtSignificance": 0.20850853774129327,
+        "mdeAt80Power": 0.29803955068163634
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 5,
+        "blocksPerSample": 18,
+        "se": 0.11091035281586767,
+        "lo95": -0.09638604682686432,
+        "hi95": 0.3351661146081464,
+        "pTwoTailed": 0.312,
+        "mdeAtSignificance": 0.21738429151910063,
+        "mdeAt80Power": 0.3107264444489349
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 48,
+        "nShort": 41,
+        "nullMean": -0.11236110517993601,
+        "nullSd": 0.10092271849034175,
+        "pOneSided": 0.3839040239940015,
+        "timingEdge": 0.03042702950665603
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.312,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.3839040239940015,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 4,
+      "holdHoursCap": 1,
+      "isCurrentConfig": false,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0,
+      "pctSl": 0.06666666666666667,
+      "pctTimeout": 0.9333333333333333,
+      "pctDataEnd": 0,
+      "meanRNet": -0.07855769822515174,
+      "meanRRaw": -0.04311819237717541,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 1,
+      "medianHoldBars": 4,
+      "winRate": 0.5111111111111111,
+      "totalRNet": -3.5350964201318282,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.0920054016921349,
+        "meanRRaw": -0.05656589584415858,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0,
+        "pctSl": 0.044444444444444446,
+        "pctTimeout": 0.9555555555555556,
+        "pctDataEnd": 0,
+        "medianHoldHours": 1,
+        "winRate": 0.4222222222222222
+      },
+      "alwaysLong": {
+        "meanRNet": -0.12531207935377198,
+        "winRate": 0.4666666666666667,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.014546532930442366,
+        "winRate": 0.4444444444444444,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.013447703466983166,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 45,
+        "se": 0.055199397262188005,
+        "lo95": -0.18817795482273153,
+        "hi95": 0.028849326870920008,
+        "pTwoTailed": 0.145,
+        "mdeAtSignificance": 0.10819081863388849,
+        "mdeAt80Power": 0.1546466313697459
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 45,
+        "se": 0.06863758905506519,
+        "lo95": -0.12507876403825557,
+        "hi95": 0.14595106020731632,
+        "pTwoTailed": 0.8145,
+        "mdeAtSignificance": 0.13452967454792777,
+        "mdeAt80Power": 0.19229506949667063
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.07196307978214252,
+        "nullSd": 0.046333603944703386,
+        "pOneSided": 0.55936015996001,
+        "timingEdge": -0.006594618443009223
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.8145,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.55936015996001,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 8,
+      "holdHoursCap": 2,
+      "isCurrentConfig": false,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0,
+      "pctSl": 0.1111111111111111,
+      "pctTimeout": 0.8888888888888888,
+      "pctDataEnd": 0,
+      "meanRNet": -0.017165046090852818,
+      "meanRRaw": 0.018274459757123523,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 2,
+      "medianHoldBars": 8,
+      "winRate": 0.5333333333333333,
+      "totalRNet": -0.7724270740883767,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.10448268144321914,
+        "meanRRaw": -0.06904317559524281,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0,
+        "pctSl": 0.06666666666666667,
+        "pctTimeout": 0.9333333333333333,
+        "pctDataEnd": 0,
+        "medianHoldHours": 2,
+        "winRate": 0.4222222222222222
+      },
+      "alwaysLong": {
+        "meanRNet": -0.011698348019685303,
+        "winRate": 0.4888888888888889,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.09516733627401916,
+        "winRate": 0.4,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.08731763535236632,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 45,
+        "se": 0.07058004224767642,
+        "lo95": -0.1550721774308353,
+        "hi95": 0.11557839303877858,
+        "pTwoTailed": 0.804,
+        "mdeAtSignificance": 0.1383368828054458,
+        "mdeAt80Power": 0.19773704636109027
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 1,
+        "blocksPerSample": 45,
+        "se": 0.09132452626353674,
+        "lo95": -0.10446689663045762,
+        "hi95": 0.2554354318066788,
+        "pTwoTailed": 0.3425,
+        "mdeAtSignificance": 0.17899607147653201,
+        "mdeAt80Power": 0.2558547927799245
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.05186130202081536,
+        "nullSd": 0.06997595969040495,
+        "pOneSided": 0.3171707073231692,
+        "timingEdge": 0.03469625592996255
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.3425,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.3171707073231692,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 16,
+      "holdHoursCap": 4,
+      "isCurrentConfig": false,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0,
+      "pctSl": 0.13333333333333333,
+      "pctTimeout": 0.8666666666666667,
+      "pctDataEnd": 0,
+      "meanRNet": 0.027418594796407476,
+      "meanRRaw": 0.06285810064438381,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 4,
+      "medianHoldBars": 16,
+      "winRate": 0.5555555555555556,
+      "totalRNet": 1.2338367658383365,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.18216705065749214,
+        "meanRRaw": -0.14672754480951583,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0,
+        "pctSl": 0.17777777777777778,
+        "pctTimeout": 0.8222222222222222,
+        "pctDataEnd": 0,
+        "medianHoldHours": 4,
+        "winRate": 0.4222222222222222
+      },
+      "alwaysLong": {
+        "meanRNet": -0.009871848302900015,
+        "winRate": 0.5333333333333333,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.1667261626848368,
+        "winRate": 0.37777777777777777,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.20958564545389963,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.068623078984645,
+        "lo95": -0.10923481573231486,
+        "hi95": 0.16109730769878422,
+        "pTwoTailed": 0.685,
+        "mdeAtSignificance": 0.1345012348099042,
+        "mdeAt80Power": 0.19225441808338142
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.10669400914210418,
+        "lo95": -0.0026665100252859543,
+        "hi95": 0.4141010307890388,
+        "pTwoTailed": 0.0545,
+        "mdeAtSignificance": 0.2091202579185242,
+        "mdeAt80Power": 0.2989139360125191
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.08355498463911318,
+        "nullSd": 0.08393627522756744,
+        "pOneSided": 0.09697575606098476,
+        "timingEdge": 0.11097357943552065
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.0545,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.09697575606098476,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 24,
+      "holdHoursCap": 6,
+      "isCurrentConfig": false,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0,
+      "pctSl": 0.17777777777777778,
+      "pctTimeout": 0.8,
+      "pctDataEnd": 0.022222222222222223,
+      "meanRNet": -0.015938525972003674,
+      "meanRRaw": 0.019500979875972678,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 6,
+      "medianHoldBars": 24,
+      "winRate": 0.4444444444444444,
+      "totalRNet": -0.7172336687401654,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.21288972835478345,
+        "meanRRaw": -0.17745022250680723,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0,
+        "pctSl": 0.2222222222222222,
+        "pctTimeout": 0.7555555555555555,
+        "pctDataEnd": 0.022222222222222223,
+        "medianHoldHours": 6,
+        "winRate": 0.35555555555555557
+      },
+      "alwaysLong": {
+        "meanRNet": -0.04022974157264846,
+        "winRate": 0.4888888888888889,
+        "pctTp": 0
+      },
+      "alwaysShort": {
+        "meanRNet": -0.16830153895079353,
+        "winRate": 0.37777777777777777,
+        "pctTp": 0
+      },
+      "vsBaseline": 0.19695120238277977,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.08986115452400899,
+        "lo95": -0.1931439189636289,
+        "hi95": 0.1635357638063488,
+        "pTwoTailed": 0.8675,
+        "mdeAtSignificance": 0.17612786286705762,
+        "mdeAt80Power": 0.2517550105144636
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.12614569444444498,
+        "lo95": -0.046768471151192946,
+        "hi95": 0.44925382190638646,
+        "pTwoTailed": 0.107,
+        "mdeAtSignificance": 0.24724556111111215,
+        "mdeAt80Power": 0.3534097775555571
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.10066034427882704,
+        "nullSd": 0.0930448120702067,
+        "pOneSided": 0.18220444888777806,
+        "timingEdge": 0.08472181830682338
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.107,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.18220444888777806,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 48,
+      "holdHoursCap": 12,
+      "isCurrentConfig": false,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0.06666666666666667,
+      "pctSl": 0.28888888888888886,
+      "pctTimeout": 0.6222222222222222,
+      "pctDataEnd": 0.022222222222222223,
+      "meanRNet": -0.03254609950429917,
+      "meanRRaw": 0.0028934063436771443,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 12,
+      "medianHoldBars": 48,
+      "winRate": 0.4222222222222222,
+      "totalRNet": -1.4645744776934626,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.1857258138274678,
+        "meanRRaw": -0.15028630797949152,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0.044444444444444446,
+        "pctSl": 0.37777777777777777,
+        "pctTimeout": 0.5555555555555556,
+        "pctDataEnd": 0.022222222222222223,
+        "medianHoldHours": 12,
+        "winRate": 0.35555555555555557
+      },
+      "alwaysLong": {
+        "meanRNet": 0.007815047135889213,
+        "winRate": 0.4444444444444444,
+        "pctTp": 0.06666666666666667
+      },
+      "alwaysShort": {
+        "meanRNet": -0.21147389497088065,
+        "winRate": 0.4,
+        "pctTp": 0.044444444444444446
+      },
+      "vsBaseline": 0.15317971432316863,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.10837183436026081,
+        "lo95": -0.2384045684437942,
+        "hi95": 0.18330821546588236,
+        "pTwoTailed": 0.78,
+        "mdeAtSignificance": 0.21240879534611118,
+        "mdeAt80Power": 0.3036145311437067
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 2,
+        "blocksPerSample": 23,
+        "se": 0.1342533133254676,
+        "lo95": -0.09616952916152885,
+        "hi95": 0.4315412620150673,
+        "pTwoTailed": 0.264,
+        "mdeAtSignificance": 0.2631364941179165,
+        "mdeAt80Power": 0.3761240826126301
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.09611003560528936,
+        "nullSd": 0.12070208734078991,
+        "pOneSided": 0.30492376905773555,
+        "timingEdge": 0.06356393610099019
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.264,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.30492376905773555,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    },
+    {
+      "dedupeHours": 20,
+      "holdBars": 96,
+      "holdHoursCap": 24,
+      "isCurrentConfig": true,
+      "signalsPerDay": 1.535181236673774,
+      "trades": 45,
+      "longShare": 0.5333333333333333,
+      "pctTp": 0.2,
+      "pctSl": 0.4666666666666667,
+      "pctTimeout": 0.28888888888888886,
+      "pctDataEnd": 0.044444444444444446,
+      "meanRNet": 0.028029249427899368,
+      "meanRRaw": 0.0634687552758757,
+      "meanCostR": 0.03543950584797633,
+      "medianHoldHours": 18,
+      "medianHoldBars": 69,
+      "winRate": 0.4,
+      "totalRNet": 1.2613162242554716,
+      "baseline": {
+        "what": "ทิศสลับคู่/คี่ · แท่งเดียวกัน · เรขาคณิตเดียวกัน",
+        "trades": 45,
+        "signalsPerDay": 1.535181236673774,
+        "meanRNet": -0.06831034744092529,
+        "meanRRaw": -0.032870841592948966,
+        "meanCostR": 0.03543950584797632,
+        "pctTp": 0.17777777777777778,
+        "pctSl": 0.4888888888888889,
+        "pctTimeout": 0.28888888888888886,
+        "pctDataEnd": 0.044444444444444446,
+        "medianHoldHours": 15,
+        "winRate": 0.37777777777777777
+      },
+      "alwaysLong": {
+        "meanRNet": 0.15948227437819454,
+        "winRate": 0.5111111111111111,
+        "pctTp": 0.2
+      },
+      "alwaysShort": {
+        "meanRNet": -0.3383482831577322,
+        "winRate": 0.2,
+        "pctTp": 0.1111111111111111
+      },
+      "vsBaseline": 0.09633959686882465,
+      "beatsBaseline": true,
+      "power": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 15,
+        "se": 0.1221271377091131,
+        "lo95": -0.21073512148908335,
+        "hi95": 0.2752623673443079,
+        "pTwoTailed": 0.8095,
+        "mdeAtSignificance": 0.23936918990986167,
+        "mdeAt80Power": 0.3421513890058513
+      },
+      "powerDiff": {
+        "B": 4000,
+        "blockLen": 3,
+        "blocksPerSample": 15,
+        "se": 0.12537431455137765,
+        "lo95": -0.1513457040928306,
+        "hi95": 0.34704369002598584,
+        "pTwoTailed": 0.456,
+        "mdeAtSignificance": 0.2457336565207002,
+        "mdeAt80Power": 0.35124867964713963
+      },
+      "mixNull": {
+        "B": 4000,
+        "nLong": 24,
+        "nShort": 21,
+        "nullMean": -0.07314402615480821,
+        "nullSd": 0.14811658556034712,
+        "pOneSided": 0.24843789052736817,
+        "timingEdge": 0.10117327558270758
+      },
+      "holmVsBaseline": {
+        "pRaw": 0.456,
+        "pAdjusted": 1,
+        "reject": false
+      },
+      "holmMixNull": {
+        "pRaw": 0.24843789052736817,
+        "pAdjusted": 1,
+        "reject": false
+      }
+    }
+  ],
+  "priorEvidence": {
+    "note": "ผลวิจัยที่มีอยู่ก่อนหน้า — รายงานนี้ไม่ได้ล้มมัน",
+    "oneHourRawEdge": 0.0064,
+    "oneHourCost": 0.0948,
+    "oneHourNet": -0.0884,
+    "rulesNegative": "21/21 ช่อง",
+    "holmSurvivors": 0
+  },
+  "recommendation": "### สรุปก่อนอ่านข้อเสนอ: ข้อมูลไม่พอจะเสนอ \"ค่าที่ดีกว่า\" — พูดตรง ๆ ตามที่สั่ง\n\nในตาราง 36 ช่อง: รอด Holm **0 ช่อง** (ชนะเหรียญ) และ **0 ช่อง** (จังหวะ) · ผลต่างใหญ่กว่า MDE ของตัวเอง **0 ช่อง**\nและขา \"long ล้วน\" ชนะเครื่องยนต์จริง **29/36 ช่อง** — ผลบวกที่เห็นอธิบายได้ด้วย\n\"เดือนนี้ทองขึ้น 8.68%\" ไม่ใช่ด้วยความสามารถของเครื่องยนต์\n\n**จึงเสนอค่าที่ \"ทำกำไรกว่า\" ไม่ได้เลย** สิ่งที่เสนอได้มีอย่างเดียวคือ\n**\"กดปุ่มนี้แล้วได้อะไร เสียอะไร\"** ซึ่งเป็นการแลกปริมาณแจ้งเตือนกับความรำคาญ\nไม่ใช่การแลกเพื่อกำไร\n\n### ข้อ 1 — ถ้าเจ้าของอยากได้ \"เข้าเร็ว\" จริง: ปุ่มคือ `DEDUPE_HOURS_15M` ปุ่มเดียว\n\n| ตั้งเป็น | สัญญาณ/วัน | เตือน/สัปดาห์ | ไม้ในเดือนที่วัด | meanR สุทธิ | เหรียญ | long ล้วน |\n| ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n| 20 ชม. **(ปัจจุบัน)** | 1.54 | ~11 | 45 | 0.0280 | -0.0683 | 0.1595 |\n| 8 ชม. | 3.04 | ~21 | 89 | -0.0819 | -0.1943 | 0.1320 |\n| 4 ชม. | 4.50 | ~32 | 132 | -0.0000 | -0.1294 | 0.1665 |\n| 2 ชม. | 6.52 | ~46 | 191 | 0.0237 | -0.0961 | 0.2390 |\n| 1 ชม. | 8.49 | ~59 | 249 | 0.0522 | -0.0560 | 0.2423 |\n| 0 ชม. | 13.99 | ~98 | 410 | 0.0681 | -0.0078 | 0.2734 |\n\n**ตัวเลขที่ควรใช้ตัดสินใจ**: ปุ่มนี้เปลี่ยน \"ปริมาณ\" อย่างเดียว\nที่ 20 ชม. โทรศัพท์สั่น ~11 ครั้ง/สัปดาห์ · ที่ 4 ชม. ~32 ครั้ง · ที่ 0 ชม. ~98 ครั้ง\nส่วนคอลัมน์ meanR ไม่มีแนวโน้มที่อ่านได้เลย — มันขึ้นลงแบบไม่มีทิศทาง\nซึ่งเป็นสิ่งที่ควรคาดหวังเมื่อ MDE ใหญ่กว่าทุกความต่างที่วัดได้\n\n⚠ ก่อนกด: **ประตูคุณภาพบน 15m ไม่ได้กรองอะไรเลย** (ผ่าน 410/410)\nการกดค่านี้ลงจึงไม่มีเบรกสำรอง ปริมาณจะขึ้นตามตารางเป๊ะ ๆ\n\n**ถ้าเจ้าของสั่งให้เลือกค่าเดียว** ผมเสนอ **4 ชม.** ด้วยเหตุผลที่ไม่เกี่ยวกับกำไร:\n- มันเท่ากับ `DEDUPE_HOURS_1H` ที่มีอยู่แล้วในไฟล์เดียวกัน จึงไม่มีเลขใหม่ให้ต้องอธิบาย\n- ให้ 4.5 สัญญาณ/วัน (~32 ครั้ง/สัปดาห์) ซึ่งอยู่กึ่งกลาง ระหว่างค่าปัจจุบัน 1.5 กับเพดานของเลน 14.0\n- ยังเหลือที่ให้ถอยกลับได้ ถ้าเจ้าของเจอว่ารำคาญเกิน\n\n**แต่ย้ำให้ชัด: ไม่มีหลักฐานว่ามันทำเงินได้ดีกว่า 20 ชม. — มันแค่ถี่กว่า**\nถ้าเป้าหมายคือ \"อยากเห็นสัญญาณบ่อยขึ้น\" ปุ่มนี้ตอบโจทย์\nถ้าเป้าหมายคือ \"อยากได้กำไรมากขึ้น\" ปุ่มนี้ไม่ใช่คำตอบ และรายงานนี้ไม่มีคำตอบนั้น\n\n### ข้อ 2 — \"ออกเร็ว\" ไม่แนะนำให้แตะ และนี่คือตัวเลขว่าทำไม\n\n| เพดานถือ | = กี่ ชม. | จบตามแผน (TP+SL) | หมดเวลา | meanR สุทธิ | ถือจริง p50 |\n| ---: | ---: | ---: | ---: | ---: | ---: |\n| 4 แท่ง | 1 | 6.7% | 93.3% | -0.0786 | 1.00 ชม. |\n| 8 แท่ง | 2 | 11.1% | 88.9% | -0.0172 | 2.00 ชม. |\n| 16 แท่ง | 4 | 13.3% | 86.7% | 0.0274 | 4.00 ชม. |\n| 24 แท่ง | 6 | 17.8% | 82.2% | -0.0159 | 6.00 ชม. |\n| 48 แท่ง | 12 | 35.6% | 64.4% | -0.0325 | 12.00 ชม. |\n| 96 แท่ง **(ปัจจุบัน)** | 24 | 66.7% | 33.3% | 0.0280 | 18.00 ชม. |\n\nเหตุผลเป็นกลไก ไม่ใช่ความเห็น: `MAX_COST_R = 0.05` บังคับ SL ≥ 0.60% = **4.2 เท่าของ ATR 15m**\nและราคาต้องใช้เวลาเดินถึงระยะนั้น (ค่ากลาง 21 แท่ง = 5.3 ชม. · p25 12 แท่ง · p75 36 แท่ง)\nการตัดเพดานถือให้สั้นกว่านั้นไม่ได้ทำให้ \"ออกเร็ว\" — มันแปลงไม้จาก \"ชนะ/แพ้ตามแผน\"\nเป็น \"ปิดที่ราคาตลาดกลางทาง\" ซึ่งเป็นการเปลี่ยนนิยามของระบบทั้งระบบ\n\n**ถ้าเจ้าของยืนยันว่าต้องออกใน 1–2 ชม. จริง ๆ** ทางเดียวที่สอดคล้องกันคือบีบ SL\nซึ่งราคาที่ต้องจ่ายเป็นเลขตายตัว ไม่ใช่การประมาณ:\n\n| SL (% ของราคา) | = กี่จุด | = กี่ ATR 15m | ต้นทุน/ไม้ | ต้นทุนเทียบขอบดิบ 1H |\n| ---: | ---: | ---: | ---: | ---: |\n| 0.60% (ปัจจุบัน) | 26.85 | 4.20 | **0.050 R** | 7.8 เท่า |\n| 0.30% | 13.43 | 2.10 | **0.100 R** | 15.6 เท่า |\n| 0.15% | 6.71 | 1.05 | **0.200 R** | 31.3 เท่า |\n\nที่ 0.15% ต้นทุนกินเงินที่เสี่ยงไป 20% ก่อนไม้จะเริ่มเดิน เทียบกับขอบดิบที่ 1H วัดได้ทั้งปี (+0.0064 R/ไม้) — **ต้นทุนใหญ่กว่าขอบ 31 เท่า**\nนี่คือเหตุผลที่ `MAX_COST_R` มีอยู่ และเป็นเหตุผลที่ไม่ควรผ่อนมันเพื่อความเร็ว\n\n### ข้อ 3 — สิ่งที่ควรทำก่อนตัดสินใจอะไรที่ใหญ่กว่านี้\n\nเก็บแท่ง 15m ต่อไปเรื่อย ๆ — `scripts/collect-15m.mjs` สะสมได้แล้ว 1960 แท่ง / 29.3 วัน\nเมื่อครบ ~3 เดือนจะแบ่ง train/validation/test ได้เป็นครั้งแรก และคำสั่งเดิม\n`node scripts/research/fast-lane-lab.mjs` จะรันซ้ำได้ทันทีบนชุดที่มีที่กันไว้จริง\n\nที่สำคัญกว่าคือ **เก็บเดือนที่ทองไม่ขึ้น** — รายงานนี้วัดได้แค่ยุคเดียวและยุคนั้นเป็นขาขึ้นแรง\nเดือนที่ทองออกข้างหรือลงคือข้อมูลที่มีค่าที่สุดที่ยังไม่มี เพราะมันคือเดือนที่จะบอกว่า\nเครื่องยนต์รู้อะไรจริง ๆ หรือแค่เอนตามเทรนด์\n\n### สรุปข้อเสนอในบรรทัดเดียว\n\n**`DEDUPE_HOURS_15M` กดลงได้เลยถ้าอยากได้ความถี่ — มันเป็นเรื่องรสนิยมเรื่องปริมาณ\nแจ้งเตือน ซึ่งเจ้าของตัดสินใจได้เองโดยไม่ต้องรอผลวิจัย (เสนอ 4 ชม. ถ้าต้องเลือกค่าเดียว)\nแต่ `MAX_HOLD_BARS` และ `MAX_COST_R` อย่าแตะ — ตัวเลขข้างบนบอกว่าการขยับสองตัวนั้น\nทำให้แย่ลงอย่างคาดเดาได้ ไม่ใช่เรื่องรสนิยม**"
+}
