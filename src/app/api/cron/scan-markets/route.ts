@@ -7,6 +7,7 @@ import { isDemoMode } from '@/lib/supabase';
 import { createAdminClient } from '@/lib/supabase-server';
 import type { Signal, MarketPrice, AlertPreferences, CandleData } from '@/types';
 import { errorMessage } from '@/lib/errors';
+import { isInUniverse } from '@/lib/universe';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -16,7 +17,8 @@ export const maxDuration = 60;
  *
  * ที่เอา cron ออกจาก vercel.json (เดิม `{path:'/api/cron/scan-markets', schedule:'0 1 * * *'}`)
  * ไม่ใช่เพราะ route พัง แต่เพราะมีตัวสแกนที่ทำงานจริงอยู่แล้วคือ .github/workflows/scan-universe.yml
- * (หน้าปัดทุก 15 นาที · สแกนทั้งจักรวาล ∪ watchlist) และการมีตัวสแกนสองตัวเขียนตาราง
+ * (หน้าปัดทุก 15 นาที · สแกนจักรวาล — ตั้งแต่ 2026-08-29 คือ XAUUSD ตัวเดียว และ
+ *  watchlist ที่อยู่นอกจักรวาลไม่ถูกสแกนอีกแล้วทั้งที่นี่และที่นั่น) และการมีตัวสแกนสองตัวเขียนตาราง
  * signals ใบเดียวกันมีผลข้างเคียงที่วัดได้จริงสองข้อ:
  *   1. ตัวกันสัญญาณซ้ำเป็นแบบ "อ่านก่อนเขียน" — สองตัวที่รันใกล้กันกันซ้ำไม่อยู่
  *      (เหตุผลเดียวกับที่ .github/workflows/scan-markets.yml ปิด schedule ไปแล้วเมื่อ 2026-08-17)
@@ -104,15 +106,30 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   try {
-    // 1. watchlist ทั้งหมดที่เปิดใช้งาน
-    const { data: watchlist, error: wlErr } = await supabase
+    // 1. watchlist ทั้งหมดที่เปิดใช้งาน — แล้วกรองให้เหลือเฉพาะจักรวาลที่สแกนจริง
+    //
+    // route นี้อ่าน watchlist ตรง ๆ มาแต่ไหนแต่ไร ซึ่งกลายเป็นช่องโหว่ตั้งแต่ 2026-08-29
+    // ที่เจ้าของสั่งเทรดทองอย่างเดียว: กดเรียก route นี้ (มันเหลือไว้ให้ไล่ปัญหา) แล้วมันจะ
+    // ผลิตสัญญาณของคู่เงินที่ค้างอยู่ใน watchlist ลงตาราง signals ใบเดียวกับตัวสแกนหลัก
+    // → ใช้กติกาเดียวกับ buildScanTargets() ของ src/lib/universe.ts: สแกนเฉพาะสิ่งที่
+    //   อยู่ใน SYMBOL_UNIVERSE · ไม่ลบแถวของผู้ใช้ แค่ไม่สแกน
+    const { data: watchlistAll, error: wlErr } = await supabase
       .from('watchlist')
       .select('*')
       .eq('is_active', true);
 
     if (wlErr) throw wlErr;
-    if (!watchlist?.length) {
-      return NextResponse.json({ success: true, scanned: 0, message: 'No watchlist items' });
+    const watchlist = (watchlistAll ?? []).filter((w) => isInUniverse(w.symbol, w.market));
+    const skippedOutsideUniverse = (watchlistAll?.length ?? 0) - watchlist.length;
+    if (!watchlist.length) {
+      return NextResponse.json({
+        success: true,
+        scanned: 0,
+        skippedOutsideUniverse,
+        message: skippedOutsideUniverse
+          ? `watchlist มีแต่ symbol นอกจักรวาล ${skippedOutsideUniverse} แถว — ไม่สแกน (เจ้าของสั่งเมื่อ 2026-08-29 ว่าเทรดทองอย่างเดียว)`
+          : 'No watchlist items',
+      });
     }
 
     // 2. ดึง chart ครั้งเดียวต่อ symbol แล้วใช้ซ้ำกับทุก user ที่ติดตาม symbol เดียวกัน
@@ -357,6 +374,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       scanned: watchlist.length,
+      // แถว watchlist ที่ไม่ได้สแกนเพราะอยู่นอกจักรวาล — ต้องเห็น ไม่ใช่หายเงียบ
+      skippedOutsideUniverse,
       pricesUpdated,
       signalsGenerated: signalsToInsert.length,
       // จำนวน symbol ที่ไม่ได้สแกน 1H เพราะเวลาใกล้ชน maxDuration — ต้องเห็นใน log ของ cron

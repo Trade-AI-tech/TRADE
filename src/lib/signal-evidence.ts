@@ -1,4 +1,5 @@
 import rawEvidence from './signal-evidence.data.json';
+import { SYMBOL_UNIVERSE } from './universe';
 
 /**
  * signal-evidence.ts — ตัวอ่าน "หลักฐานย้อนหลัง" ของเซ็ตอัพสัญญาณ
@@ -28,6 +29,27 @@ import rawEvidence from './signal-evidence.data.json';
  *   2. timeframe : (timeframe, action, strength) รวมทุก symbol
  *   3. global    : (timeframe, action) รวมทั้งหมด
  * ไม่มีชั้นไหนถึงเกณฑ์ → คืน null แล้ว UI ต้องไม่แสดงบล็อกนี้เลย (ห้ามเดา)
+ *
+ * ═══ ด่านความบริสุทธิ์ของชั้นรวม (เพิ่มเมื่อ 2026-08-29) ═══════════════════════
+ *
+ * ชั้นที่ 2 กับ 3 คือ "ค่าเฉลี่ยข้ามสินทรัพย์" ซึ่งมีความหมายก็ต่อเมื่อสินทรัพย์ที่ถูก
+ * เฉลี่ยเข้าไปคือสิ่งที่ระบบเทรดจริง · ไฟล์ข้อมูลชุดที่ ship อยู่ตอนนี้สร้างเมื่อ
+ * 2026-08-28 จากจักรวาล 13 ตัว (ทอง เงิน และคู่เงิน 11 คู่) แต่ตั้งแต่ 2026-08-29
+ * เจ้าของสั่งเทรดทองอย่างเดียว — การเอาค่าเฉลี่ยของโลหะเงิน (ต้นทุน 15 bps) และ
+ * คู่เงิน (1.5 bps) มาแปะบนการ์ดทอง (3 bps) คือการอ้างสถิติของสิ่งที่ไม่ได้เทรดแล้ว
+ * และตัวเลขก็ต่างกันจริง ไม่ใช่ต่างแค่ในหลักการ: global '1H|BUY' meanR −0.0034
+ * (n=8,353 · 13 ตัว) ขณะที่ของทองเองคือ +0.089 (n=562)
+ *
+ * กติกาจึงเป็น: ใช้ชั้นรวมได้ **เฉพาะเมื่อทุก symbol ในตารางอยู่ในจักรวาลที่สแกนจริง**
+ * ไม่งั้นตอบ null แล้วการ์ดไม่แสดงบล็อกนี้ — "ไม่มีตัวเลข" ซื่อสัตย์กว่า "ตัวเลขของคนอื่น"
+ *
+ * วิธีทำให้ชั้นรวมกลับมาใช้ได้: สร้างตารางใหม่จากจักรวาลปัจจุบัน
+ *   node scripts/research/build-signal-evidence.mjs
+ * ⚠ ณ 2026-08-31 ยังทำแบบ "เฉพาะทอง" ไม่ได้ด้วยเครื่องมือที่มี: ตัวสร้างอ่านจักรวาลของ
+ *   ตัวเองจาก scripts/research/rule-lab.mjs (13 ตัว ตรึงไว้เป็นรายการ) และโหมด --symbols
+ *   ประกาศตัวเองว่าเป็น "โหมดทดลอง ไม่เขียนไฟล์จริง" — ด่านนี้จึงเป็นทางแก้ที่ถูกต้อง
+ *   ระหว่างรอ ไม่ใช่ทางลัด · เมื่อวันไหนตารางถูกสร้างจากทองอย่างเดียว ด่านนี้จะเปิดทางให้เอง
+ *   โดยไม่ต้องแก้โค้ดอีก (มันดูจากคีย์ในไฟล์ข้อมูล ไม่ได้ฮาร์ดโค้ดรายชื่อไว้)
  *
  * 15m ไม่มีประวัติ (Yahoo ให้ย้อนหลังแค่ 1 เดือน) — ทุกชั้นจะถอยไปอ่านข้อมูลของ 1H
  * และผลลัพธ์แบก sourceTimeframe: '1H' ให้ UI วงเล็บบอกผู้ใช้ตรง ๆ ว่าเป็นค่าประมาณ
@@ -94,6 +116,34 @@ function dataTimeframeFor(timeframe: string): string | null {
   return null; // กรอบเวลาที่ไม่รู้จัก — ไม่เดา
 }
 
+/**
+ * ชั้นรวม (timeframe/global) เชื่อถือได้กับจักรวาลปัจจุบันไหม — คำนวณครั้งเดียวตอนโหลดโมดูล
+ *
+ * อ่าน "ตารางนี้ประกอบจาก symbol อะไรบ้าง" จากคีย์ชั้น symbol ของไฟล์ข้อมูลเอง
+ * ไม่ฮาร์ดโค้ดรายชื่อไว้ที่นี่ เพราะรายชื่อที่ฮาร์ดโค้ดจะเพี้ยนจากไฟล์ข้อมูลวันไหนก็ได้
+ *
+ * ⚠ ข้อจำกัดที่ต้องรู้: คีย์ชั้น symbol มีเฉพาะเซลล์ที่ n >= 30 symbol ที่ร่วมเฉลี่ยอยู่
+ *   ในชั้นรวมแต่ไม่มีเซลล์ของตัวเองอาจไม่โผล่ในเซตนี้ = เซตนี้เป็น "อย่างน้อย" ไม่ใช่ทั้งหมด
+ *   ซึ่งเอนไปทางปลอดภัย (เจอตัวแปลกปลอมเมื่อไหร่ = ปิดชั้นรวม) แต่ไม่การันตีว่าตารางที่
+ *   ผ่านด่านนี้บริสุทธิ์ 100% · เซตว่าง = พิสูจน์อะไรไม่ได้เลย จึงถือว่า "ใช้ไม่ได้"
+ */
+function aggregateLayersUsable(): boolean {
+  const keys = Object.keys(DATA.cells?.symbol ?? {});
+  if (!keys.length) return false;
+  const inUniverse = new Set(SYMBOL_UNIVERSE.map((u) => u.symbol.trim().toUpperCase()));
+  return keys.every((k) => inUniverse.has(k.split('|')[0]?.trim().toUpperCase() ?? ''));
+}
+
+const AGGREGATE_LAYERS_USABLE = aggregateLayersUsable();
+
+/**
+ * true = ตารางชุดที่ ship อยู่ถูกสร้างจากจักรวาลปัจจุบันล้วน ชั้นรวมจึงใช้ได้
+ * false = ตารางมีสินทรัพย์ที่ไม่ได้เทรดแล้วปนอยู่ ชั้นรวมถูกปิด (lookupEvidence คืน null
+ *         เมื่อไม่มีเซลล์ชั้น symbol) — export ไว้ให้เทสต์และตัวไล่ปัญหาถามได้ตรง ๆ
+ *         ว่า "ที่การ์ดไม่ขึ้นบล็อกหลักฐาน เพราะไม่มีข้อมูล หรือเพราะด่านนี้"
+ */
+export const EVIDENCE_AGGREGATE_LAYERS_USABLE = AGGREGATE_LAYERS_USABLE;
+
 /** เซลล์ต้องมีเลขครบและ n ถึงเกณฑ์ — ไฟล์ข้อมูลถูกกรองมาแล้ว แต่กันไฟล์เพี้ยนอีกชั้น */
 function usable(cell: RawCell | undefined): cell is RawCell {
   return !!cell
@@ -124,8 +174,15 @@ export function lookupEvidence(
 
   const attempts: Array<{ level: SignalEvidence['level']; cell: RawCell | undefined }> = [
     { level: 'symbol', cell: cells.symbol?.[`${sym}|${tf}|${action}|${strength}`] },
-    { level: 'timeframe', cell: cells.timeframe?.[`${tf}|${action}|${strength}`] },
-    { level: 'global', cell: cells.global?.[`${tf}|${action}`] },
+    // ชั้นรวมสองชั้นถูกปิดทั้งคู่เมื่อตารางถูกสร้างจากสินทรัพย์ที่ไม่ได้เทรดแล้ว
+    // (ดู "ด่านความบริสุทธิ์ของชั้นรวม" ที่หัวไฟล์) — ปิดพร้อมกันเพราะทั้งสองชั้น
+    // ประกอบจากไม้ก้อนเดียวกัน ต่างกันแค่ระดับการรวม
+    ...(AGGREGATE_LAYERS_USABLE
+      ? ([
+          { level: 'timeframe', cell: cells.timeframe?.[`${tf}|${action}|${strength}`] },
+          { level: 'global', cell: cells.global?.[`${tf}|${action}`] },
+        ] as Array<{ level: SignalEvidence['level']; cell: RawCell | undefined }>)
+      : []),
   ];
 
   for (const { level, cell } of attempts) {

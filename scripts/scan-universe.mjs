@@ -44,27 +44,74 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 //   ของ src/lib/universe.ts ที่เดียว ค่าข้างล่างเป็นเรื่องของ "การดึงข้อมูล" ล้วน ๆ
 
 /**
- * ยิง Yahoo พร้อมกันกี่คำขอ — วัดจริงบนจักรวาลเต็ม (116 คำขอ: 1D + 1H ต่อตัว):
- *   concurrency 4 → 8.70 วิ · concurrency 6 → 6.32 วิ · ทั้งสองรอบสำเร็จ 116/116 ไม่โดน 429 เลย
- * เลือก 6 เพราะเร็วพอให้ทั้งจ็อบจบใน 1 นาทีของ GitHub (ดูเรื่องโควตาในไฟล์ workflow)
- * และยังห่างจากจุดที่ Yahoo เริ่มปฏิเสธ — ดันสูงกว่านี้เสี่ยงโดนบล็อกทั้ง IP ของ runner
+ * ยิง Yahoo พร้อมกันกี่คำขอ
+ *
+ * ── ของเดิม (บันทึกไว้เพราะเป็นที่มาของเลข 6) ────────────────────────────────
+ * วัดบนจักรวาลเต็ม 58 ตัว (116 คำขอ: 1D + 1H ต่อตัว):
+ *   concurrency 4 → 8.70 วิ · concurrency 6 → 6.32 วิ · ทั้งสองรอบสำเร็จ 116/116 ไม่โดน 429
+ *
+ * ── ทำไมเป็น 3 ตั้งแต่ 2026-08-29 ───────────────────────────────────────────
+ * จักรวาลเหลือ XAUUSD ตัวเดียว → 1 symbol × 3 timeframe = **3 คำขอ/รอบ**
+ * pool() ใช้ min(limit, จำนวนงาน) อยู่แล้ว ค่า 6 กับ 3 จึงให้พฤติกรรมเหมือนกันเป๊ะวันนี้
+ * (ทั้งสามใบยิงพร้อมกันทั้งคู่) — ตั้งเป็น 3 เพื่อให้ "ตัวเลขที่เขียนไว้" ตรงกับสิ่งที่เกิดจริง
+ * ⚠ ทั้งสามใบยิงไปที่ ticker เดียวกัน (GC=F) พร้อมกัน ถ้าวันไหน Yahoo เริ่มจำกัดต่อ ticker
+ *   อาการจะเป็น "ล้มพร้อมกันทั้งสามใบ" ไม่ใช่ล้มทีละใบ — ดู SYSTEMIC_FAILURE_RATIO ข้างล่าง
  */
-const CONCURRENCY = Number(process.env.SCAN_CONCURRENCY || 6);
+const CONCURRENCY = Number(process.env.SCAN_CONCURRENCY || 3);
 
 /**
  * งบเวลาดึงข้อมูลทั้งรอบ เกินแล้วหยุดดึงตัวที่เหลือ (และรายงานเป็นตัวเลข ไม่ข้ามเงียบ)
- * 40 วิ = เผื่อไว้ 6 เท่าของ 6.3 วิที่วัดได้ ไว้รับกรณี Yahoo ช้าผิดปกติ
- * โดยที่ทั้งจ็อบยังจบต่ำกว่า 60 วิ = ยังถูกคิดแค่ 1 นาที
+ *
+ * ⚠ พูดตรง ๆ: ตั้งแต่จักรวาลเหลือตัวเดียว ปุ่มนี้ "แทบไม่มีทางทำงาน" เพราะการเช็กงบเวลา
+ *   เกิดขึ้น *ก่อนเริ่ม* ดึงแต่ละใบ และงานทั้ง 3 ใบถูกปล่อยพร้อมกันที่วินาทีที่ 0
+ *   (จำนวนงาน = CONCURRENCY) จึงไม่มีใบไหนที่เริ่มทีหลังให้ตรวจทัน
+ *   มันจะกลับมามีความหมายทันทีที่จำนวนคำขอมากกว่า CONCURRENCY (เพิ่ม symbol/timeframe)
+ * 20 วิ = เผื่อไว้ ~28 เท่าของ 0.72 วิที่วัดได้จริงเมื่อ 2026-08-31 (3 คำขอ)
+ * และยังทำให้ทั้งจ็อบจบต่ำกว่า 60 วิ = ถูกคิดแค่ 1 นาทีของ GitHub
  */
-const FETCH_BUDGET_MS = Number(process.env.SCAN_FETCH_BUDGET_MS || 40_000);
+const FETCH_BUDGET_MS = Number(process.env.SCAN_FETCH_BUDGET_MS || 20_000);
 
 /**
- * หน้าต่างกันสัญญาณซ้ำ — ลอกจาก src/app/api/cron/scan-markets/route.ts เป๊ะ ๆ
+ * หน้าต่างกันสัญญาณซ้ำ — 1D/1H ลอกจาก src/app/api/cron/scan-markets/route.ts เป๊ะ ๆ
  * ต้องเท่ากันเสมอ เพราะทุกตัวสแกนอ่าน/เขียนตาราง signals ใบเดียวกัน ถ้าตั้งไม่ตรงกัน
  * ตัวที่หน้าต่างสั้นกว่าจะออกสัญญาณซ้ำของที่อีกตัวเพิ่งบันทึกไป แล้วแจ้งเตือนเด้งสองรอบ
+ *
+ * ── 15m: 20 ชม. โดย "ตั้งใจแล้ว" ตั้งแต่ 2026-08-29 (เดิมเป็นอุบัติเหตุ) ────────
+ * route เดิมไม่มีเลน 15m ค่าของมันจึงไม่มีต้นฉบับให้ลอก และโค้ดเดิมกรองหน้าต่างแคบ
+ * เฉพาะ timeframe === '1H' ทำให้ 15m ตกไปใช้หน้าต่าง 20 ชม. ของ 1D โดยไม่มีใครตั้งใจ
+ *
+ * วัดจริงบนแท่งสด XAUUSD 15m ย้อนหลัง 31 วัน: ผ่านประตูคุณภาพ 402 ใบ = 12.97 ใบ/วัน
+ * หลังกันซ้ำ 20 ชม. เหลือ 1.48 ใบ/วัน — แปลว่า **ปริมาณแจ้งเตือนของทั้งระบบตอนนี้
+ * แขวนอยู่บนเลขนี้ตัวเดียว** ไม่ใช่บนเกณฑ์คุณภาพ
+ *
+ * ⚠ ใครที่คิดจะ "แก้ให้ถูก" โดยให้ 15m มีหน้าต่างของตัวเอง (เช่น 1 ชม. แบบคาบแท่ง)
+ *   ต้องรู้ว่านั่นคือการเปลี่ยนจาก ~1.5 เป็น ~13 ใบ/วันทันที และมันคือการ "ผ่อนความถี่"
+ *   ที่เจ้าของยังไม่ได้สั่ง — เสนอพร้อมตัวเลขก่อนเสมอ อย่าแก้เงียบ ๆ
+ *   (เลนนี้ยังไม่เคยถูกตรวจสอบนอกตัวอย่างเลย ดู perTimeframe ใน src/lib/universe.ts)
  */
 const DEDUPE_HOURS_1D = 20;
 const DEDUPE_HOURS_1H = 4;
+const DEDUPE_HOURS_15M = 20;
+
+/** หน้าต่างกันซ้ำของ timeframe นั้น — เขียนเป็นฟังก์ชันเพื่อไม่ให้มี timeframe ไหนตกไปใช้ค่าคนอื่นเงียบ ๆ */
+const dedupeHoursFor = (tf) => {
+  if (tf === '1H') return DEDUPE_HOURS_1H;
+  if (tf === '15m') return DEDUPE_HOURS_15M;
+  return DEDUPE_HOURS_1D;
+};
+
+/**
+ * หน้าต่างที่ "ยาวที่สุด" ในบรรดาทุก timeframe — ใช้เป็นขอบเขตของ query ที่ดึงสัญญาณเดิม
+ *
+ * ทำไมต้องเป็น max ไม่ใช่ DEDUPE_HOURS_1D ตรง ๆ: query ดึงเฉพาะแถวที่ใหม่กว่าค่านี้
+ * ถ้าหน้าต่างของ timeframe ไหนยาวกว่าขอบเขตที่ดึงมา แถวที่อยู่นอกขอบเขตจะไม่เคยถูกอ่าน
+ * → กันซ้ำของ timeframe นั้น "เงียบ ๆ ไม่ทำงาน" ตามส่วนที่เกิน แล้วแจ้งเตือนซ้ำโดยไม่มี
+ * error ให้เห็นเลย ซึ่งเป็นอุบัติเหตุตระกูลเดียวกับที่ 15m เคยตกไปใช้หน้าต่างของ 1D
+ * ผูกไว้กับ max จึงแปลว่า "ขยับค่าคงที่ตัวไหนก็ได้ ขอบเขตตามให้เอง" ไม่ต้องจำว่าต้องแก้สองที่
+ *
+ * วันนี้ = max(20, 4, 20) = 20 ชม. เท่ากับของเดิมเป๊ะ ไม่มีพฤติกรรมไหนเปลี่ยน
+ */
+const DEDUPE_LOOKBACK_HOURS = Math.max(DEDUPE_HOURS_1D, DEDUPE_HOURS_1H, DEDUPE_HOURS_15M);
 
 /** timeframe → interval/range ของ Yahoo — ต้องตรงกับ route เดิม (1D: 1d/1y · 1H: 1h/3mo) */
 const TIMEFRAMES = {
@@ -82,8 +129,24 @@ const TIMEFRAMES = {
 /** แท่งน้อยกว่านี้วิเคราะห์ไม่ได้ — เกณฑ์เดียวกับ route เดิม */
 const MIN_CANDLES = 50;
 
-/** ดึงข้อมูลล้มเกินสัดส่วนนี้ = พังทั้งระบบ (Yahoo บล็อก/เน็ตขาด) ไม่ใช่ "บางตัวไม่มีข้อมูล" */
+/**
+ * ดึงข้อมูลล้มเกินสัดส่วนนี้ = พังทั้งระบบ (Yahoo บล็อก/เน็ตขาด) ไม่ใช่ "บางตัวไม่มีข้อมูล"
+ *
+ * ⚠ เจตนาเดิมของค่านี้คือ "แยกพังทั้งระบบ ออกจาก บางตัวไม่มีข้อมูล" ซึ่งเป็นการแยกที่
+ *   **เป็นไปไม่ได้อีกต่อไปโดยนิยาม** เมื่อจักรวาลเหลือ symbol เดียว: ทั้งสามใบเป็นของ
+ *   GC=F ตัวเดียวกัน ยิงพร้อมกัน จึงล้มแบบสัมพันธ์กัน ไม่ใช่เหตุการณ์อิสระ 3 ครั้ง
+ *   ถ้าใช้สัดส่วน 0.5 ตรง ๆ กับ 3 ใบ แค่ล้ม 2 ใน 3 (เช่น 15m ไม่มีแท่งช่วงตลาดปิด
+ *   + 1H สะดุดหนึ่งครั้ง) ก็จะกลายเป็น run สีแดงทันที ทั้งที่รอบนั้นยังสแกน 1D ได้ปกติ
+ *   — สัญญาณเตือนที่ปลุกคนผิดบ่อย ๆ คือสัญญาณเตือนที่ถูกเลิกเชื่อ
+ */
 const SYSTEMIC_FAILURE_RATIO = 0.5;
+
+/**
+ * ต่ำกว่านี้ให้ใช้กติกา "ล้มครบทุกใบ" แทนสัดส่วน (ดูเหตุผลข้างบน)
+ * 6 = จำนวนคำขอของจักรวาล 2 ตัว × 3 timeframe — จุดที่สัดส่วนเริ่มมีความหมายทางสถิติ
+ * ล้มครบทุกใบบนจักรวาลตัวเดียว = ไม่ได้สแกนอะไรเลยรอบนั้น ซึ่งต้องแดงจริง ๆ
+ */
+const SYSTEMIC_MIN_JOBS = 6;
 
 // ═══════════════════ หลักฐานย้อนหลังของเซ็ตอัพ (ไม่บังคับ — ไม่มีไฟล์ก็สแกนต่อได้) ═══════════════════
 //
@@ -110,15 +173,33 @@ const EVIDENCE_TABLE = loadEvidenceTable();
 /** 15m ไม่มีประวัติให้เดิน — ใช้ข้อมูล 1H แล้วประกาศผ่าน sourceTimeframe (เหมือนตัวอ่าน .ts) */
 const evidenceDataTf = (tf) => (String(tf).toLowerCase() === '15m' ? '1H' : String(tf).toUpperCase());
 
-function evidenceFor(signal) {
+/**
+ * ชั้นรวมใช้ได้ไหม — ลอกกติกา "ด่านความบริสุทธิ์ของชั้นรวม" จาก src/lib/signal-evidence.ts
+ * (ทุก symbol ในตารางต้องอยู่ในจักรวาลที่สแกนจริง ไม่งั้นปิดชั้น timeframe/global ทั้งคู่
+ *  เพราะเป็นการเอาค่าเฉลี่ยของสินทรัพย์ที่เลิกเทรดแล้วมาแปะบนสัญญาณทอง)
+ * ⚠ ถ้าฝั่ง .ts เปลี่ยนกติกา ต้องตามมาแก้ที่นี่ด้วย — npm run test:universe จับความไม่ตรงกันนี้
+ */
+function aggregateLayersUsable(universeSymbols) {
+  if (!EVIDENCE_TABLE) return false;
+  const keys = Object.keys(EVIDENCE_TABLE.cells?.symbol ?? {});
+  if (!keys.length) return false;
+  const allowed = new Set(universeSymbols.map((s) => String(s).trim().toUpperCase()));
+  return keys.every((k) => allowed.has(String(k.split('|')[0] ?? '').trim().toUpperCase()));
+}
+
+function evidenceFor(signal, aggregateOk) {
   if (!EVIDENCE_TABLE) return null;
   if (signal.action !== 'BUY' && signal.action !== 'SELL') return null;
   const tf = evidenceDataTf(signal.timeframe);
   const c = EVIDENCE_TABLE.cells;
   const attempts = [
     ['symbol', c.symbol?.[`${signal.symbol}|${tf}|${signal.action}|${signal.strength}`]],
-    ['timeframe', c.timeframe?.[`${tf}|${signal.action}|${signal.strength}`]],
-    ['global', c.global?.[`${tf}|${signal.action}`]],
+    ...(aggregateOk
+      ? [
+          ['timeframe', c.timeframe?.[`${tf}|${signal.action}|${signal.strength}`]],
+          ['global', c.global?.[`${tf}|${signal.action}`]],
+        ]
+      : []),
   ];
   for (const [level, cell] of attempts) {
     if (!cell || !Number.isFinite(cell.n)) continue;
@@ -135,20 +216,20 @@ function evidenceFor(signal) {
   return null;
 }
 
-/**
- * ที่นั่งที่ "จอง" ไว้ให้ตลาด GOLD ภายในเพดาน maxSignalsPerRun ของแต่ละคน
- *
- * ทำไมต้องมี: เจ้าของเทรดทองเป็นหลัก และสั่งเมื่อ 2026-08-28 ให้เน้นทอง —
- * เพดาน 5 สัญญาณ/รอบ/คนตัดตามคะแนนรวมอย่างเดียว วันที่ตลาดขยับพร้อมกันทั้งกระดาน
- * สัญญาณทองที่ผ่านเกณฑ์จึงโดนคู่ FOREX คะแนนสูงกว่าเบียดตกได้ทั้งที่เจ้าของอยากเห็นมันก่อน
- *
- * กติกา (ดูวิธีใช้ตรงบล็อก "การเน้นทอง" ในขั้นที่ 6):
- *   · จองให้เฉพาะทองที่ "ผ่านเกณฑ์คุณภาพเดิมครบ" — ไม่มีการผ่อนเกณฑ์ให้ทอง
- *   · ทองไม่ผ่านเกณฑ์ = ที่จองคืนให้ตลาดอื่นทั้งหมด · เพดานรวมต่อรอบไม่เปลี่ยน
- *   · ที่จองเป็น "ขั้นต่ำ" ของทอง ไม่ใช่เพดาน — ทองตัวที่เกินโควตาจองยังกลับไป
- *     แข่งกับตลาดอื่นตามการเรียงเดิมได้ (นโยบายนี้ต้องไม่ทำให้ทองได้น้อยกว่าเดิม)
- */
-const GOLD_RESERVED_SLOTS = 2;
+// ── ที่นั่งจองของตลาด GOLD (GOLD_RESERVED_SLOTS = 2) ถูกลบทิ้งเมื่อ 2026-08-29 ──
+//
+// ของเดิมทำอะไร: กันที่ไว้ 2 ที่ในเพดานต่อคน ให้สัญญาณทองที่ผ่านเกณฑ์ครบ ไม่ให้โดน
+// คู่ FOREX ที่คะแนนสูงกว่าเบียดตกในวันที่ตลาดขยับพร้อมกันทั้งกระดาน (เจ้าของสั่ง 2026-08-28)
+//
+// ทำไมลบ: คำสั่ง 2026-08-29 ทำให้จักรวาลเหลือ XAUUSD ตัวเดียว และ buildScanTargets()
+// ไม่รับ watchlist นอกจักรวาลอีกแล้ว → **ผู้เข้าแข่งขันทุกใบเป็นทองทั้งหมด**
+// การจองที่ให้ทองในสนามที่มีแต่ทองไม่เปลี่ยนผลลัพธ์แม้แต่ใบเดียว (พิสูจน์ง่าย ๆ:
+// เพดานรวม 3 = จำนวนใบสูงสุดที่ผลิตได้ 1 symbol × 3 timeframe) มันเหลือแค่การเรียก
+// selectSignals สองครั้งแล้วเอาผลมาต่อกัน — โค้ดตายที่ยังต้องอ่านและยังพังได้
+//
+// อยากได้กลับตอนเพิ่มตลาดอื่นเข้าจักรวาล: กติกาเดิมอยู่ในประวัติ git ของไฟล์นี้
+// (จองให้เฉพาะทองที่ผ่านเกณฑ์คุณภาพเดิมครบ · ไม่ผ่าน = คืนที่ให้ตลาดอื่น · ที่จองเป็น
+//  ขั้นต่ำไม่ใช่เพดาน ทองที่ล้นยังกลับไปแข่งตามการเรียงปกติได้)
 
 // ═══════════════════════════════ อ่านอาร์กิวเมนต์ ═══════════════════════════════
 
@@ -415,7 +496,7 @@ async function loadRealModules() {
     }
 
     return {
-      ...pick(universe, ['SYMBOL_UNIVERSE', 'buildScanTargets', 'selectSignals', 'describeRejections', 'SIGNAL_GATE'], 'src/lib/universe.ts'),
+      ...pick(universe, ['SYMBOL_UNIVERSE', 'buildScanTargets', 'watchlistOutsideUniverse', 'selectSignals', 'describeRejections', 'SIGNAL_GATE'], 'src/lib/universe.ts'),
       ...pick(marketData, ['fetchChart'], 'src/lib/market-data.ts'),
       ...pick(engine, ['generateSignal'], 'src/lib/signal-engine.ts'),
       ...pick(costs, ['applyStopFloor', 'costRFor', 'MAX_COST_R'], 'src/lib/costs.ts'),
@@ -618,11 +699,23 @@ async function main() {
   if (LIMIT) targetList = targetList.slice(0, LIMIT);
   const fromWatchlist = targetList.filter((t) => t.source === 'watchlist').length;
 
+  // watchlist ที่อยู่นอกจักรวาลไม่ถูกสแกนแล้วตั้งแต่ 2026-08-29 (คำสั่งเจ้าของ: ทองอย่างเดียว)
+  // ต้องพิมพ์จำนวนและรายชื่อทุกรอบ — "ไม่สแกน" ที่ไม่มีใครเห็น คือของหายเงียบ ๆ
+  // แถวในตาราง watchlist ไม่ถูกลบ ผู้ใช้ยังเห็นบนหน้า /markets พร้อมป้ายว่าไม่ได้สแกนแล้ว
+  const skippedWatchlist = lib.watchlistOutsideUniverse(watchlistRows);
+
   console.log(
-    `จักรวาล ${lib.SYMBOL_UNIVERSE.length} ตัว · watchlist ที่อยู่นอกจักรวาล ${fromWatchlist} ตัว` +
+    `จักรวาล ${lib.SYMBOL_UNIVERSE.length} ตัว (${lib.SYMBOL_UNIVERSE.map((u) => u.symbol).join(', ')})` +
+      ` · watchlist นอกจักรวาลที่ "ไม่สแกน" ${skippedWatchlist.length} ตัว` +
       ` · สแกนจริง ${targetList.length} ตัว × ${TF_LIST.length} timeframe = ${targetList.length * TF_LIST.length} คำขอ` +
       ` · ผู้รับ ${recipients.size} คน${DRY_RUN ? ' · [dry run]' : ''}`
   );
+  if (skippedWatchlist.length) {
+    console.log(
+      `  ไม่สแกน (นอกจักรวาล): ${skippedWatchlist.map((s) => `${s.symbol}/${s.market}`).join(', ')}` +
+        ' — เจ้าของสั่งเมื่อ 2026-08-29 ว่าเทรดทองอย่างเดียว · ราคาของตัวเหล่านี้จะไม่อัปเดตอีก'
+    );
+  }
   // พิมพ์เกณฑ์ที่ "กำลังใช้จริง" ทุกรอบ — เวลาผลวิจัยสั่งให้ผ่อนเกณฑ์ จะได้เห็นจาก log ของ CI
   // ทันทีว่าค่าที่รันอยู่เปลี่ยนตามแล้วจริงหรือยัง ไม่ต้องเดาว่า deploy ทันรอบไหน
   const g = lib.SIGNAL_GATE;
@@ -655,6 +748,12 @@ async function main() {
     try {
       const chart = await lib.fetchChart(job.target.symbol, job.target.market, interval, range);
       // ราคาปัจจุบันเก็บจากรอบ 1D เท่านั้น (เหมือน route เดิม) — 1H ให้ quote ชุดเดียวกันอยู่แล้ว
+      //
+      // ⚠ เก็บได้เฉพาะ "ตัวที่สแกน" เท่านั้น แปลว่าแถว market_prices ของ 12 สัญลักษณ์ที่ถูก
+      //   ถอดออกเมื่อ 2026-08-29 จะค้างที่ค่าสุดท้ายตลอดไป (ไม่ได้ลบทิ้ง — ลบคือทำลาย
+      //   ข้อมูลของผู้ใช้) หน้า /markets จึงต้องเป็นคนบอกเองว่าแถวไหน "ไม่ได้สแกนแล้ว"
+      //   ไม่งั้นราคาค้างจะดูเหมือนราคาปัจจุบัน · scanHealth ไม่ได้รับผลกระทบเพราะมันดู
+      //   max(updated_at) ทั้งตาราง ซึ่งทองอัปเดตให้ทุกรอบอยู่แล้ว
       if (job.tf === '1D' && chart.quote) quotes.push(chart.quote);
       if (!chart.candles?.length) {
         fetchStats.httpFail++;
@@ -675,9 +774,18 @@ async function main() {
 
   const fetchMs = Date.now() - fetchT0;
   const totalFails = fetchStats.httpFail + fetchStats.thin + fetchStats.budget;
-  const systemicFailure = jobs.length > 0 && totalFails / jobs.length > SYSTEMIC_FAILURE_RATIO;
+  // จำนวนคำขอน้อย = ใช้ "ล้มครบทุกใบ" · จำนวนมากพอ = ใช้สัดส่วน (เหตุผลที่ SYSTEMIC_MIN_JOBS)
+  const systemicFailure =
+    jobs.length > 0 &&
+    (jobs.length >= SYSTEMIC_MIN_JOBS
+      ? totalFails / jobs.length > SYSTEMIC_FAILURE_RATIO
+      : totalFails === jobs.length);
   if (systemicFailure) {
-    ghaError(`ดึงข้อมูลล้ม ${totalFails}/${jobs.length} — เกินครึ่ง ถือว่าพังทั้งระบบ ไม่ใช่บางตัวไม่มีข้อมูล`);
+    ghaError(
+      jobs.length >= SYSTEMIC_MIN_JOBS
+        ? `ดึงข้อมูลล้ม ${totalFails}/${jobs.length} — เกินครึ่ง ถือว่าพังทั้งระบบ ไม่ใช่บางตัวไม่มีข้อมูล`
+        : `ดึงข้อมูลล้มครบทั้ง ${jobs.length}/${jobs.length} ใบ — รอบนี้ไม่ได้สแกนอะไรเลย (Yahoo ไม่ตอบ/เน็ตขาด/สัญลักษณ์หลุดกระดาน)`
+    );
   }
 
   // ── 4. สร้างสัญญาณดิบ (ยังไม่ตัดสินคุณภาพ — นั่นเป็นงานของ selectSignals) ───────
@@ -686,6 +794,15 @@ async function main() {
   // เพื่อให้ทุกชั้นถัดไปในหน่วยความจำเห็นมัน — แต่ตาราง signals ไม่มีคอลัมน์นี้
   // จึงถูกถอดออกก่อน insert (ดูขั้นที่ 6) ไม่งั้น Postgres ปฏิเสธทั้ง batch
   let evidenceAttached = 0;
+  // ตารางที่ ship อยู่สร้างจากจักรวาล 13 ตัวเมื่อ 2026-08-28 · จักรวาลตอนนี้เหลือทองตัวเดียว
+  // → ชั้นรวมถูกปิด แนบได้เฉพาะเซลล์ของ XAUUSD เอง (เหตุผลเต็มอยู่ที่หัว signal-evidence.ts)
+  const evidenceAggregateOk = aggregateLayersUsable(lib.SYMBOL_UNIVERSE.map((u) => u.symbol));
+  if (EVIDENCE_TABLE && !evidenceAggregateOk) {
+    console.log(
+      'หลักฐาน ปิดชั้นรวม (timeframe/global) รอบนี้ — ตารางหลักฐานถูกสร้างจากสินทรัพย์ที่ไม่ได้อยู่ในจักรวาลแล้ว ' +
+        'สัญญาณที่ไม่มีเซลล์ของตัวเองจะไม่มีบล็อกหลักฐาน (ตั้งใจ — ดีกว่าอ้างสถิติของสินทรัพย์อื่น)'
+    );
+  }
   const cpuComputeStart = process.cpuUsage();
   const candidates = []; // { signal: Signal|null, target }
   for (let i = 0; i < jobs.length; i++) {
@@ -702,7 +819,7 @@ async function main() {
       });
       if (signal) {
         signal = applyCostPolicy(signal, tf);
-        const evidence = evidenceFor(signal);
+        const evidence = evidenceFor(signal, evidenceAggregateOk);
         if (evidence) {
           signal = { ...signal, evidence };
           evidenceAttached++;
@@ -744,7 +861,8 @@ async function main() {
   const FLIP_LOOKBACK_HOURS = 7 * 24; // = อายุยาวสุดของใบ (1D/15m หมดอายุที่ 7 วัน · 1H ที่ 48 ชม.)
   let recentActive = [];
   if (sb) {
-    const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
+    // ขอบเขตต้องคลุมหน้าต่างที่ยาวที่สุด ไม่งั้นกันซ้ำของ timeframe นั้นจะไม่ทำงานเงียบ ๆ
+    const since = new Date(Date.now() - DEDUPE_LOOKBACK_HOURS * 3600_000).toISOString();
     // ตัวตรวจกลับทิศต้องรู้ id (ไว้ปั๊มป้าย) + flipped_at (กันปั๊มซ้ำ) + outcome
     // (กรองใบที่ ledger ปิดแล้ว — status='active' ไม่ได้แปลว่ายังเปิด ดู resolve-signals.mjs)
     // สองคอลัมน์หลังขอเฉพาะเมื่อ probe ยืนยันว่ามีจริง ไม่งั้น query ล้มทั้งรอบ
@@ -763,9 +881,13 @@ async function main() {
       fail(`อ่านสัญญาณเดิมเพื่อกันซ้ำไม่สำเร็จ: ${error.message} — หยุดรอบนี้ ไม่บันทึกอะไรเลย`);
     }
     recentActive = recent ?? [];
-    const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;
+    // ทุก timeframe ถามหน้าต่างของตัวเองจาก dedupeHoursFor() — ไม่มีใครตกไปใช้ค่าของคนอื่น
+    // โดยปริยายอีก (15m เคยตกไปใช้ 20 ชม. ของ 1D แบบไม่มีใครตั้งใจ · ดูคอมเมนต์ที่ค่าคงที่)
+    // พฤติกรรมวันนี้เท่าเดิมเป๊ะ: 1D 20 ชม. · 1H 4 ชม. · 15m 20 ชม.
+    const nowMs = Date.now();
     for (const r of recent ?? []) {
-      if (r.timeframe === '1H' && new Date(r.created_at).getTime() < cutoff1H) continue;
+      const cutoff = nowMs - dedupeHoursFor(r.timeframe) * 3600_000;
+      if (new Date(r.created_at).getTime() < cutoff) continue;
       seen.add(`${r.user_id}:${r.symbol}:${r.action}:${r.timeframe}`);
     }
   }
@@ -798,7 +920,7 @@ async function main() {
   // ไม่งั้นผู้ใช้คนแรกจะกินโควตาของคนอื่นหมด (ระบุไว้ในคอมเมนต์ของ universe.ts เอง)
   //
   // กันซ้ำ "ก่อน" เข้าประตู ไม่ใช่หลัง — ถ้ากรองทีหลัง สัญญาณที่เคยส่งไปแล้วจะไปกิน
-  // โควตา 5 อันของรอบนี้ แล้วสัญญาณใหม่จริง ๆ จะถูกเบียดตกไปโดยไม่มีใครรู้
+  // โควตาของรอบนี้ (maxSignalsPerRun — ปัจจุบัน 3) แล้วสัญญาณใหม่จริง ๆ จะถูกเบียดตกไปโดยไม่มีใครรู้
   const rowsByUser = new Map();
   const gateSummary = {};
   let evaluated = 0;
@@ -828,56 +950,15 @@ async function main() {
       return true;
     });
 
-    // ── การเน้นทอง (เจ้าของสั่ง 2026-08-28 — เหตุผลเต็มที่คอมเมนต์ GOLD_RESERVED_SLOTS) ──
-    // แยกทองออกมาจองที่ก่อน แล้วให้ที่เหลือแข่งกันตามการเรียงเดิม:
-    //   1) ทองแข่งกันเองชิงที่จอง (สูงสุด GOLD_RESERVED_SLOTS ที่ · เกณฑ์คุณภาพชุดเดิมเป๊ะ)
-    //   2) ทองที่ผ่านคุณภาพแต่ล้นที่จอง ถูกส่งกลับไปแข่งกับตลาดอื่นในรอบเรียงปกติ
-    //   3) เพดานรวมต่อคนยังเท่า maxSignalsPerRun เดิม — รอบเรียงปกติได้เฉพาะที่ที่เหลือ
-    const goldPool = [];
-    const restPool = [];
-    for (const { signal } of notDuplicate) {
-      if (signal && signal.market === 'GOLD') goldPool.push(signal);
-      else restPool.push(signal ?? null); // null ต้องถึงมือ selectSignals เพื่อถูกนับเป็น no_signal เหมือนเดิม
-    }
-
-    const gate = lib.SIGNAL_GATE;
-    const goldPick = lib.selectSignals(goldPool, {
-      ...gate,
-      maxSignalsPerRun: Math.min(GOLD_RESERVED_SLOTS, gate.maxSignalsPerRun),
-    });
-
-    // ทองที่ตกด้วยเหตุผลเดียวคือ over_run_limit = ผ่านคุณภาพครบแล้วแต่ล้นที่จอง
-    // จับคู่กลับเป็น Signal ตัวเต็มด้วย symbol:timeframe:action ได้เพราะ generateSignal
-    // ให้สัญญาณเดียวต่อ symbol ต่อ timeframe — ไม่มีทางชนกันเองในรอบเดียว
-    const reservedGold = new Set(goldPick.accepted);
-    const overflowGold = goldPick.rejected
-      .filter((r) => r.rejections.length && r.rejections.every((x) => x.code === 'over_run_limit'))
-      .map((r) =>
-        goldPool.find(
-          (s) => !reservedGold.has(s) && s.symbol === r.symbol && s.timeframe === r.timeframe && s.action === r.action
-        )
-      )
-      .filter(Boolean);
-
-    const restPick = lib.selectSignals([...overflowGold, ...restPool], {
-      ...gate,
-      maxSignalsPerRun: gate.maxSignalsPerRun - goldPick.accepted.length,
-    });
-
-    // รวมผลสองรอบให้หน้าตาเหมือนการเรียกครั้งเดียว — ตัวที่ล้นที่จองถูกป้อนซ้ำสองรอบ
-    // จึงหักออกจาก evaluated และไม่นับ over_run_limit ของรอบทอง (ไปนับผลจริงในรอบเรียงปกติ)
-    const mergedSummary = {};
-    for (const [code, n] of Object.entries(goldPick.summary)) {
-      if (code === 'over_run_limit') continue;
-      mergedSummary[code] = (mergedSummary[code] ?? 0) + n;
-    }
-    for (const [code, n] of Object.entries(restPick.summary)) mergedSummary[code] = (mergedSummary[code] ?? 0) + n;
-
-    const selection = {
-      accepted: [...goldPick.accepted, ...restPick.accepted],
-      evaluated: goldPick.evaluated + restPick.evaluated - overflowGold.length,
-      summary: mergedSummary,
-    };
+    // ── เรียกประตูครั้งเดียว ────────────────────────────────────────────────
+    // เดิมที่นี่แบ่งเป็นสองรอบ (ทองชิงที่จองก่อน แล้วที่เหลือแข่งกัน) ตามคำสั่งเน้นทอง
+    // 2026-08-28 · ตั้งแต่ 2026-08-29 จักรวาลเป็นทองล้วน สนามจึงมีแต่ทอง การจองที่
+    // ให้ทองไม่เปลี่ยนผลลัพธ์อีกต่อไป — ดูเหตุผลเต็มตรงบล็อกที่ลบ GOLD_RESERVED_SLOTS
+    // (null ต้องถึงมือ selectSignals เพื่อถูกนับเป็น no_signal เหมือนเดิม)
+    const selection = lib.selectSignals(
+      notDuplicate.map(({ signal }) => signal ?? null),
+      lib.SIGNAL_GATE
+    );
     evaluated += selection.evaluated;
     for (const [code, n] of Object.entries(selection.summary)) gateSummary[code] = (gateSummary[code] ?? 0) + n;
     overCapacity += selection.summary.over_run_limit ?? 0;
@@ -1098,7 +1179,12 @@ async function main() {
     computeCpuMs: Math.round((cpuCompute.user + cpuCompute.system) / 1000),
     universeSize: lib.SYMBOL_UNIVERSE.length,
     symbols: targetList.length,
+    // fromWatchlist = ตัวที่ "มาจาก watchlist ล้วน" ซึ่งตั้งแต่ 2026-08-29 เป็น 0 เสมอ
+    // โดยโครงสร้าง (buildScanTargets รับเฉพาะสิ่งที่อยู่ในจักรวาล) — คงคีย์ไว้ให้ของที่
+    // อ่าน JSON นี้อยู่ไม่พัง และเพิ่มคีย์ใหม่ที่บอกความจริงว่ามีอะไรถูกข้ามไปบ้าง
     fromWatchlist,
+    watchlistSkipped: skippedWatchlist.length,
+    watchlistSkippedSymbols: skippedWatchlist.map((s) => `${s.symbol}/${s.market}`),
     requests: jobs.length,
     fetch: fetchStats,
     fetchFailures: failedDetail,

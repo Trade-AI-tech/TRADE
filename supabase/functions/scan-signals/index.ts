@@ -228,7 +228,7 @@ interface TelegramProfileRow {
  * จำลองเกณฑ์ชุดนี้กับแคชทั้งชุด (ทุกตลาด ทุก TF): ทิ้งจริง 7 แท่ง เกือบทั้งหมดเป็นข้อมูลเสียชัดเจน
  * เช่น 2008-10-07 / 2008-12-08 ที่ระดับเพี้ยนพร้อมกันทั้ง EURUSD และ USDJPY (+8.5% ถึง +17.7%
  * แล้วถอยกลับ 77–99%) = ต้นทางข้อมูลเสียทั้งวัน ไม่ใช่ตลาดจริงสองคู่บังเอิญวาร์ปพร้อมกัน
- * ข้อยกเว้นหนึ่งเคส: USDZAR 2025-01-16 (อยู่นอกจักรวาล 13 ตัวที่สแกนจริง) แท่งที่ถูกทิ้งคือ
+ * ข้อยกเว้นหนึ่งเคส: USDZAR 2025-01-16 (ไม่เคยอยู่ในจักรวาลที่สแกนจริงเลย) แท่งที่ถูกทิ้งคือ
  * แท่งระดับถูก เพราะเพื่อนบ้านสองข้าง close เพี้ยนจนกลายเป็นเสียงข้างมากรอบตัวมัน —
  * ข้อจำกัดตระกูลเดียวกับ "แท่งเสียติดกันหลายแท่ง" ข้างบน ด่านที่ตัดสินทีละแท่งแก้ให้ไม่ได้
  */
@@ -1016,6 +1016,31 @@ export function generateSignal(input: SignalInput): Signal | null {
 // อธิบายไว้ที่หัวบล็อกเดียวกันใน supabase/functions/monitor-positions/index.ts แล้ว
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// จักรวาลที่อนุญาตให้สแกน — สำเนาของ SYMBOL_UNIVERSE ใน src/lib/universe.ts
+//
+// ทำไมต้องมีที่นี่ด้วย: ฟังก์ชันนี้อ่านตาราง watchlist ตรง ๆ และไม่เคยรู้จักจักรวาลเลย
+// ตราบใดที่มันยังถูกติดตั้งอยู่บน Dashboard (ยืนยันจากรีโปไม่ได้ — ติดตั้งด้วยมือ)
+// มันจะผลิตสัญญาณของทุก symbol ที่ค้างอยู่ใน watchlist ต่อไป รวมถึงคู่เงินที่เจ้าของ
+// สั่งเลิกเทรดแล้วเมื่อ 2026-08-29 = คำสั่งเจ้าของถูกฝ่าฝืนผ่านเส้นทางที่ไม่มีใครมอง
+// ตัวกรองนี้จึงเป็น "กันไว้" ล้วน ๆ: ถ้าฟังก์ชันไม่ได้ถูกติดตั้ง มันไม่ทำอะไรเลย
+//
+// ⚠ deploy ฟังก์ชันนี้เป็นไฟล์เดียวจบ import ข้ามไป src/ ไม่ได้ จึงเลี่ยงสำเนาไม่ได้
+//   npm run test:universe เทียบรายชื่อนี้กับ SYMBOL_UNIVERSE ตัวจริงให้ทุกครั้งใน CI
+//   (เพิ่ม symbol กลับเข้าจักรวาลแล้วลืมแก้ที่นี่ = CI แดง ไม่ใช่เงียบ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const UNIVERSE_ALLOWED: ReadonlyArray<{ symbol: string; market: string }> = [
+  { symbol: 'XAUUSD', market: 'GOLD' },
+];
+
+/** อยู่ในจักรวาลที่อนุญาตให้สแกนไหม — เทียบทั้ง symbol และ market แบบไม่สนตัวพิมพ์ */
+function isAllowedSymbol(symbol: string, market: string): boolean {
+  const s = String(symbol ?? '').trim().toUpperCase();
+  const m = String(market ?? '').trim().toUpperCase();
+  return UNIVERSE_ALLOWED.some((u) => u.symbol === s && u.market === m);
+}
+
 const CHART_HOSTS = [
   'https://query1.finance.yahoo.com/v8/finance/chart',
   'https://query2.finance.yahoo.com/v8/finance/chart',
@@ -1415,7 +1440,17 @@ serve(async (req: Request) => {
       .eq('is_active', true);
 
     if (wlErr) throw wlErr;
-    const watchlist = (wlRows ?? []) as WatchlistRow[];
+    const watchlistAll = (wlRows ?? []) as WatchlistRow[];
+    // กรองให้เหลือเฉพาะจักรวาลที่อนุญาต (คำสั่งเจ้าของ 2026-08-29: เทรดทองอย่างเดียว)
+    // ไม่ลบแถวของผู้ใช้ แค่ไม่สแกน — เหมือนที่ buildScanTargets() ทำฝั่ง scan-universe.mjs
+    const watchlist = watchlistAll.filter((w) => isAllowedSymbol(w.symbol, w.market));
+    const skippedOutsideUniverse = watchlistAll.length - watchlist.length;
+    if (skippedOutsideUniverse > 0) {
+      console.log(
+        `ข้าม ${skippedOutsideUniverse} แถวใน watchlist ที่อยู่นอกจักรวาล ` +
+          `(อนุญาตเฉพาะ ${UNIVERSE_ALLOWED.map((u) => u.symbol).join(', ')})`
+      );
+    }
 
     if (watchlist.length === 0) {
       return jsonResponse({
@@ -1431,7 +1466,11 @@ serve(async (req: Request) => {
         hourlySkippedForTime: 0,
         timedOut: false,
         elapsedMs: Date.now() - startedAt,
-        message: 'ไม่มีรายการใน watchlist ที่เปิดใช้งาน',
+        skippedOutsideUniverse,
+        message:
+          skippedOutsideUniverse > 0
+            ? `watchlist มีแต่ symbol ที่อยู่นอกจักรวาล ${skippedOutsideUniverse} แถว — ไม่สแกน (เจ้าของสั่งเมื่อ 2026-08-29 ว่าเทรดทองอย่างเดียว)`
+            : 'ไม่มีรายการใน watchlist ที่เปิดใช้งาน',
         timestamp: new Date().toISOString(),
       });
     }
@@ -1687,6 +1726,8 @@ serve(async (req: Request) => {
       // โดยไม่ต้องเดาจากการที่ตัวเลข pushSent หายไปเฉย ๆ
       pushSentBy: 'central-digest-sender',
       skipped: [...skipped],
+      // แถว watchlist ที่ไม่ได้สแกนเพราะอยู่นอกจักรวาล — ต้องเห็นใน response ไม่ใช่หายเงียบ
+      skippedOutsideUniverse,
       hourlySkippedForTime,
       // false = ดึงข้อมูลครบทั้ง 1D และ 1H ในรอบนี้
       timedOut,

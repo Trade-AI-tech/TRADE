@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWatchlist, usePrices } from '@/hooks/useData';
 import { isDemoMode } from '@/lib/supabase';
+import { SYMBOL_UNIVERSE, isInUniverse } from '@/lib/universe';
 import { cn } from '@/lib/utils';
 import { LineChart, Plus, Trash2, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
 import type { MarketType, MarketPrice, Watchlist } from '@/types';
@@ -21,14 +22,24 @@ const FILTERS: { value: MarketType | 'all'; label: string; icon: string }[] = [
   ...MARKETS.map(m => ({ value: m.value, label: m.label, icon: m.icon })),
 ];
 
+/**
+ * แถวหนึ่งของ watchlist
+ *
+ * `scanned` = symbol นี้อยู่ในจักรวาลที่ตัวสแกนเดินจริงไหม (src/lib/universe.ts)
+ * ตั้งแต่ 2026-08-29 เจ้าของสั่งเทรดทองอย่างเดียว จักรวาลจึงเหลือ XAUUSD ตัวเดียว
+ * แถวที่เหลือยังอยู่ในตาราง (ไม่ลบข้อมูลของผู้ใช้) แต่ **ไม่ถูกสแกนและราคาไม่อัปเดตแล้ว**
+ * ต้องบอกตรง ๆ ตรงนี้ ไม่งั้นราคาที่ค้างจากรอบสุดท้ายจะดูเหมือนราคาปัจจุบัน
+ */
 function WatchRow({
   item,
   price,
+  scanned,
   onRemove,
   removing,
 }: {
   item: Watchlist;
   price?: MarketPrice;
+  scanned: boolean;
   onRemove: () => void;
   removing: boolean;
 }) {
@@ -56,6 +67,14 @@ function WatchRow({
             <span className="text-[10px] px-1.5 py-0.5 bg-surface-2 rounded text-[rgb(var(--text-secondary))]">
               {MARKETS.find(m => m.value === item.market)?.label ?? item.market}
             </span>
+            {!scanned && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                title="ระบบสแกนเฉพาะสัญลักษณ์ในจักรวาล (ตอนนี้คือทองอย่างเดียว) — แถวนี้ยังเก็บไว้ให้ แต่ไม่มีการสแกนและราคาไม่อัปเดต"
+              >
+                ไม่ได้สแกน
+              </span>
+            )}
           </div>
           <div className="text-xs text-[rgb(var(--text-muted))] mt-0.5 truncate">{item.name}</div>
         </div>
@@ -63,13 +82,18 @@ function WatchRow({
 
       <div className="flex items-center gap-4 flex-shrink-0">
         {price ? (
-          <div className="text-right">
+          // ราคาของแถวที่ไม่ได้สแกนแล้วคือ "ค่าค้างจากรอบสุดท้าย" ไม่ใช่ราคาปัจจุบัน
+          // จางลง + เขียนกำกับ เพื่อไม่ให้อ่านผิดว่าเป็นราคาสด
+          <div className={cn('text-right', !scanned && 'opacity-60')}>
             <div className="font-mono font-semibold text-[rgb(var(--text-primary))]">
               {price.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
             </div>
             <div className={cn('text-xs font-mono font-medium', isUp ? 'text-up' : 'text-down')}>
               {isUp ? '+' : ''}{price.change.toFixed(4)} ({isUp ? '+' : ''}{price.change_percent.toFixed(2)}%)
             </div>
+            {!scanned && (
+              <div className="text-[10px] text-[rgb(var(--text-muted))] mt-0.5">ค่าค้างจากรอบสุดท้ายที่สแกน</div>
+            )}
           </div>
         ) : (
           <div className="text-xs text-[rgb(var(--text-muted))]">ยังไม่มีราคา — กด &ldquo;สแกนตลาด&rdquo;</div>
@@ -151,8 +175,13 @@ function MarketsContent() {
           <LineChart className="w-6 h-6 text-accent-glow" />
           ตลาดที่ติดตาม
         </h1>
+        {/* ข้อความนี้เคยเขียนว่า "เพิ่ม symbol ที่นี่ ระบบจะสแกนหาสัญญาณให้ทุกวัน..."
+            ซึ่งกลายเป็นคำอ้างเท็จตั้งแต่ 2026-08-29 ที่จักรวาลเหลือทองตัวเดียว —
+            symbol ที่เพิ่มเข้ามานอกจักรวาลจะถูกเก็บไว้เฉย ๆ ไม่ถูกสแกนเลย
+            รายชื่อจักรวาลอ่านจาก SYMBOL_UNIVERSE ตัวจริง ไม่ฮาร์ดโค้ดชื่อทองไว้ที่นี่ */}
         <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
-          เพิ่ม symbol ที่นี่ ระบบจะสแกนหาสัญญาณให้ทุกวันและแจ้งเตือนเข้า Telegram
+          ตอนนี้ระบบสแกนเฉพาะ {SYMBOL_UNIVERSE.map(u => u.symbol).join(' · ')} แล้วแจ้งเตือนเข้า Telegram/มือถือ
+          — symbol อื่นที่เพิ่มไว้ยังเก็บให้ แต่จะไม่ถูกสแกนและราคาไม่อัปเดต
         </p>
       </div>
 
@@ -254,6 +283,7 @@ function MarketsContent() {
               key={item.id}
               item={item}
               price={priceBySymbol.get(item.symbol)}
+              scanned={isInUniverse(item.symbol, item.market)}
               onRemove={() => handleRemove(item.id)}
               removing={removingId === item.id}
             />

@@ -663,12 +663,28 @@ async function main() {
 
   console.log('\n═══ 5. ความยาวข้อความต้องอยู่ในงบของหน้าจอล็อก ═══\n');
 
-  check('วัดด้วยสัญลักษณ์จริงทั้ง SYMBOL_UNIVERSE + ราคาสมจริงของแต่ละตลาด', () => {
+  check('วัดด้วยสัญลักษณ์จริงทั้ง SYMBOL_UNIVERSE + ชื่อยาวสุดที่เคยอยู่ในจักรวาล', () => {
     // ราคาที่ใช้วัดเป็นระดับราคาจริงโดยประมาณของแต่ละตลาด (ส.ค. 2026) — ไม่ใช่ตัวเลขที่ดึงสด
     const priceOf = {
       GOLD: 2650.25, FOREX: 1.08452, CRYPTO: 95200, US_STOCK: 228.4, TH_STOCK: 33.5,
     };
-    const set = universe.SYMBOL_UNIVERSE.map((u, i) => {
+    /**
+     * ⚠ ทำไมต้องมีชุด "ชื่อยาว" ต่อท้ายจักรวาลจริง (เพิ่มเมื่อ 2026-08-29)
+     *
+     * ด่านนี้มีไว้กดดันงบความยาว TITLE_MAX_CHARS / BODY_LINE_MAX_CHARS ด้วยกรณีที่แย่ที่สุด
+     * ซึ่งคือ "ชื่อสินทรัพย์ยาวที่สุด" · พอจักรวาลหดเหลือ XAUUSD ตัวเดียว ชื่อที่ใช้วัด
+     * กลายเป็น "ทองคำ" (5 อักษร) แทน "ดอลลาร์ออสเตรเลีย/ดอลลาร์" (25 อักษร) —
+     * เทสต์ยังเขียวแต่ "หยุดทดสอบ" เงียบ ๆ เพราะไม่มีอะไรกดดันงบอีกแล้ว
+     *
+     * จึงวัดสองชุดเสมอ: จักรวาลจริงวันนี้ (เพื่อสะท้อนของที่ส่งจริง) + ชื่อยาวที่เคยอยู่ใน
+     * จักรวาลจริงและอาจถูกเพิ่มกลับ (เพื่อให้งบยังถูกกดดัน) ทั้งสองชุดต้องไม่เกินงบ
+     */
+    const LONG_NAME_CASES = [
+      { symbol: 'AUDUSD', market: 'FOREX', name: 'ดอลลาร์ออสเตรเลีย/ดอลลาร์' },
+      { symbol: 'NZDUSD', market: 'FOREX', name: 'ดอลลาร์นิวซีแลนด์/ดอลลาร์' },
+      { symbol: 'AUDJPY', market: 'FOREX', name: 'ดอลลาร์ออสเตรเลีย/เยน' },
+    ];
+    const set = [...universe.SYMBOL_UNIVERSE, ...LONG_NAME_CASES].map((u, i) => {
       const p = priceOf[u.market] ?? 100;
       return makeSignal({
         symbol: u.symbol, market: u.market, name: u.name,
@@ -1275,7 +1291,7 @@ async function main() {
   console.log(`  เทียบข้อความสัญญาณเดี่ยวกับฉบับก่อนแก้        ${measured.parityCases} เคส ตรงกันทั้งหมด`);
   console.log(`  สับลำดับอินพุตแล้วผลคงเดิม                    ${measured.shuffleRuns} ครั้ง`);
   console.log(`  ลำดับที่ได้                                  ${measured.rankOrder}`);
-  console.log(`  วัดความยาวด้วยสัญลักษณ์จริง                   ${measured.universeSize} ตัว จาก SYMBOL_UNIVERSE`);
+  console.log(`  วัดความยาวด้วยสัญลักษณ์จริง                   ${measured.universeSize} ตัว (จักรวาลจริง + ชื่อยาวที่เคยอยู่ในจักรวาล)`);
   console.log(`  หัวข้อยาวสุดที่วัดได้                          ${measured.maxTitleChars} ตัวอักษร (งบ ${measured.titleBudget})`);
   console.log(`  บรรทัดเนื้อความยาวสุด                         ${measured.maxBodyLineChars} ตัวอักษร (งบ ${measured.bodyLineBudget})`);
   console.log(`  payload ใหญ่สุด (200 สัญญาณ)                  ${measured.maxPayloadBytes} ไบต์`);

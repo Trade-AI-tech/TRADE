@@ -39,12 +39,14 @@ const LIMIT = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice(8
 /**
  * จักรวาลปัจจุบัน — ต้องตรงกับ SYMBOL_UNIVERSE ใน src/lib/universe.ts
  * ไม่ import เพราะไฟล์นี้รันด้วย node ล้วนบน CI ซึ่ง import .ts ไม่ได้
+ *
+ * 2026-08-29: เจ้าของสั่งเทรดทองอย่างเดียว จักรวาลจึงเหลือ XAUUSD ตัวเดียว
+ * ก่อนหน้านี้ไฟล์นี้ยิง Yahoo 13 คำขอ × 6 รอบ/วัน = 78 คำขอ/วัน เพื่อดึงข่าวของคู่เงิน
+ * ที่เลิกเทรดแล้ว 12 ตัว แล้วเขียนลงตาราง news ให้หน้า /news แสดง — ตอนนี้เหลือ 6 คำขอ/วัน
+ * ⚠ สำเนานี้เพี้ยนจากต้นฉบับได้เงียบ ๆ · npm run test:universe เทียบสองฝั่งให้ทุกครั้งใน CI
  */
 const UNIVERSE = [
-  ['XAUUSD', 'GOLD'], ['XAGUSD', 'GOLD'],
-  ['EURUSD', 'FOREX'], ['GBPUSD', 'FOREX'], ['USDJPY', 'FOREX'], ['AUDUSD', 'FOREX'],
-  ['USDCHF', 'FOREX'], ['USDCAD', 'FOREX'], ['NZDUSD', 'FOREX'],
-  ['EURJPY', 'FOREX'], ['GBPJPY', 'FOREX'], ['EURGBP', 'FOREX'], ['AUDJPY', 'FOREX'],
+  ['XAUUSD', 'GOLD'],
 ];
 
 /** สำเนาของ toYahooSymbol ใน src/lib/market-data.ts (เหตุผลเดียวกับข้างบน) */

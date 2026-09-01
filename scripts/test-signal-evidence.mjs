@@ -6,10 +6,15 @@
  * ถ้าชั้น fallback ไล่ผิด (เช่น คืนค่ารวมทุก symbol ทั้งที่มีค่าจำเพาะของตัวนั้นอยู่)
  * จะไม่มี error ให้เห็น มีแต่ตัวเลขที่ "ดูถูกต้อง" แต่ตอบคนละคำถาม
  *
- * สามเรื่องที่บังคับที่นี่:
+ * สี่เรื่องที่บังคับที่นี่:
  *   1. fallback ไล่ชั้นถูก: symbol → timeframe → global · 15m ถอยไปใช้ 1H พร้อมประกาศ
  *   2. null เมื่อไม่มีข้อมูล — ห้ามเดา ห้ามคืนศูนย์ปลอม ๆ
- *   3. ความซื่อสัตย์ของถ้อยคำ: grep ไฟล์ UI ที่ใช้ตัวอ่านนี้จริง ๆ ต้องไม่มีคำว่า
+ *   3. **ด่านความบริสุทธิ์ของชั้นรวม** (เพิ่มเมื่อ 2026-08-29): ชั้น timeframe/global
+ *      ใช้ได้เฉพาะเมื่อทุก symbol ในตารางอยู่ในจักรวาลที่สแกนจริง ไม่งั้นต้องคืน null
+ *      แทนที่จะแปะค่าเฉลี่ยของสินทรัพย์ที่เจ้าของเลิกเทรดแล้วลงบนการ์ด
+ *      เทสต์นี้ตรวจ "กติกา" ไม่ใช่ "ผลลัพธ์วันนี้" — พอวันไหนตารางถูกสร้างใหม่จาก
+ *      จักรวาลปัจจุบัน ชั้นรวมกลับมาใช้ได้เอง และเทสต์ชุดเดิมนี้ต้องยังเขียว
+ *   4. ความซื่อสัตย์ของถ้อยคำ: grep ไฟล์ UI ที่ใช้ตัวอ่านนี้จริง ๆ ต้องไม่มีคำว่า
  *      "โอกาสชนะ" / "ความแม่น" — สองคำนั้นอ้างอนาคต ซึ่งข้อมูลความถี่ในอดีตไม่รองรับ
  *      (งานวิจัยของ repo วัดแล้ว: ไม่มีเซ็ตอัพไหนพิสูจน์ edge หลังต้นทุนได้)
  *
@@ -24,6 +29,7 @@ import { createRequire } from 'node:module';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const READER_TS = path.join(ROOT, 'src', 'lib', 'signal-evidence.ts');
+const UNIVERSE_TS = path.join(ROOT, 'src', 'lib', 'universe.ts');
 const DATA_JSON = path.join(ROOT, 'src', 'lib', 'signal-evidence.data.json');
 
 // ── โหลดตัวอ่านตัวจริง (ไม่ลอกสูตรมาเขียนซ้ำ — วิธีเดียวกับ check-ui-claims.mjs) ──
@@ -61,7 +67,10 @@ async function loadReader() {
     };
     const SPEC = /((?:^|[\s;{}])(?:from|import)\s*\(?\s*)(['"])([^'"]+)\2/g;
     const done = new Set();
-    const queue = [READER_TS];
+    // โหลดจักรวาลตัวจริงมาด้วย เพราะด่านความบริสุทธิ์ของชั้นรวมเทียบกับ SYMBOL_UNIVERSE
+    // (ตัวอ่าน import มันอยู่แล้ว แต่ไม่ได้ re-export ให้ — เทสต์ต้องคำนวณค่าที่คาดหวังเอง
+    //  จากของจริง ไม่ใช่ก๊อปรายชื่อ symbol มาแปะไว้ที่นี่แล้วเพี้ยนตามหลัง)
+    const queue = [READER_TS, UNIVERSE_TS];
     while (queue.length) {
       const abs = queue.shift();
       if (done.has(abs)) continue;
@@ -83,7 +92,10 @@ async function loadReader() {
       });
       writeFileSync(path.join(tmpDir, nameOf(abs)), rewritten, 'utf8');
     }
-    return await import(pathToFileURL(path.join(tmpDir, nameOf(READER_TS))).href);
+    return {
+      reader: await import(pathToFileURL(path.join(tmpDir, nameOf(READER_TS))).href),
+      universe: await import(pathToFileURL(path.join(tmpDir, nameOf(UNIVERSE_TS))).href),
+    };
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -94,8 +106,19 @@ if (!existsSync(DATA_JSON)) {
   process.exit(1);
 }
 const data = JSON.parse(readFileSync(DATA_JSON, 'utf8'));
-const reader = await loadReader();
+const { reader, universe } = await loadReader();
 const { lookupEvidence } = reader;
+
+/**
+ * ตารางนี้บริสุทธิ์กับจักรวาลปัจจุบันไหม — คำนวณเองจากไฟล์ข้อมูล + จักรวาลตัวจริง
+ * ไม่ได้ถามตัวอ่าน เพราะถ้าถามมัน เทสต์จะกลายเป็น "ตัวอ่านตรงกับตัวเอง" ซึ่งพิสูจน์อะไรไม่ได้
+ * (ค่าที่ตัวอ่านคำนวณได้ถูกเทียบกับค่านี้อีกทีในหมวด "ด่านความบริสุทธิ์" ข้างล่าง)
+ */
+const universeSymbols = new Set(universe.SYMBOL_UNIVERSE.map((u) => u.symbol.toUpperCase()));
+const tableSymbols = [...new Set(Object.keys(data.cells.symbol).map((k) => k.split('|')[0].toUpperCase()))];
+const AGG_EXPECTED = tableSymbols.length > 0 && tableSymbols.every((s) => universeSymbols.has(s));
+/** symbol ที่ไม่มีทางอยู่ในตาราง — ใช้บังคับให้ตัวอ่านต้องถอยชั้น */
+const STRANGER = 'ZZZ_ไม่มีตัวนี้';
 
 let pass = 0;
 let fail = 0;
@@ -149,29 +172,69 @@ console.log('── fallback: symbol → timeframe → global ──');
     }
   }
 
+  // ── ชั้นรวม: ผลลัพธ์ขึ้นกับด่านความบริสุทธิ์ ต้องตรวจให้ตรงกับกติกา ไม่ใช่ตรงกับ
+  //    พฤติกรรมของวันนี้ · AGG_EXPECTED คำนวณจากไฟล์ข้อมูล + จักรวาลตัวจริงข้างบน
   const tfKeys = Object.keys(data.cells.timeframe);
   if (tfKeys.length) {
     const [tf, action, strength] = tfKeys[0].split('|');
-    const r = lookupEvidence('ZZZ_ไม่มีตัวนี้', tf, action, strength);
-    t('symbol แปลกหน้า → ถอยไปชั้น timeframe', r?.level === 'timeframe', `ได้ ${r?.level}`);
-    t('ชั้น timeframe ให้ n ตรงกับเซลล์รวม', r?.n === data.cells.timeframe[tfKeys[0]].n);
+    const r = lookupEvidence(STRANGER, tf, action, strength);
+    if (AGG_EXPECTED) {
+      t('symbol แปลกหน้า → ถอยไปชั้น timeframe (ตารางบริสุทธิ์)', r?.level === 'timeframe', `ได้ ${r?.level}`);
+      t('ชั้น timeframe ให้ n ตรงกับเซลล์รวม', r?.n === data.cells.timeframe[tfKeys[0]].n);
+    } else {
+      t('symbol แปลกหน้า → null เมื่อตารางมีสินทรัพย์นอกจักรวาลปน', r === null, `ได้ level ${r?.level}`);
+      t('เซลล์ชั้น timeframe ที่ถูกปิดยัง "มีอยู่จริง" ในไฟล์ (ปิดเพราะด่าน ไม่ใช่เพราะไม่มีข้อมูล)',
+        !!data.cells.timeframe[tfKeys[0]]);
+    }
   }
 
   // strength ที่ไม่เคยผ่านประตูเลย (เช่น weak — SIGNAL_GATE ขั้นต่ำคือ strong)
-  // ต้องถอยถึงชั้น global ซึ่งไม่แยก strength
+  // ตารางบริสุทธิ์ → ต้องถอยถึงชั้น global ซึ่งไม่แยก strength
+  // ตารางไม่บริสุทธิ์ → ต้องได้ null (ห้ามยืมค่าเฉลี่ยของสินทรัพย์ที่ไม่ได้เทรดแล้ว)
   const globalKeys = Object.keys(data.cells.global);
   if (globalKeys.length) {
     const [tf, action] = globalKeys[0].split('|');
     const missingStrength = ['weak', 'moderate', 'strong', 'very_strong']
       .find((s) => !data.cells.timeframe[`${tf}|${action}|${s}`]);
     if (missingStrength) {
-      const r = lookupEvidence('ZZZ_ไม่มีตัวนี้', tf, action, missingStrength);
-      t(`strength ที่ไม่มีข้อมูล (${missingStrength}) → ถอยถึงชั้น global`, r?.level === 'global', `ได้ ${r?.level}`);
+      const r = lookupEvidence(STRANGER, tf, action, missingStrength);
+      t(`strength ที่ไม่มีข้อมูล (${missingStrength}) → ${AGG_EXPECTED ? 'ถอยถึงชั้น global' : 'null'}`,
+        AGG_EXPECTED ? r?.level === 'global' : r === null, `ได้ ${r === null ? 'null' : r?.level}`);
     }
-    // ตัวพิมพ์เล็ก/ใหญ่ของ timeframe ต้องไม่เปลี่ยนคำตอบ
-    const a = lookupEvidence('ZZZ_ไม่มีตัวนี้', tf, action, 'strong');
-    const b = lookupEvidence('ZZZ_ไม่มีตัวนี้', tf.toLowerCase(), action, 'strong');
+    // ตัวพิมพ์เล็ก/ใหญ่ของ timeframe ต้องไม่เปลี่ยนคำตอบ (จริงทั้งสองโหมดของด่าน)
+    const a = lookupEvidence(STRANGER, tf, action, 'strong');
+    const b = lookupEvidence(STRANGER, tf.toLowerCase(), action, 'strong');
     t('timeframe พิมพ์เล็กได้คำตอบเดียวกัน', JSON.stringify(a) === JSON.stringify(b));
+    // ...และต้องไม่เปลี่ยนคำตอบของ symbol ที่มีเซลล์ของตัวเองด้วย (เส้นทางที่ใช้จริงทุกวัน)
+    const symKey = Object.keys(data.cells.symbol)[0];
+    if (symKey) {
+      const [s0, tf0, a0, st0] = symKey.split('|');
+      t('ตัวพิมพ์เล็กของ symbol/timeframe ได้คำตอบเดียวกัน (ชั้น symbol)',
+        JSON.stringify(lookupEvidence(s0, tf0, a0, st0)) ===
+          JSON.stringify(lookupEvidence(s0.toLowerCase(), tf0.toLowerCase(), a0, st0)));
+    }
+  }
+}
+
+// ═══ 2.5 ด่านความบริสุทธิ์ของชั้นรวม (คำสั่งเจ้าของ 2026-08-29: เทรดทองอย่างเดียว) ═══
+
+console.log('── ด่านความบริสุทธิ์: ชั้นรวมต้องมาจากจักรวาลที่สแกนจริงเท่านั้น ──');
+{
+  const outsiders = tableSymbols.filter((s) => !universeSymbols.has(s));
+  t('ตัวอ่านตัดสินสถานะด่านตรงกับที่คำนวณจากไฟล์ข้อมูล + จักรวาลจริง',
+    reader.EVIDENCE_AGGREGATE_LAYERS_USABLE === AGG_EXPECTED,
+    `ตัวอ่านว่า ${reader.EVIDENCE_AGGREGATE_LAYERS_USABLE} · คำนวณได้ ${AGG_EXPECTED}` +
+    ` (ตารางมี ${tableSymbols.length} symbol · นอกจักรวาล ${outsiders.length}: ${outsiders.slice(0, 4).join(', ')})`);
+
+  // เส้นทางที่สำคัญที่สุดของเจ้าของ: สัญญาณทองที่มีเซลล์ของตัวเอง ต้องได้ค่าของทองเสมอ
+  // ไม่ว่าด่านจะเปิดหรือปิด — ด่านนี้ห้ามทำให้ข้อมูลจำเพาะของทองหายไป
+  for (const u of universe.SYMBOL_UNIVERSE) {
+    const own = Object.keys(data.cells.symbol).filter((k) => k.startsWith(`${u.symbol}|`));
+    if (!own.length) continue;
+    const [sym, tf, action, strength] = own[0].split('|');
+    const r = lookupEvidence(sym, tf, action, strength);
+    t(`${u.symbol}: ชั้น symbol ยังทำงานอยู่ (ด่านไม่ไปปิดของตัวเอง)`,
+      r?.level === 'symbol' && r?.n === data.cells.symbol[own[0]].n, `ได้ ${r?.level}`);
   }
 }
 
@@ -179,16 +242,27 @@ console.log('── fallback: symbol → timeframe → global ──');
 
 console.log('── 15m → ค่าประมาณจากกรอบ 1H ──');
 {
-  const oneHourKey = Object.keys(data.cells.global).find((k) => k.startsWith('1H|'));
-  if (!oneHourKey) {
-    t('มีข้อมูล 1H ให้ 15m ถอยไปใช้', false, 'ไม่มีเซลล์ global ของ 1H เลย');
+  // ใช้ symbol ที่มีเซลล์ 1H ของตัวเองจริง ๆ (ไม่ใช่ symbol แปลกหน้าแบบเดิม) เพราะเส้นทางนี้
+  // ต้องทำงานเหมือนกันทั้งตอนด่านความบริสุทธิ์เปิดและปิด — เลนที่เจ้าของใช้จริงคือ 15m ของทอง
+  const symKey1H = Object.keys(data.cells.symbol).find((k) => k.split('|')[1] === '1H');
+  if (!symKey1H) {
+    t('มีเซลล์ 1H ชั้น symbol ให้ 15m ถอยไปใช้', false, 'ไม่มีเซลล์ชั้น symbol ของ 1H เลย');
   } else {
-    const [, action] = oneHourKey.split('|');
-    const from15m = lookupEvidence('ZZZ_ไม่มีตัวนี้', '15m', action, 'ไม่มีชั้นนี้');
-    const from1H = lookupEvidence('ZZZ_ไม่มีตัวนี้', '1H', action, 'ไม่มีชั้นนี้');
+    const [sym, , action, strength] = symKey1H.split('|');
+    const from15m = lookupEvidence(sym, '15m', action, strength);
+    const from1H = lookupEvidence(sym, '1H', action, strength);
     t('15m คืนคำตอบเดียวกับ 1H ทุกช่อง', JSON.stringify(from15m) === JSON.stringify(from1H));
     t("15m ประกาศ sourceTimeframe = '1H'", from15m?.sourceTimeframe === '1H', `ได้ ${from15m?.sourceTimeframe}`);
   }
+
+  // 15m ที่ไม่มีเซลล์ของตัวเอง (เช่น strength 'moderate' ซึ่งเลน 15m ปล่อยผ่านได้
+  // แต่ประวัติเดินด้วยประตูมาตรฐานจึงไม่มีวันมีเซลล์ moderate) — คำตอบต้องขึ้นกับด่าน
+  const g15 = lookupEvidence(
+    universe.SYMBOL_UNIVERSE[0]?.symbol ?? 'XAUUSD', '15m', 'BUY', 'moderate'
+  );
+  t(`15m/moderate → ${AGG_EXPECTED ? 'ชั้นรวม' : 'null (ด่านปิดชั้นรวม)'}`,
+    AGG_EXPECTED ? g15 !== null : g15 === null,
+    `ได้ ${g15 === null ? 'null' : g15.level}`);
 }
 
 // ═══ 4. null เมื่อไม่มีข้อมูล — ห้ามเดา ═══

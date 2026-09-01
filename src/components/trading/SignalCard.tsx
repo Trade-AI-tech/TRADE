@@ -380,7 +380,7 @@ export default function SignalCard({ signal, reversal }: Props) {
           <span className="whitespace-nowrap text-gray-400">
             หมดเวลา {Math.round(evidence.timeoutPct * 100)}%{' '}
             (N={evidence.n}, {evidenceTfNote}
-            {evidence.level !== 'symbol' ? ', รวมทุกสินทรัพย์' : ''})
+            {evidence.level !== 'symbol' ? ', รวมทุกสินทรัพย์ในจักรวาล' : ''})
           </span>
         </div>
       )}

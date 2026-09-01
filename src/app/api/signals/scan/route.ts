@@ -6,6 +6,7 @@ import { createAdminClient, createRouteClient, getSessionUser } from '@/lib/supa
 import { DEMO_WATCHLIST, DEMO_SIGNALS, DEMO_PRICES } from '@/lib/demo-data';
 import type { Signal, MarketPrice } from '@/types';
 import { errorMessage } from '@/lib/errors';
+import { isInUniverse } from '@/lib/universe';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -55,19 +56,34 @@ export async function POST() {
       return NextResponse.json({ success: false, error: 'Supabase unavailable' }, { status: 500 });
     }
 
-    const { data: watchlist, error: wlErr } = await supabase
+    // watchlist ที่เปิดใช้งาน — แล้วกรองให้เหลือเฉพาะจักรวาลที่สแกนจริง
+    //
+    // ประตูนี้เป็นประตูที่สามที่อ่านตาราง watchlist ตรง ๆ (อีกสองคือ /api/cron/scan-markets
+    // กับ Edge Function scan-signals) และมันเป็นประตูที่ "ผู้ใช้กดเองได้" — ปุ่ม "สแกนตลาด"
+    // บน Header เรียกมาที่นี่ ถ้าไม่กรอง คู่เงินที่ค้างอยู่ใน watchlist จากก่อน 2026-08-29
+    // จะถูกสร้างสัญญาณลงตาราง signals ใบเดียวกับตัวสแกนหลักได้ด้วยการกดปุ่มครั้งเดียว
+    // = คำสั่งเจ้าของ "เทรดทองอย่างเดียว" ถูกฝ่าฝืนผ่านเส้นทางที่ไม่มีใครมอง
+    // → ใช้กติกาเดียวกับ buildScanTargets(): สแกนเฉพาะสิ่งที่อยู่ใน SYMBOL_UNIVERSE
+    //   ไม่ลบแถวของผู้ใช้ แค่ไม่สแกน (แถวยังอยู่ให้ใส่กลับได้ทันทีถ้าเจ้าของเปลี่ยนใจ)
+    const { data: watchlistAll, error: wlErr } = await supabase
       .from('watchlist')
       .select('*')
       .eq('is_active', true);
 
     if (wlErr) throw wlErr;
-    if (!watchlist?.length) {
+    const watchlist = (watchlistAll ?? []).filter((w) => isInUniverse(w.symbol, w.market));
+    const skippedOutsideUniverse = (watchlistAll?.length ?? 0) - watchlist.length;
+    if (!watchlist.length) {
       return NextResponse.json({
         success: true,
         scanned: 0,
         prices: [],
         signals: [],
-        message: 'ยังไม่มี symbol ใน watchlist — เพิ่มที่หน้า "ตลาด" ก่อน',
+        // แถวที่ไม่ได้สแกนเพราะอยู่นอกจักรวาล ต้องเห็น ไม่ใช่หายเงียบจนดูเหมือน watchlist ว่าง
+        skippedOutsideUniverse,
+        message: skippedOutsideUniverse
+          ? `watchlist มีแต่ symbol นอกจักรวาล ${skippedOutsideUniverse} รายการ — ไม่สแกน (เจ้าของสั่งเมื่อ 2026-08-29 ว่าเทรดทองอย่างเดียว)`
+          : 'ยังไม่มี symbol ใน watchlist — เพิ่มที่หน้า "ตลาด" ก่อน',
       });
     }
 
@@ -195,14 +211,21 @@ export async function POST() {
       ? ` (เวลาใกล้หมด ข้ามสแกน 1H ไป ${hourlySkippedForTime} ตัว)`
       : '';
 
+    // แถวที่ถูกกรองทิ้งเพราะอยู่นอกจักรวาล ต้องบอกในข้อความด้วย ไม่ใช่แค่ field เงียบ ๆ
+    // ไม่งั้นผู้ใช้ที่มี 10 แถวใน watchlist จะเห็น "สแกน 1 รายการ" แล้วนึกว่าระบบพัง
+    const universeNote = skippedOutsideUniverse > 0
+      ? ` · ข้าม ${skippedOutsideUniverse} รายการที่อยู่นอกจักรวาล (เทรดทองอย่างเดียว)`
+      : '';
+
     return NextResponse.json({
       success: true,
       scanned: watchlist.length,
       prices,
       signals,
       skipped,
+      skippedOutsideUniverse,
       hourlySkippedForTime,
-      message: `สแกน ${watchlist.length} รายการ พบสัญญาณใหม่ ${signals.length} รายการ${timeoutNote}`,
+      message: `สแกน ${watchlist.length} รายการ พบสัญญาณใหม่ ${signals.length} รายการ${timeoutNote}${universeNote}`,
     });
   } catch (err) {
     console.error('scan route error:', err);
