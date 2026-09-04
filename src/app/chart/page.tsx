@@ -319,12 +319,14 @@ export default function ChartPage() {
       <div className="card p-3 sm:p-4">
         {/* ลำดับของสามสถานะนี้ตัดสินจาก `shown` เสมอ (ข้อมูลของกรอบที่ปุ่มชี้อยู่)
             ไม่ใช่จาก payload ดิบ — ดูเหตุผลที่นิยามของ shown */}
-        {!shown && busy ? (
-          <div className="h-[380px] sm:h-[440px] flex flex-col items-center justify-center gap-3 text-[rgb(var(--text-muted))]">
-            <RefreshCw className="w-7 h-7 animate-spin" />
-            <span className="text-sm">กำลังโหลดแท่งเทียน…</span>
-          </div>
-        ) : !shown && error ? (
+        {/*
+          ⚠ error ต้องมาก่อน busy เสมอ — สลับลำดับเมื่อไหร่บั๊กเดิมกลับมาทันที
+          ตัวจับเวลา poll ตั้ง busy = true ทุกนาที ถ้าเช็ค busy ก่อน ตัวหมุนจะชนะ
+          ข้อความ error ตลอดกาล ผู้ใช้เห็น "กำลังโหลดแท่งเทียน…" ค้างไปเรื่อย ๆ
+          โดยไม่มีทางรู้ว่าจริง ๆ แล้วดึงข้อมูลไม่ได้ (เจอบน production 2026-09-04
+          ตอน session หมดอายุ: /api/chart ตอบ 401 แต่จอขึ้นตัวหมุนอย่างเดียว)
+        */}
+        {!shown && error ? (
           <div className="h-[380px] sm:h-[440px] flex flex-col items-center justify-center gap-3 px-6 text-center">
             <ShieldAlert className="w-8 h-8 text-red-700 [.dark_&]:text-down" />
             <p className="text-sm text-[rgb(var(--text-secondary))]">{error}</p>
@@ -335,6 +337,11 @@ export default function ChartPage() {
             >
               ลองใหม่
             </button>
+          </div>
+        ) : !shown && busy ? (
+          <div className="h-[380px] sm:h-[440px] flex flex-col items-center justify-center gap-3 text-[rgb(var(--text-muted))]">
+            <RefreshCw className="w-7 h-7 animate-spin" />
+            <span className="text-sm">กำลังโหลดแท่งเทียน…</span>
           </div>
         ) : shown && shown.bars.length === 0 ? (
           <div className="h-[380px] sm:h-[440px] flex items-center justify-center px-6 text-center text-sm text-[rgb(var(--text-secondary))]">
