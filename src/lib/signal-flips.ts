@@ -65,6 +65,44 @@ export function oppositeAction(action: string): SignalAction | null {
 }
 
 /**
+ * ตัวเก็บผล (scripts/resolve-signals.mjs) ยังไม่ปิดบัญชีใบนี้ใช่ไหม
+ *
+ * ── ทำไมทุกฝั่งที่ "แสดง/แจ้งเตือน" ต้องถามคำถามนี้ ─────────────────────────────
+ * เจ้าของรายงานเมื่อ 2026-09-01 ว่า "สัญญาณที่แจ้งเตือนมาไม่ตรงกับสถานะกราฟปัจจุบัน"
+ * สาเหตุหนึ่งคือ ledger ปิดใบไปแล้ว (outcome='sl'/'tp'/'timeout') แต่หน้าเว็บ/แจ้งเตือน
+ * ดูแค่ status ซึ่งตอนนั้นยังค้างเป็น 'active' อยู่ ผลคือไม้ที่โดนตัดขาดทุนไปแล้ว
+ * ยังขึ้นเป็น "โอกาสที่เปิดอยู่" และยังถูกป้อนราคาสดทุกรอบจนดูเหมือนมีชีวิต
+ *
+ * โหมดถอย (ยังไม่ได้รัน migration 007 = ไม่มีคอลัมน์ outcome): select('*') คืน undefined
+ * ให้คอลัมน์ที่ไม่มี → เงื่อนไข `== null` ผ่านเอง = ทุกใบนับว่ายังเปิด ซึ่งจริงตามระบบ
+ * เพราะในโหมดนั้นไม่มีการปิดบัญชีเกิดขึ้นเลย (พฤติกรรมเดิมเป๊ะ ไม่ต้อง probe ไม่ต้องแตกกิ่ง)
+ *
+ * ⚠ ห้ามย้ายเงื่อนไขนี้ไปอยู่ใน query ของ Supabase (.or('outcome.is.null,outcome.eq.open'))
+ *   บน DB ที่ยังไม่ได้รัน 007 จะได้ 42703 แล้วผู้เรียกที่ไม่ได้แยก error ชนิดนี้ออกมา
+ *   (เช่น loadPendingSignals ที่ isMissingPushColumn จับได้เฉพาะคำว่า push_sent)
+ *   จะตกลง branch error แล้วคืนชุดว่าง = การเก็บตกแจ้งเตือนดับเงียบทั้งระบบ
+ */
+export function ledgerStillOpen(row: { outcome?: string | null }): boolean {
+  return row.outcome == null || row.outcome === 'open';
+}
+
+/**
+ * ใบนี้ยังเป็น "โอกาสที่เปิดอยู่" จริงไหม — ใช้เป็นตัวกรองเดียวของทุกทางที่แสดงผล/แจ้งเตือน
+ *
+ * ต้องผ่านสองด่านพร้อมกัน เพราะสองคอลัมน์ตอบคนละคำถาม:
+ *   status  = ใบยังไม่หมดอายุ/ไม่ถูกยกเลิก (ตัวสแกนปั๊ม 'expired' เมื่อเลย expires_at)
+ *   outcome = ledger ยังไม่ปิดบัญชี
+ * ก่อน 2026-09-03 หน้า /signals ไม่มีตัวกรองทั้งสองตัวเลย จึงโชว์ทุกแถวในตาราง signals
+ * รวมใบที่หมดอายุไปแล้วและใบที่ ledger ปิดไปแล้ว
+ *
+ * flipped ≠ closed — ใบที่โดนปั๊มป้ายกลับทิศยังเป็นโอกาสที่เปิดอยู่ (ป้ายเป็นแค่คำเตือน
+ * ให้เจ้าของพิจารณาปิดไม้เอง เราไม่รู้ว่าเขาปิดจริงไหม) จึงจงใจไม่ตรวจ flipped_at ที่นี่
+ */
+export function isLiveSignalRow(row: { status?: string | null; outcome?: string | null }): boolean {
+  return row.status === 'active' && ledgerStillOpen(row);
+}
+
+/**
  * หาใบ active เดิมของ user+symbol+timeframe เดียวกัน ที่ action ตรงข้ามกับใบใหม่
  *
  * เงื่อนไขครบสี่ข้อ (ตกข้อเดียว = ไม่ใช่การกลับทิศ):
@@ -96,7 +134,7 @@ export function findFlipTargets(
         r.timeframe === fresh.timeframe &&
         r.action === opp &&
         r.flipped_at == null &&
-        (r.outcome == null || r.outcome === 'open')
+        ledgerStillOpen(r)
     )
     .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 }

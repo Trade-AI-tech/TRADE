@@ -149,7 +149,11 @@ export async function GET(req: NextRequest) {
         sessionStarts.set(
           key,
           resolveSessionStart(
-            chart.candles[chart.candles.length - 1]?.timestamp ?? null,
+            // ต้องเป็น "แท่งของรอบปัจจุบัน" ซึ่งตั้งแต่ 2026-09-03 คือแท่งที่ยังก่อตัวอยู่
+            // (fetchChart ตัดมันออกจาก candles แล้ว เพราะสัญญาณต้องคำนวณจากแท่งปิดเท่านั้น)
+            // ถ้าปล่อยให้ตกไปใช้แท่งปิดใบสุดท้าย sessionStart จะถอยไปหนึ่งรอบเต็ม แล้ว
+            // ออเดอร์ที่เพิ่งเปิดจะถูกตรวจด้วยช่วง [low_24h, high_24h] ของรอบก่อนหน้า = ปิดไม้ผิด
+            chart.formingCandle?.timestamp ?? chart.candles[chart.candles.length - 1]?.timestamp ?? null,
             chart.regularStart
           )
         );

@@ -12,7 +12,7 @@ import {
   throttleVerdict,
 } from './push-digest';
 import type { SpeedScorer } from './push-digest';
-import { flipNotesFromMarkedRows } from './signal-flips';
+import { flipNotesFromMarkedRows, ledgerStillOpen } from './signal-flips';
 import type { FlippedOldRow } from './signal-flips';
 
 /**
@@ -170,12 +170,50 @@ export const PUSH_STATE_CONFIG = {
   PENDING_LIMIT: 50,
 
   /**
-   * สัญญาณค้างที่เก่ากว่านี้ ไม่ต้องเก็บตกแล้ว
+   * เพดานอายุของสัญญาณค้าง — เก่ากว่านี้ไม่เก็บตกแล้ว ไม่ว่า timeframe ไหน
    * ตั้งเท่ากับ TTL ของ push (6 ชม. ใน sendPushToUser) ด้วยเหตุผลเดียวกัน:
    * ราคาเข้าที่คำนวณไว้เมื่อ 6 ชม.ก่อนไม่ใช่ราคาที่เทรดได้แล้ว การเด้งไปก็หลอกให้เข้าไม้ผิด
+   * (เกินเพดานนี้บริการ push ก็ทิ้งใบแจ้งเตือนเองอยู่แล้ว ตั้งสูงกว่านี้จึงไม่มีความหมาย)
    */
   PENDING_MAX_AGE_MS: 6 * 3600_000,
+
+  /**
+   * เก็บตกได้ไม่เกินกี่แท่งของ timeframe ตัวเอง
+   *
+   * ── บั๊กที่ตัวเลขนี้มาปิด (เจ้าของรายงาน 2026-09-01) ────────────────────────────
+   * เพดาน 6 ชม. ตัวเดียวใช้กับทุกเลน แปลว่าใบ 15m ที่ส่งไม่ออกตอน 09:00 ยังถูกกวาดมา
+   * เด้งได้ตอน 14:55 = ช้าไป **24 แท่ง** ราคาเข้าที่พิมพ์อยู่บนใบแจ้งเตือนนั้นไม่ใช่ราคาที่
+   * เทรดได้อีกแล้ว และกราฟที่เจ้าของเปิดดูตอนได้รับก็คนละภาพกับตอนที่สัญญาณเกิด
+   * — คืออาการ "สัญญาณที่แจ้งเตือนมาไม่ตรงกับสถานะกราฟปัจจุบัน" ตรง ๆ
+   *
+   * 4 แท่งคือหน่วยเดียวที่มีความหมายข้ามทุกเลน: มันคือ "ตลาดเดินไปแล้วกี่ก้าวในสายตาของ
+   * เลนนั้นเอง" ไม่ใช่จำนวนชั่วโมงที่ไม่มีความหมายกับ 15m และมากเกินไปสำหรับ 1D
+   * ผลลัพธ์ที่ได้ = min(4 แท่ง, เพดาน 6 ชม.):  15m → 1 ชม. · 1H → 4 ชม. · 1D → 6 ชม.(เท่าเดิม)
+   *
+   * ⚠ นี่ไม่ใช่เกณฑ์คุณภาพสัญญาณ และไม่ใช่หน้าต่างกันซ้ำ — มันตอบคำถามเดียว:
+   *   "ใบที่ส่งไม่ออกไปแล้ว ยังคุ้มที่จะเด้งตามหลังไหม"
+   */
+  PENDING_MAX_AGE_BARS: 4,
 } as const;
+
+/** ความยาวหนึ่งแท่งของแต่ละ timeframe (มิลลิวินาที) — คีย์เทียบแบบไม่สนตัวพิมพ์ */
+const TIMEFRAME_BAR_MS: Record<string, number> = {
+  '15m': 15 * 60_000,
+  '1h': 3600_000,
+  '1d': 86400_000,
+};
+
+/**
+ * สัญญาณของ timeframe นี้ เก็บตกย้อนหลังได้นานสุดเท่าไหร่
+ *
+ * timeframe ที่ไม่รู้จัก (รวมแถวเก่าที่ timeframe เป็น NULL) คงพฤติกรรมเดิม = เพดาน 6 ชม.
+ * จงใจไม่ทิ้งใบพวกนั้น เพราะ "ไม่รู้จักเลน" ไม่ใช่เหตุผลที่จะไม่บอกเจ้าของว่ามีสัญญาณค้าง
+ */
+export function pendingMaxAgeMsFor(timeframe: string | null | undefined): number {
+  const barMs = TIMEFRAME_BAR_MS[String(timeframe ?? '').trim().toLowerCase()];
+  if (!barMs) return PUSH_STATE_CONFIG.PENDING_MAX_AGE_MS;
+  return Math.min(barMs * PUSH_STATE_CONFIG.PENDING_MAX_AGE_BARS, PUSH_STATE_CONFIG.PENDING_MAX_AGE_MS);
+}
 
 /** รหัสของ Postgres เมื่ออ้างถึงคอลัมน์ที่ไม่มีอยู่ (undefined_column) */
 const UNDEFINED_COLUMN = '42703';
@@ -249,7 +287,25 @@ export async function loadPendingSignals(
     if (isMissingPushColumn(error)) return { signals: [], columnMissing: true, error: null };
     return { signals: [], columnMissing: false, error: errorMessage(error) };
   }
-  return { signals: (data ?? []) as Signal[], columnMissing: false, error: null };
+
+  /**
+   * กรองสองชั้นสุดท้ายในโค้ด ไม่ใช่ใน query — เหตุผลอยู่ที่ ledgerStillOpen ใน signal-flips.ts
+   * (ใส่ .or('outcome...') ลง query บน DB ที่ยังไม่ได้รัน migration 007 จะได้ 42703 ซึ่ง
+   * isMissingPushColumn ข้างบนไม่รู้จัก → ตกลง branch error → การเก็บตกดับเงียบทั้งระบบ)
+   *
+   *  1. ledger ปิดบัญชีไปแล้ว → ห้ามเด้ง เดิม query ดูแค่ status='active' ซึ่งค้างเป็น
+   *     'active' อยู่จนกว่าตัวเก็บผลจะปั๊ม ใบที่โดน SL ไปแล้วจึงถูกกวาดมาแจ้งได้
+   *  2. เก่าเกินอายุของ timeframe ตัวเอง → query ใช้หน้าต่างกว้างสุด (เพดาน 6 ชม.)
+   *     เพราะ timeframe เป็น text ใน DB การผูกเงื่อนไขต่อ timeframe ใน query
+   *     อ่านยากและพังเงียบได้ง่ายกว่า — แบบแผนเดียวกับหน้าต่างกันซ้ำใน scan-universe.mjs
+   */
+  const rows = (data ?? []) as Signal[];
+  const fresh = rows.filter(
+    (s) =>
+      ledgerStillOpen(s) &&
+      nowMs - new Date(s.created_at).getTime() <= pendingMaxAgeMsFor(s.timeframe)
+  );
+  return { signals: fresh, columnMissing: false, error: null };
 }
 
 /**

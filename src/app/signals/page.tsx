@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import SignalCard from '@/components/trading/SignalCard';
 import { useSignals } from '@/hooks/useData';
 import { cn } from '@/lib/utils';
-import { flipReversalIndex } from '@/lib/signal-flips';
+import { flipReversalIndex, isLiveSignalRow } from '@/lib/signal-flips';
 import { Zap, Filter } from 'lucide-react';
 
 const MARKET_FILTERS = [
@@ -49,8 +49,21 @@ export default function SignalsPage() {
   const [timeframe, setTimeframe] = useState('all');
   const [sortBy, setSortBy] = useState<SortKey>('newest');
 
+  /**
+   * ใบที่ยังเป็นโอกาสเปิดอยู่จริง — ทั้งการ์ดและแถวสรุปต้องนับจากชุดเดียวกันนี้
+   *
+   * ก่อน 2026-09-03 หน้านี้เรนเดอร์ทุกแถวที่ useSignals() คืนมา โดยไม่มีตัวกรอง status
+   * หรือ outcome สักตัว (useSignals() ไม่ส่ง status เข้า query ด้วย) เจ้าของจึงเห็นทั้งใบที่
+   * หมดอายุไปแล้วและใบที่ตัวเก็บผลปิดบัญชีไปแล้ว ปนอยู่กับใบที่ยังเปิดจริง — ตรงกับ
+   * อาการที่รายงานเมื่อ 2026-09-01 ว่า "สัญญาณไม่ตรงกับสถานะกราฟปัจจุบัน"
+   *
+   * กรองในโค้ดไม่ใช่ใน query โดยตั้งใจ (เหตุผลอยู่ที่ ledgerStillOpen ใน signal-flips.ts)
+   * ใบที่ถูกกรองออกยังอยู่ใน DB ครบ — /scorecard นับผลจากมันต่อได้เหมือนเดิม
+   */
+  const live = useMemo(() => signals.filter(isLiveSignalRow), [signals]);
+
   const filtered = useMemo(() => {
-    const base = signals.filter(s =>
+    const base = live.filter(s =>
       (market === 'all' || s.market === market) &&
       (action === 'all' || s.action === action) &&
       // ?? '' กันแถวเก่าใน DB ที่ timeframe เป็น NULL — เจอแล้วทั้งหน้าจะขาวไม่ใช่แค่การ์ดเดียว
@@ -61,7 +74,7 @@ export default function SignalsPage() {
       return [...base].sort((a, b) => b.confidence - a.confidence);
     }
     return base;
-  }, [signals, market, action, timeframe, sortBy]);
+  }, [live, market, action, timeframe, sortBy]);
 
   // ใบใหม่ใบไหน "กลับทิศ" ใบเก่า — ป้าย flipped_by อยู่บนใบเก่า การ์ดใบเดียวหาเองไม่ได้
   // จึงประกอบ map ครั้งเดียวจากสัญญาณทั้งชุดที่โหลดมา แล้วส่งเข้าการ์ดเป็น prop
@@ -69,14 +82,15 @@ export default function SignalsPage() {
   const reversals = useMemo(() => flipReversalIndex(signals), [signals]);
 
   // แถวสรุปนับจากสัญญาณที่โหลดมาจริงเท่านั้น ไม่ใช่ตัวเลขคงที่จากที่ไหน
-  const summary = useMemo(() => {
-    const active = signals.filter(s => s.status === 'active');
-    return {
-      active: active.length,
-      buy: active.filter(s => s.action === 'BUY').length,
-      sell: active.filter(s => s.action === 'SELL').length,
-    };
-  }, [signals]);
+  // เดิมนับด้วย status === 'active' อย่างเดียว จึงนับใบที่ ledger ปิดไปแล้วเป็น "ใช้งานอยู่"
+  const summary = useMemo(
+    () => ({
+      active: live.length,
+      buy: live.filter(s => s.action === 'BUY').length,
+      sell: live.filter(s => s.action === 'SELL').length,
+    }),
+    [live]
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -198,10 +212,15 @@ export default function SignalsPage() {
       {filtered.length === 0 ? (
         <div className="card text-center py-16">
           <Zap className="w-12 h-12 text-[rgb(var(--text-muted))] mx-auto mb-3" />
+          {/* สามข้อความ ไม่ใช่สองอีกต่อไป — "โหลดมาแล้วแต่ไม่มีใบไหนยังเปิดอยู่"
+              เป็นสถานะที่เกิดจริงหลังเริ่มกรองใบที่หมดอายุ/ปิดบัญชีแล้วออก
+              ถ้ายังใช้ข้อความ "ไม่ตรงกับตัวกรอง" เจ้าของจะไปนั่งกดตัวกรองหาใบที่ไม่มีอยู่ */}
           <p className="text-[rgb(var(--text-secondary))]">
             {signals.length === 0
               ? 'ยังไม่มีสัญญาณ — เพิ่ม symbol ที่หน้า "ตลาด" แล้วกด "สแกนตลาด"'
-              : 'ไม่พบสัญญาณที่ตรงกับตัวกรอง'}
+              : live.length === 0
+                ? 'ตอนนี้ไม่มีสัญญาณที่ยังเปิดอยู่ — ใบที่หมดอายุหรือปิดบัญชีแล้วดูผลได้ที่หน้า "สกอร์การ์ด"'
+                : 'ไม่พบสัญญาณที่ตรงกับตัวกรอง'}
           </p>
         </div>
       ) : (

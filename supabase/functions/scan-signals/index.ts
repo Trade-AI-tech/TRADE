@@ -183,6 +183,7 @@ interface TelegramProfileRow {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // >>> BEGIN COPY OF src/lib/candle-sanitizer.ts — ห้ามแก้เฉพาะที่นี่ ต้องแก้ต้นฉบับด้วย
+
 /**
  * ด่านตรวจแท่งราคา — ที่เดียวที่ตัดสินว่าแท่ง OHLC จาก Yahoo "ใช้ได้" ก่อนไหลเข้าอินดิเคเตอร์
  *
@@ -313,9 +314,11 @@ export function sanitizeCandles(input: CandleData[], market: string): SanitizeRe
 
   return { candles: out, dropped, repaired };
 }
+
 // <<< END COPY OF src/lib/candle-sanitizer.ts
 
 // >>> BEGIN COPY OF src/lib/indicators.ts — ห้ามแก้เฉพาะที่นี่ ต้องแก้ต้นฉบับด้วย
+
 /**
  * Technical indicators — pure functions, no dependencies
  * คำนวณ RSI, MACD, MA, Bollinger Bands, Support/Resistance
@@ -658,9 +661,11 @@ export function volumeRatio(candles: CandleData[], period = 20): number {
   if (!(avg > 0) || !Number.isFinite(last)) return NaN;
   return last / avg;
 }
+
 // <<< END COPY OF src/lib/indicators.ts
 
 // >>> BEGIN COPY OF src/lib/signal-engine.ts — ห้ามแก้เฉพาะที่นี่ ต้องแก้ต้นฉบับด้วย
+
 interface SignalInput {
   symbol: string;
   name: string;
@@ -700,6 +705,51 @@ function roundPrice(value: number, market: Signal['market']): number {
     return Number(value.toPrecision(digits));
   }
   return Number(value.toFixed(market === 'FOREX' ? 5 : 4));
+}
+
+/**
+ * อายุของสัญญาณตาม timeframe (มิลลิวินาที) → กลายเป็น expires_at ของแถวใน DB
+ * ครบเวลาแล้วตัวสแกนจะปั๊ม status='expired' ให้ แล้วใบนั้นหายจากหน้าเว็บและการแจ้งเตือน
+ *
+ * ── ทำไมต้องเป็นตารางที่เขียนชื่อ timeframe ครบทุกตัว ──────────────────────────────
+ * เดิมเขียนเป็น `timeframe === '1H' ? 48 ชม. : 7 วัน` ซึ่งแปลว่า **ทุก timeframe ที่ไม่ใช่
+ * 1H ตกไปกินค่า 7 วันเงียบ ๆ** พอเลน 15m เปิดเมื่อ 2026-08-29 ใบ 15m จึงค้างบนหน้าเว็บ
+ * ได้ถึง 7 วัน ทั้งที่ตัวเก็บผล (scripts/resolve-signals.mjs) ปิดบัญชีมันตั้งแต่ 96 แท่ง
+ * = 24 ชม. — เจ้าของจึงเห็น "โอกาสที่เปิดอยู่" ของ setup ที่ ledger ปิดไปแล้วหกวัน
+ * (อาการที่รายงานเมื่อ 2026-09-01: "สัญญาณที่แจ้งเตือนมาไม่ตรงกับสถานะกราฟปัจจุบัน")
+ *
+ * ── ตัวเลขพวกนี้เป็นเรื่องของ "หน้าเว็บ" ล้วน ๆ ไม่ใช่ของ ledger ────────────────────
+ * ตารางนี้ตอบคำถามเดียว: **ใบนี้ยังควรโชว์เป็นโอกาสอีกนานแค่ไหน** ตัวเก็บผล
+ * (scripts/resolve-signals.mjs) มีนาฬิกาของตัวเองแยกต่างหาก (LEDGER_TTL_MS ในไฟล์นั้น)
+ * จึงย่อ/ขยายตัวเลขตรงนี้ได้โดยไม่ไปเขียนผลคนละแบบลงสมุดบัญชี
+ *   15m : 24 ชม. · 1H : 48 ชม. · 1D : 7 วัน
+ *
+ * ⚠ ห้ามเขียนกติกาทำนอง "TTL ต้องยาวกว่าเพดานถือของ ledger (MAX_HOLD_BARS × ความยาวแท่ง)"
+ *   กลับเข้ามาอีก — เคยเขียนไว้ตอนแรกแล้วมันผิด เพราะเทียบ **เวลาแท่ง** กับ **เวลานาฬิกา**
+ *   96 แท่ง × 15 นาที = 24 ชม. เป็นจริงเฉพาะเมื่อแท่งเรียงติดกัน แต่ทองหยุดวันละ 60 นาที
+ *   และหยุดสุดสัปดาห์ วัดจากแท่งจริงในรีโป (.research-cache/candles/GOLD__XAUUSD__15m.json)
+ *   หน้าต่าง 96 แท่งกินเวลาจริง 24.75–73.75 ชม. = เกิน 24 ชม. ครบ 100%
+ *   ถ้าเอา TTL 24 ชม. ไปให้ ledger ใช้ ใบ 15m จะไม่มีทางเดินครบ 96 แท่งได้เลยสักใบ
+ *   (ตอนที่เคยเป็นแบบนั้นจริง ๆ ผลคือ 11.6% ของใบถูกบันทึกผลต่างไปจากเดิม)
+ *
+ * คีย์เก็บเป็นตัวพิมพ์เล็กแล้วเทียบแบบไม่สนตัวพิมพ์ เพื่อไม่ให้ '1h'/'15M' ตกไปกินค่า
+ * default เงียบ ๆ ซ้ำรอยเดิม
+ */
+const SIGNAL_TTL_MS: Record<string, number> = {
+  '15m': 24 * 3600_000,
+  '1h': 48 * 3600_000,
+  '1d': 7 * 86400_000,
+};
+
+/**
+ * timeframe ที่ไม่รู้จักจริง ๆ คงพฤติกรรมเดิม (7 วัน) — จงใจไม่โยน error เพราะ
+ * เครื่องคำนวณสัญญาณไม่ควรล้มทั้งรอบเพราะชื่อ timeframe แปลก ๆ ตัวเดียว
+ * แต่ถ้าจะเพิ่มเลนใหม่ ต้องมาเติมในตารางข้างบน ไม่ใช่ปล่อยให้ตกมาที่นี่
+ */
+const SIGNAL_TTL_DEFAULT_MS = 7 * 86400_000;
+
+export function signalTtlMs(timeframe: string): number {
+  return SIGNAL_TTL_MS[String(timeframe).trim().toLowerCase()] ?? SIGNAL_TTL_DEFAULT_MS;
 }
 
 /**
@@ -970,11 +1020,7 @@ export function generateSignal(input: SignalInput): Signal | null {
 
   const confidence = Math.min(95, 40 + totalScore * 6);
 
-  // อายุสัญญาณตาม timeframe — สัญญาณจากแท่งรายชั่วโมง "เก่า" เร็วกว่าสัญญาณรายวันมาก:
-  // setup บนแท่ง 1H มักเดินจบภายในไม่กี่สิบแท่ง (ราววันสองวัน) ถ้าปล่อยให้ active ค้าง 7 วัน
-  // เท่ากับโชว์ผู้ใช้ว่าโอกาสยังอยู่ทั้งที่ตลาดเดินผ่านจุดนั้นไปนานแล้ว → 1H หมดอายุใน 48 ชม.
-  // timeframe อื่นคงอายุ 7 วันตามพฤติกรรมเดิม
-  const ttlMs = timeframe === '1H' ? 48 * 3600_000 : 7 * 86400000;
+  const ttlMs = signalTtlMs(timeframe);
 
   const indicators: Record<string, number> = {};
   const put = (k: string, v: number, d = 4) => {
@@ -1007,6 +1053,7 @@ export function generateSignal(input: SignalInput): Signal | null {
     created_at: new Date().toISOString(),
   };
 }
+
 // <<< END COPY OF src/lib/signal-engine.ts
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1049,8 +1096,80 @@ const CHART_HOSTS = [
 /** กันคำขอเดียวค้างจนกินเวลาทั้งรอบ (ต่อ 1 host ไม่ใช่ต่อ 1 สัญลักษณ์) */
 const FETCH_TIMEOUT_MS = 8000;
 
-type ChartInterval = '1d' | '1h' | '1wk';
+type ChartInterval = '15m' | '1h' | '1d' | '1wk';
 type ChartRange = '1mo' | '3mo' | '6mo' | '1y' | '2y';
+
+/**
+ * ── สำเนาของ BAR_SECONDS / splitClosedBars ใน src/lib/market-data.ts ──────────────
+ * แก้ที่นี่อย่างเดียวไม่ได้ ต้องแก้ต้นฉบับด้วย (ไฟล์เดียวจบ import ข้าม src/ ไม่ได้)
+ * scripts/test-signal-freshness.mjs ตรวจระดับซอร์สว่าฝั่งนี้ยัง "เรียกใช้จริง" อยู่
+ *
+ * ทำไมต้องมีที่นี่ด้วย: ฟังก์ชันนี้ผลิตสัญญาณเองได้เต็มรูปแบบถ้ามันถูกติดตั้งไว้บน
+ * Dashboard (ยืนยันจากรีโปไม่ได้) ถ้าไม่ตัดแท่งที่ยังก่อตัวออก มันจะออกสัญญาณจากแท่ง
+ * ที่ยังเปลี่ยนได้ต่อไป = บั๊กเดิมที่เจ้าของรายงานเมื่อ 2026-09-01 กลับมาทางประตูหลัง
+ * เหตุผลเต็มของทุกเกณฑ์อยู่ที่ต้นฉบับ
+ */
+const BAR_SECONDS: Record<ChartInterval, number> = {
+  '15m': 900,
+  '1h': 3600,
+  '1d': 86400,
+  '1wk': 604800,
+};
+
+interface BarSessionHints {
+  start?: number | null;
+  end?: number | null;
+  lastTradeAt?: number | null;
+}
+
+function tailBarClosed(ts: number, barSec: number, nowSec: number, session: BarSessionHints): boolean {
+  if (nowSec >= ts + barSec) return true;
+  // ⚠ ข้อจำกัดที่รู้ตัวของเลน '1wk' (ยังไม่มีใครเรียก) — เหตุผลเต็มอยู่ที่ต้นฉบับ
+  if (barSec !== 86400) return false;
+  const start = Number(session.start);
+  if (Number.isFinite(start) && ts < start) return true;
+  const end = Number(session.end);
+  if (Number.isFinite(end) && nowSec >= end) return true;
+  return false;
+}
+
+function splitClosedBars(
+  timestamps: ReadonlyArray<number | null | undefined>,
+  interval: ChartInterval,
+  nowMs: number,
+  session: BarSessionHints = {}
+): { closed: number[]; forming: number[] } {
+  const barSec = BAR_SECONDS[interval] ?? 86400;
+  const nowSec = Math.floor(nowMs / 1000);
+  const lastTradeAt = Number(session.lastTradeAt);
+
+  const closed: number[] = [];
+  const forming: number[] = [];
+
+  for (let i = 0; i < timestamps.length; i++) {
+    const ts = Number(timestamps[i]);
+    if (!Number.isFinite(ts)) {
+      forming.push(i);
+      continue;
+    }
+    if (ts % 60 !== 0 || (Number.isFinite(lastTradeAt) && lastTradeAt === ts)) {
+      forming.push(i);
+      continue;
+    }
+    closed.push(i);
+  }
+
+  if (closed.length > 0) {
+    const lastIdx = closed[closed.length - 1];
+    if (!tailBarClosed(Number(timestamps[lastIdx]), barSec, nowSec, session)) {
+      closed.pop();
+      forming.push(lastIdx);
+    }
+  }
+
+  forming.sort((a, b) => a - b);
+  return { closed, forming };
+}
 
 /**
  * Map our internal symbol to a Yahoo Finance symbol
@@ -1077,7 +1196,10 @@ function toYahooSymbol(symbol: string, market: string): string {
 
 interface ChartPayload {
   quote: MarketPrice | null;
+  /** แท่งที่ปิดแล้วเท่านั้น — ชุดที่ใช้คำนวณสัญญาณ (ดู splitClosedBars ด้านบน) */
   candles: CandleData[];
+  /** แท่งที่ยังก่อตัวอยู่ใบล่าสุด — ไม่เข้าชุดคำนวณ ใช้เป็นฐานของราคาสดเท่านั้น */
+  formingCandle: CandleData | null;
   /**
    * meta.currentTradingPeriod.regular.start เป็น ISO — เวลาเปิดรอบซื้อขายตาม Yahoo
    * ส่งดิบออกไปให้ผู้เรียกตัดสินเอง เพราะเชื่อเดี่ยว ๆ ไม่ได้ทุกตลาด
@@ -1086,7 +1208,7 @@ interface ChartPayload {
   regularStart: string | null;
 }
 
-const EMPTY: ChartPayload = { quote: null, candles: [], regularStart: null };
+const EMPTY: ChartPayload = { quote: null, candles: [], formingCandle: null, regularStart: null };
 
 /**
  * ดึง chart จาก Yahoo — ได้ทั้ง quote และ candles ในคำขอเดียว
@@ -1143,16 +1265,28 @@ async function fetchChart(
       const ohlc = result.indicators?.quote?.[0];
       if (!ohlc) continue;
 
-      const rawCandles: CandleData[] = timestamps
-        .map((ts, i) => ({
-          timestamp: new Date(ts * 1000).toISOString(),
-          open: ohlc.open?.[i] ?? 0,
-          high: ohlc.high?.[i] ?? 0,
-          low: ohlc.low?.[i] ?? 0,
-          close: ohlc.close?.[i] ?? 0,
-          volume: ohlc.volume?.[i] ?? 0,
-        }))
+      // ตัดแท่งที่ยังก่อตัวออกก่อนประกอบ — เหตุผลเต็มอยู่ที่ splitClosedBars ด้านบน
+      const split = splitClosedBars(timestamps, interval, Date.now(), {
+        start: Number(meta.currentTradingPeriod?.regular?.start),
+        end: Number(meta.currentTradingPeriod?.regular?.end),
+        lastTradeAt: Number(meta.regularMarketTime),
+      });
+
+      const barAt = (i: number): CandleData => ({
+        timestamp: new Date(Number(timestamps[i]) * 1000).toISOString(),
+        open: ohlc.open?.[i] ?? 0,
+        high: ohlc.high?.[i] ?? 0,
+        low: ohlc.low?.[i] ?? 0,
+        close: ohlc.close?.[i] ?? 0,
+        volume: ohlc.volume?.[i] ?? 0,
+      });
+
+      const rawCandles: CandleData[] = split.closed.map(barAt).filter((c) => c.close > 0);
+      const formingBars = split.forming
+        .filter((i) => Number.isFinite(Number(timestamps[i])))
+        .map(barAt)
         .filter((c) => c.close > 0);
+      const formingCandle = formingBars.length > 0 ? formingBars[formingBars.length - 1] : null;
 
       // ด่านตรวจแท่ง — จุดเดียวกับที่ src/lib/market-data.ts ทำหลังประกอบแท่งจาก Yahoo
       // ตัว sanitizeCandles มาจากบล็อกสำเนา candle-sanitizer.ts ด้านบน (check:parity:scan คุม)
@@ -1163,14 +1297,24 @@ async function fetchChart(
         console.warn(`fetchChart ${yahooSymbol} ${interval}: ซ่อมกรอบ ${repaired} แท่ง · ทิ้งแท่งเสีย ${dropped} แท่ง`);
       }
 
-      const price = Number(meta.regularMarketPrice ?? candles[candles.length - 1]?.close);
-      if (!price || !Number.isFinite(price)) return { quote: null, candles, regularStart };
+      const price = Number(
+        meta.regularMarketPrice ?? formingCandle?.close ?? candles[candles.length - 1]?.close
+      );
+      if (!price || !Number.isFinite(price)) return { quote: null, candles, formingCandle, regularStart };
 
       // ใช้แท่งก่อนหน้าเป็นฐานคำนวณการเปลี่ยนแปลง (เชื่อถือได้กว่า meta.chartPreviousClose
       // ซึ่งเป็นราคาปิดก่อนเริ่มช่วงที่ขอมา ไม่ใช่ของเมื่อวาน)
-      const prevClose =
-        candles.length >= 2 ? candles[candles.length - 2].close : Number(meta.chartPreviousClose ?? price);
+      // ฐานที่ถูกคือ "แท่งก่อนแท่งที่ราคาสดอยู่" — แท่งท้ายสุดยังก่อตัว ฐานคือแท่งปิดใบสุดท้าย
+      // ไม่มีแท่งก่อตัว ราคาสดคือราคาปิดของแท่งปิดใบสุดท้าย ฐานจึงถอยไปอีกหนึ่งใบ
+      const lastRawIsForming = timestamps.length > 0 && split.forming.includes(timestamps.length - 1);
+      const prevClose = lastRawIsForming
+        ? candles[candles.length - 1]?.close ?? Number(meta.chartPreviousClose ?? price)
+        : candles.length >= 2
+          ? candles[candles.length - 2].close
+          : Number(meta.chartPreviousClose ?? price);
       const change = price - prevClose;
+
+      const liveCandle = formingCandle ?? candles[candles.length - 1] ?? null;
 
       const quote: MarketPrice = {
         symbol,
@@ -1179,13 +1323,13 @@ async function fetchChart(
         price,
         change,
         change_percent: prevClose ? (change / prevClose) * 100 : 0,
-        volume: Number(meta.regularMarketVolume ?? candles[candles.length - 1]?.volume ?? 0),
-        high_24h: Number(meta.regularMarketDayHigh ?? candles[candles.length - 1]?.high ?? price),
-        low_24h: Number(meta.regularMarketDayLow ?? candles[candles.length - 1]?.low ?? price),
+        volume: Number(meta.regularMarketVolume ?? liveCandle?.volume ?? 0),
+        high_24h: Number(meta.regularMarketDayHigh ?? liveCandle?.high ?? price),
+        low_24h: Number(meta.regularMarketDayLow ?? liveCandle?.low ?? price),
         updated_at: new Date().toISOString(),
       };
 
-      return { quote, candles, regularStart };
+      return { quote, candles, formingCandle, regularStart };
     } catch (err) {
       console.error('fetchChart error:', yahooSymbol, err);
     }
@@ -1535,11 +1679,12 @@ serve(async (req: Request) => {
     //
     // ตัวกันซ้ำนี้อ่านจากตาราง signals ที่ทั้ง route ฝั่ง Vercel (รันวันละครั้ง) และ
     // ฟังก์ชันนี้ (รันทุกชั่วโมง) เขียนร่วมกัน สองระบบจึงกันซ้ำข้ามกันเองไปในตัว
+    // ไม่กรอง status ตั้งแต่ 2026-09-03 — เหตุผลเดียวกับ scripts/scan-universe.mjs:
+    // ตัวเก็บผลปั๊ม status ให้ใบที่ปิดบัญชีแล้ว ถ้ากรอง active ใบพวกนั้นจะหลุดจากตัวกันซ้ำ
     const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
     const { data: recent } = await supabase
       .from('signals')
       .select('user_id, symbol, action, timeframe, created_at')
-      .eq('status', 'active')
       .gte('created_at', since);
 
     const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;

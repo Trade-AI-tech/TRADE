@@ -90,11 +90,12 @@ export async function POST() {
     // สัญญาณที่ยังไม่หมดอายุ ใช้กันสร้างซ้ำ — query ด้วยหน้าต่างที่กว้างสุด (ของ 1D)
     // แล้วกรองหน้าต่างแคบของ 1H ในโค้ด เพราะ timeframe เป็น text ใน DB
     // การผูกเงื่อนไข or ตาม timeframe ใน query อ่านยากและพังเงียบได้ง่ายกว่า
+    // ไม่กรอง status ตั้งแต่ 2026-09-03 — เหตุผลเดียวกับ /api/cron/scan-markets:
+    // ตัวเก็บผลปั๊ม status ให้ใบที่ปิดบัญชีแล้ว ถ้ากรอง active ใบพวกนั้นจะหลุดจากตัวกันซ้ำ
     const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
     const { data: recent } = await supabase
       .from('signals')
       .select('symbol, action, timeframe, created_at')
-      .eq('status', 'active')
       .gte('created_at', since);
 
     const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Signal, Trade, MarketPrice } from '@/types';
+import { isLiveSignalRow } from '@/lib/signal-flips';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -73,9 +74,11 @@ export const useAppStore = create<AppStore>((set) => ({
   prices: [],
   setPrices: (prices) => set({ prices }),
   signals: [],
+  // จุดแดงบนเมนูต้องนับเฉพาะใบที่ยังเป็นโอกาสเปิดอยู่จริง — เดิมนับด้วย status === 'active'
+  // อย่างเดียว จึงค้างตัวเลขของใบที่ตัวเก็บผลปิดบัญชีไปแล้ว (ดู isLiveSignalRow)
   setSignals: (signals) => set({
     signals,
-    unreadSignals: signals.filter(s => s.status === 'active').length,
+    unreadSignals: signals.filter(isLiveSignalRow).length,
   }),
   trades: [],
   setTrades: (trades) => set({ trades }),

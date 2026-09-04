@@ -145,12 +145,54 @@ console.log('── ครบเพดาน 24 แท่ง (1H) → หมด�
   check('raw_r = (100.2−100)/2 = 0.1', r.raw_r, 0.1);
 }
 
-console.log('── expires_at ต้องถูกเคารพก่อนเพดานแท่ง ──');
+console.log('── เพดานเวลาของ ledger ต้องมาจากนาฬิกาของตัวเอง ไม่ใช่คอลัมน์ expires_at ──');
 {
-  const s = sig({ expires_at: new Date((T0 + 3 * HOUR) * 1000).toISOString() });
-  const quiet = Array.from({ length: 10 }, () => [100, 100.4, 99.7, 100.1]);
-  const r = resolveSignal(s, bars(quiet));
-  checkEq('หมดอายุที่แท่งที่ 3', r.bars_held, 3);
+  // แท่ง 1H ที่ห่างกัน 3 ชม. (จำลองตลาดที่มีช่องว่าง) — 24 แท่งกินเวลาจริง 72 ชม.
+  // เกินเพดานเวลาของ ledger (1H = 48 ชม.) จึงต้องถูกตัดด้วยเวลา ไม่ใช่ด้วยจำนวนแท่ง
+  const sparse = Array.from({ length: 24 }, (_, i) => ({
+    t: T0 + (i + 1) * 3 * HOUR, o: 100, h: 100.4, l: 99.7, c: 100.1,
+  }));
+  const r = resolveSignal(sig(), sparse);
+  checkEq('ตัดที่แท่งแรกที่เลย 48 ชม. (แท่งที่ 16)', r.bars_held, 16);
+  checkEq('ผลเป็น timeout', r.outcome, 'timeout');
+}
+
+console.log('── expires_at บนแถวต้องไม่เปลี่ยนผลที่ ledger บันทึก ──');
+{
+  // ── บั๊กที่เทสต์นี้มาเฝ้า (พบเมื่อ 2026-09-03) ────────────────────────────────
+  // เดิม resolveSignal อ่าน expires_at จากแถวมาใช้เป็นเส้นตัด พอมีคนย่ออายุใบ 15m
+  // ลงเหลือ 24 ชม. เพื่อแก้อาการ "ใบค้างบนหน้าเว็บ" ผลที่บันทึกลงสมุดบัญชีก็เปลี่ยนตาม
+  // ทันที 11.6% ของใบ ทั้งที่งานนั้นตั้งใจแก้แค่สิ่งที่ตาเห็น
+  // ตอนนี้ ledger ใช้ LEDGER_TTL_MS ของตัวเอง คอลัมน์ฝั่งแสดงผลจึงขยับได้อย่างอิสระ
+  const quiet = Array.from({ length: 30 }, () => [100, 100.4, 99.7, 100.2]);
+  const base = resolveSignal(sig(), bars(quiet));
+  for (const exp of [
+    new Date((T0 + 1 * HOUR) * 1000).toISOString(), // สั้นกว่าเพดานถือมาก
+    new Date((T0 + 3 * HOUR) * 1000).toISOString(),
+    new Date((T0 + 9999 * HOUR) * 1000).toISOString(), // ยาวเกินจริง
+  ]) {
+    const r = resolveSignal(sig({ expires_at: exp }), bars(quiet));
+    checkEq(`expires_at=${exp.slice(0, 16)} → bars_held เท่าเดิม`, r.bars_held, base.bars_held);
+    checkEq(`expires_at=${exp.slice(0, 16)} → realized_r เท่าเดิม`, r.realized_r, base.realized_r);
+  }
+}
+
+console.log('── 15m ต้องเดินครบ 96 แท่งได้จริง แม้หน้าต่างจริงจะกินเวลาเกิน 24 ชม. ──');
+{
+  // ทองหยุดวันละ 60 นาทีและหยุดสุดสัปดาห์ หน้าต่าง 96 แท่งจริงจึงกินเวลา 24.75–73.75 ชม.
+  // (วัดจาก .research-cache/candles/GOLD__XAUUSD__15m.json) — จำลองด้วยแท่งที่มีช่องว่าง
+  // ให้รวมแล้วเกิน 24 ชม. ถ้าวันไหนมีใครเอา TTL ฝั่งแสดงผล (24 ชม.) กลับมาให้ ledger ใช้
+  // เทสต์นี้จะจับได้ทันที เพราะ bars_held จะร่วงจาก 96 ลงมาเหลือหลักสิบ
+  const MIN15 = 900;
+  let t = T0;
+  const goldish = Array.from({ length: 96 }, (_, i) => {
+    t += MIN15 + (i % 24 === 23 ? 3600 : 0); // แทรกช่องว่างพักตลาดทุก ๆ 24 แท่ง
+    return { t, o: 100, h: 100.4, l: 99.7, c: 100.2 };
+  });
+  const spanH = (goldish[95].t - goldish[0].t) / 3600;
+  check('หน้าต่างจำลองกินเวลาเกิน 24 ชม. จริง', spanH > 24 ? 1 : 0, 1);
+  const r = resolveSignal(sig({ timeframe: '15m' }), goldish);
+  checkEq('ถือครบเพดาน 96 แท่ง', r.bars_held, 96);
   checkEq('ผลเป็น timeout', r.outcome, 'timeout');
 }
 

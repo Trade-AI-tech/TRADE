@@ -169,11 +169,15 @@ export async function GET(req: NextRequest) {
     // 3. สัญญาณที่ยัง active อยู่ ใช้กันสร้างซ้ำ — query ด้วยหน้าต่างที่กว้างสุด (ของ 1D)
     // แล้วกรองหน้าต่างแคบของ 1H ในโค้ด เพราะ timeframe เป็น text ใน DB
     // การผูกเงื่อนไข or ตาม timeframe ใน query อ่านยากและพังเงียบได้ง่ายกว่า
+    // ไม่กรอง status ตั้งแต่ 2026-09-03 — ตัวเก็บผลปั๊ม status ให้ใบที่ปิดบัญชีแล้ว
+    // (เช่น 'triggered' เมื่อโดน SL) ถ้ายังกรอง active อยู่ ใบพวกนั้นจะหลุดจากตัวกันซ้ำ
+    // แล้วความถี่แจ้งเตือนจะเพิ่มขึ้นเงียบ ๆ · หน้าต่าง created_at ให้ผลเท่าเดิมเป๊ะ เพราะ
+    // อายุใบสั้นสุดยังยาวกว่าหน้าต่างกันซ้ำเสมอ = ไม่มีแถว 'expired' อยู่ในหน้าต่างนี้
+    // (เหตุผลเต็มอยู่ที่ query เดียวกันใน scripts/scan-universe.mjs ซึ่งเป็นตัวสแกนจริง)
     const since = new Date(Date.now() - DEDUPE_HOURS_1D * 3600_000).toISOString();
     const { data: recent } = await supabase
       .from('signals')
       .select('user_id, symbol, action, timeframe, created_at')
-      .eq('status', 'active')
       .gte('created_at', since);
 
     const cutoff1H = Date.now() - DEDUPE_HOURS_1H * 3600_000;

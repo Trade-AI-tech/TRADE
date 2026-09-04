@@ -6,7 +6,7 @@ import SignalCard from '@/components/trading/SignalCard';
 import MarketRow from '@/components/trading/MarketRow';
 import { useSignals, usePrices, useDashboardStats, useWatchlist } from '@/hooks/useData';
 import { isDemoMode } from '@/lib/supabase';
-import { flipReversalIndex } from '@/lib/signal-flips';
+import { flipReversalIndex, isLiveSignalRow } from '@/lib/signal-flips';
 import Link from 'next/link';
 import {
   Zap, Activity, ArrowRight, Compass, FlaskConical, TrendingUp, TrendingDown,
@@ -14,10 +14,20 @@ import {
 
 export default function DashboardPage() {
   const demo = isDemoMode();
-  const { data: signals } = useSignals('active');
+  const { data: allActive } = useSignals('active');
   const { data: prices } = usePrices();
   const { data: watchlist, loading: watchlistLoading } = useWatchlist();
   const { data: stats, loading: statsLoading, error: statsError } = useDashboardStats();
+
+  /**
+   * status='active' จาก query อย่างเดียวยังไม่พอ ต้องผ่าน ledger ด้วย
+   *
+   * ในโหมดที่ยังไม่ได้รัน migration 007 ตัวกรองนี้ผ่านทุกใบ = พฤติกรรมเดิม
+   * ในโหมดปกติมันซ้ำกับสิ่งที่ตัวเก็บผลปั๊มไว้แล้ว — แต่ตัวเก็บผลรันแบบ continue-on-error
+   * ใน workflow (Yahoo ล่มแล้วข้ามได้) ฝั่งอ่านจึงต้องเชื่อ outcome ได้ด้วยตัวเอง
+   * ไม่ใช่รอให้ใครมาปั๊ม status ให้ก่อน
+   */
+  const signals = useMemo(() => allActive.filter(isLiveSignalRow), [allActive]);
 
   // หน้านี้เป็นสัญญาณล้วน — ส่วนพอร์ต (EquityChart/กำไรขาดทุน/Win Rate) ถูกถอดออกโดยตั้งใจ
   // เพราะผู้ใช้เทรดผ่านพอร์ตโบรกเกอร์ภายนอก ตัวเลขทุกใบด้านล่างจึงนับจากสัญญาณที่โหลดมาจริง

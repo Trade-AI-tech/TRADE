@@ -68,7 +68,83 @@ export const COST_BPS = {
  * เลือกให้กว้างไว้ก่อนโดยตั้งใจ เพราะ bars_held ถูกบันทึกไว้ทุกไม้ ใครอยากรู้ว่า
  * "ถ้าตัดจบที่ 5 แท่งจะเป็นยังไง" ก็กรองเอาทีหลังได้ แต่ข้อมูลที่ไม่ได้เก็บ ย้อนไปเก็บไม่ได้
  */
-const MAX_HOLD_BARS = { '15m': 96, '1H': 24, '1D': 20 };
+export const MAX_HOLD_BARS = { '15m': 96, '1H': 24, '1D': 20 };
+
+/**
+ * เพดานเวลาของ **ตัวเก็บผล** (มิลลิวินาที นับจาก created_at) — คนละตัวกับ expires_at
+ *
+ * ── ทำไมตัวเก็บผลต้องมีนาฬิกาของตัวเอง แทนที่จะอ่าน expires_at จากแถว ────────────
+ * expires_at ตอบคำถามฝั่งแสดงผล: "ใบนี้ยังควรโชว์เป็นโอกาสบนหน้าเว็บอีกนานแค่ไหน"
+ * ส่วน ledger ตอบคนละคำถาม: "ให้เวลาไม้นี้เดินกี่แท่งก่อนตัดสินว่าหมดเวลา"
+ * เดิมทั้งสองคำถามใช้คอลัมน์เดียวกัน พอวันที่ 2026-09-03 ย่ออายุใบ 15m ลงเหลือ 24 ชม.
+ * เพื่อแก้อาการ "ใบค้างบนเว็บ 7 วัน" **ผลที่บันทึกลง ledger ก็เปลี่ยนตามไปด้วยทันที**
+ * ทั้งที่งานนั้นตั้งใจแก้แค่สิ่งที่ตาเห็น
+ *
+ * ── ทำไม 24 ชม. ไม่เท่ากับ 96 แท่ง ──────────────────────────────────────────────
+ * 96 × 15 นาที = 24 ชม. เป็นจริงเฉพาะเมื่อแท่งเรียงติดกันไม่มีช่องว่าง ซึ่งทองไม่ใช่:
+ * ตลาดหยุดวันละ 60 นาที และหยุดสุดสัปดาห์ วัดจากไฟล์ของรีโปเอง
+ * (.research-cache/candles/GOLD__XAUUSD__15m.json 1,960 แท่ง — coverage บอกเอง
+ * ว่ามีช่องว่าง 22 ครั้ง = พักรายวัน 18 + สุดสัปดาห์ 4) หน้าต่าง 96 แท่งทุกบานที่วัดได้
+ * (n=1,865) กินเวลาจริง **ต่ำสุด 24.75 ชม. · กลาง 24.75 · สูงสุด 73.75** →
+ * เกิน 24 ชม. ครบ 100% ถ้าปล่อยให้ expires_at 24 ชม. มาตัด ใบ 15m จะไม่มีทางเดินครบ
+ * 96 แท่งได้เลยสักใบ = เปลี่ยนเพดานถือจริงทั้งที่ MAX_HOLD_BARS ยังเขียนว่า 96
+ *
+ * ── ค่าที่อยู่ในตารางนี้ = พฤติกรรมเดิมของ ledger ก่อนงานวันที่ 2026-09-03 เป๊ะ ──────
+ * (ตอนนั้น expires_at = created_at + (1H ? 48 ชม. : 7 วัน) จึงลอกตัวเลขชุดนั้นมาตรง ๆ
+ *  เจตนาคือ "งานแก้การแสดงผล ต้องไม่ขยับตัวเลขในสมุดบัญชีแม้แต่ไม้เดียว")
+ *   15m : 7 วัน  → ไม่เคยผูกจริง เพราะ 96 แท่งกินเวลาสูงสุด 73.75 ชม. < 168 ชม.
+ *                  ตัวที่ตัดสินคือ MAX_HOLD_BARS ตามที่ตั้งใจไว้แต่แรก
+ *   1H  : 48 ชม. → ผูกจริงบางครั้ง (24 แท่งกินเวลาสูงสุด 115 ชม. เกิน 48 ชม. อยู่ 21.7%)
+ *   1D  : 7 วัน  → ผูกจริงเสมอ (20 แท่ง = 599–1,320 ชม. เกิน 168 ชม. ครบ 100%)
+ *
+ * ⚠ 1H และ 1D จึงถูกตัดด้วยเวลา ไม่ใช่ด้วยจำนวนแท่ง มาตลอด — MAX_HOLD_BARS ของสองเลนนี้
+ *   แทบไม่เคยถูกใช้จริง นี่เป็นเรื่องที่ค้างอยู่ก่อนแล้ว ไม่ใช่ของใหม่ และการจะแก้มัน
+ *   คือการเปลี่ยนความหมายของ ledger ต้องให้เจ้าของตัดสิน ไม่ใช่แก้เงียบ ๆ ระหว่างทาง
+ */
+export const LEDGER_TTL_MS = {
+  '15m': 7 * 86400_000,
+  '1H': 48 * 3600_000,
+  '1D': 7 * 86400_000,
+};
+
+/** timeframe ที่ไม่รู้จักคงพฤติกรรมเดิม (7 วัน) เหมือนสาขา default เดิมก่อนแยกตาราง */
+const LEDGER_TTL_DEFAULT_MS = 7 * 86400_000;
+
+export function ledgerTtlMs(timeframe) {
+  return LEDGER_TTL_MS[timeframe] ?? LEDGER_TTL_DEFAULT_MS;
+}
+
+/**
+ * outcome → ค่าที่ต้องปั๊มลงคอลัมน์ status
+ *
+ * ── บั๊กที่ตารางนี้มาปิด (เจ้าของรายงาน 2026-09-01) ────────────────────────────────
+ * ตัวเก็บผลเคยปั๊มแต่ outcome/realized_r แล้ว **ไม่แตะ status เลย** ผลคือใบที่ ledger
+ * ปิดบัญชีไปแล้วยังมี status='active' ค้างอยู่ในตาราง แล้วทุกฝั่งที่อ่านด้วย status
+ * ก็เห็นมันเป็นโอกาสที่ยังเปิดอยู่:
+ *   · การ์ดบนหน้า /signals และตัวเลข "ใช้งานอยู่ / BUY / SELL"
+ *   · การ์ด "สัญญาณ active ตอนนี้" บน /dashboard และจุดแดงบนเมนู
+ *   · /api/cron/monitor-positions ที่ป้อน current_price สดให้ทุกแถว status='active'
+ *     ทุกรอบ — ใบที่ตายไปแล้วจึงดู "มีชีวิต" ตลอดเวลา (อาการที่เจ้าของเห็นชัดที่สุด)
+ *   · get_dashboard_stats (RPC ใน 002_trading_schema.sql) ซึ่งเป็น SQL ล้วน
+ *     แก้ฝั่งอ่านไม่ได้เลย ต้องให้ที่นี่ปั๊มเท่านั้น
+ *
+ * ── ทำไมไม่มีคำว่า 'closed' ────────────────────────────────────────────────────────
+ * CHECK constraint ของคอลัมน์ (002_trading_schema.sql) รับแค่
+ * ('active','triggered','expired','cancelled') — ปั๊มค่านอกรายการนี้ = PATCH ล้มทั้งใบ
+ * จึงแมปลงค่าที่มีอยู่แล้วแทนการเขียน migration ใหม่:
+ *   tp/sl        → 'triggered'  (ราคาไปแตะระดับที่ตั้งไว้จริง = คำสั่งถูกจุดชนวน)
+ *   timeout      → 'expired'    (หมดเวลาก่อนไปแตะอะไร = ความหมายเดียวกับหมดอายุ)
+ *   unresolvable → 'cancelled'  (แถวเสียตั้งแต่ตอนสร้าง ตัดสินให้ไม่ได้)
+ *
+ * ⚠ ห้ามปั๊ม status โดยไม่มี outcome คู่กัน และห้ามปั๊มใบที่ยังตัดสินไม่ได้ (resolveSignal
+ *   คืน null) — ใบที่ยังไม่ถึงเวลาต้องอยู่เป็น 'active' ต่อไปตามเดิม
+ */
+export const STATUS_FOR_OUTCOME = {
+  tp: 'triggered',
+  sl: 'triggered',
+  timeout: 'expired',
+  unresolvable: 'cancelled',
+};
 
 /** timeframe → interval/range ของ Yahoo — ต้องตรงกับ scan-universe.mjs */
 const TIMEFRAMES = {
@@ -216,6 +292,14 @@ async function fetchCandles(symbol, market, interval, range) {
 // ═══════════════════ หัวใจ: ตัดสินผลของหนึ่งสัญญาณ ═══════════════════
 
 /**
+ * ผลของแถวที่ตัดสินให้ไม่ได้ — รูปเดียวจุดเดียว เพื่อไม่ให้มีทางออกไหนลืมปั๊ม status
+ * (ก่อน 2026-09-03 ทั้งหกทางออกคืน outcome อย่างเดียว แล้วแถวนั้นค้าง active ตลอดไป)
+ */
+function unresolvable(note) {
+  return { outcome: 'unresolvable', status: STATUS_FOR_OUTCOME.unresolvable, resolve_note: note };
+}
+
+/**
  * @param sig  แถวจากตาราง signals
  * @param bars แท่งเทียนทั้งชุดของ symbol+timeframe นั้น
  * @returns    null = ยังตัดสินไม่ได้ ปล่อยค้างไว้รอบหน้า · หรือ object ที่พร้อมเขียนลงฐานข้อมูล
@@ -227,29 +311,29 @@ export function resolveSignal(sig, bars) {
   const isLong = sig.action === 'BUY';
 
   if (sig.action !== 'BUY' && sig.action !== 'SELL') {
-    return { outcome: 'unresolvable', resolve_note: `ทิศทาง ${sig.action} ไม่ใช่ไม้ที่เปิดได้` };
+    return unresolvable(`ทิศทาง ${sig.action} ไม่ใช่ไม้ที่เปิดได้`);
   }
   if (!Number.isFinite(entry) || !Number.isFinite(stop) || !Number.isFinite(target)) {
-    return { outcome: 'unresolvable', resolve_note: 'ราคาในแถวไม่ใช่ตัวเลข' };
+    return unresolvable('ราคาในแถวไม่ใช่ตัวเลข');
   }
 
   const risk = Math.abs(entry - stop);
   // ระยะเสี่ยงเป็นตัวหารของทุกอย่าง ถ้าเกือบศูนย์ R จะระเบิด — ตัดทิ้งดีกว่าให้ตัวเลขหลอก
   if (!(risk > 0) || risk / Math.abs(entry) < 1e-6) {
-    return { outcome: 'unresolvable', resolve_note: 'ระยะ SL เป็นศูนย์หรือเล็กจนหารไม่ได้' };
+    return unresolvable('ระยะ SL เป็นศูนย์หรือเล็กจนหารไม่ได้');
   }
 
   // ทิศของ SL/TP ต้องสมเหตุสมผลกับทิศของไม้ ไม่งั้นแถวนั้นเสียตั้งแต่ตอนสร้าง
   if (isLong && !(stop < entry && target > entry)) {
-    return { outcome: 'unresolvable', resolve_note: 'ไม้ long แต่ SL/TP กลับด้าน' };
+    return unresolvable('ไม้ long แต่ SL/TP กลับด้าน');
   }
   if (!isLong && !(stop > entry && target < entry)) {
-    return { outcome: 'unresolvable', resolve_note: 'ไม้ short แต่ SL/TP กลับด้าน' };
+    return unresolvable('ไม้ short แต่ SL/TP กลับด้าน');
   }
 
   const createdSec = Math.floor(new Date(sig.created_at).getTime() / 1000);
   if (!Number.isFinite(createdSec)) {
-    return { outcome: 'unresolvable', resolve_note: 'created_at อ่านไม่ออก' };
+    return unresolvable('created_at อ่านไม่ออก');
   }
 
   // กติกาข้อ 2 — เอาเฉพาะแท่งที่ "เปิดหลัง" สัญญาณเกิด
@@ -257,7 +341,10 @@ export function resolveSignal(sig, bars) {
   if (!fwd.length) return null; // ยังไม่มีแท่งใหม่ รอรอบหน้า
 
   const maxBars = MAX_HOLD_BARS[sig.timeframe] ?? 20;
-  const expSec = sig.expires_at ? Math.floor(new Date(sig.expires_at).getTime() / 1000) : null;
+  // เพดานเวลาของ ledger คำนวณจาก created_at + ตารางของตัวเอง — จงใจ **ไม่อ่าน**
+  // sig.expires_at เพราะคอลัมน์นั้นเป็นหน้าต่างฝั่งแสดงผล ย่อ/ขยายได้ตามที่เจ้าของ
+  // อยากเห็นบนหน้าเว็บ และต้องขยับได้โดยไม่ไปเขียนผลคนละแบบลงสมุดบัญชี (ดู LEDGER_TTL_MS)
+  const expSec = createdSec + Math.floor(ledgerTtlMs(sig.timeframe) / 1000);
 
   let mfe = -Infinity; // ไปทางเราได้ไกลสุดกี่ R
   let mae = Infinity; //  ไปทางตรงข้ามได้ไกลสุดกี่ R
@@ -268,6 +355,8 @@ export function resolveSignal(sig, bars) {
     const r4 = (n) => Math.round(n * 1e4) / 1e4;
     return {
       outcome,
+      // ปั๊ม status คู่กับ outcome เสมอ — เหตุผลเต็มอยู่ที่ STATUS_FOR_OUTCOME ข้างบน
+      status: STATUS_FOR_OUTCOME[outcome],
       exit_price: exitPrice,
       bars_held: barsHeld,
       raw_r: r4(raw),
@@ -295,8 +384,8 @@ export function resolveSignal(sig, bars) {
     if (hitStop) return finish('sl', stop, i + 1);
     if (hitTarget) return finish('tp', target, i + 1);
 
-    // เคารพ expires_at ถ้าแถวนั้นตั้งไว้ ปิดที่ราคาปิดของแท่งที่หมดอายุพอดี
-    if (expSec !== null && b.t >= expSec) return finish('timeout', b.c, i + 1);
+    // ครบเพดานเวลาของ ledger — ปิดที่ราคาปิดของแท่งแรกที่เลยเส้นนั้น
+    if (b.t >= expSec) return finish('timeout', b.c, i + 1);
   }
 
   // ยังไม่ครบเพดาน และยังไม่โดนอะไร → ปล่อยค้างไว้ให้รอบหน้าเดินต่อ
@@ -380,7 +469,7 @@ async function main() {
         for (const sig of sigs) {
           await fetch(`${URL_}/rest/v1/signals?id=eq.${sig.id}`, {
             method: 'PATCH', headers: { ...H, Prefer: 'return=minimal' },
-            body: JSON.stringify({ outcome: 'unresolvable', resolve_note: `ตัวเก็บผลไม่รู้จัก timeframe "${tf}"` }),
+            body: JSON.stringify(unresolvable(`ตัวเก็บผลไม่รู้จัก timeframe "${tf}"`)),
           });
         }
       }
