@@ -188,16 +188,36 @@ interface ChartPayload {
 const EMPTY: ChartPayload = { quote: null, candles: [], formingCandle: null, regularStart: null };
 
 /**
+ * อายุแคชเริ่มต้นของคำตอบจาก Yahoo (วินาที) — ค่าที่ทุกเส้นทางเดิมใช้มาตลอด
+ *
+ * 5 นาทีเหมาะกับผู้เรียกฝั่งเบื้องหลัง (ตัวสแกนรอบละ 15 นาที · ตัวเฝ้าออเดอร์) เพราะ
+ * พวกมันคิดจาก "แท่งที่ปิดแล้ว" ซึ่งเปลี่ยนค่าแค่ตอนแท่งปิด แคชนานจึงไม่ทำให้ผลเพี้ยน
+ * มีแต่ประหยัดคำขอ — ห้ามลดค่านี้เพื่อผู้เรียกรายเดียว ให้ส่ง revalidateSec เข้ามาแทน
+ */
+export const CHART_REVALIDATE_SEC = 300;
+
+/**
  * ดึง chart จาก Yahoo — ได้ทั้ง quote และ candles ในคำขอเดียว
  * ลอง query1 ก่อน ถ้าไม่ติดค่อยไป query2
+ *
+ * `revalidateSec` เป็นทางเลือกและ**ค่าเริ่มต้นเท่าของเดิมเป๊ะ** (300) ผู้เรียกเดิมทุกตัว
+ * จึงได้พฤติกรรมเดียวกับก่อนมีพารามิเตอร์นี้ทุกประการ · มีไว้ให้เส้นทางที่ผู้ใช้
+ * "นั่งดูอยู่หน้าจอ" (หน้ากราฟ) ขอคำตอบที่สดกว่าได้ — Next Data Cache แช่คำตอบไว้
+ * ตามค่านี้ ต่อให้ route ตั้ง dynamic ยังไงก็ไม่ทะลุ ถ้าไม่ลดตรงนี้ ราคาบนกราฟจะค้าง
+ * เป็นก้อนละ 5 นาทีจนดูเหมือนกราฟแข็ง
  */
 export async function fetchChart(
   symbol: string,
   market: string,
   interval: ChartInterval = '1d',
-  range: ChartRange = '1y'
+  range: ChartRange = '1y',
+  revalidateSec: number = CHART_REVALIDATE_SEC
 ): Promise<ChartPayload> {
   const yahooSymbol = toYahooSymbol(symbol, market);
+  // กันค่าเพี้ยน (NaN/ติดลบ) ไม่ให้กลายเป็น cache ที่ไม่มีวันหมดอายุ
+  const revalidate = Number.isFinite(revalidateSec) && revalidateSec >= 0
+    ? Math.floor(revalidateSec)
+    : CHART_REVALIDATE_SEC;
 
   for (const host of CHART_HOSTS) {
     try {
@@ -205,7 +225,7 @@ export async function fetchChart(
         `${host}/${encodeURIComponent(yahooSymbol)}?interval=${interval}&range=${range}`,
         {
           headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 300 },
+          next: { revalidate },
         }
       );
       if (!res.ok) continue;

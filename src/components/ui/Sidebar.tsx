@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Zap,
+  CandlestickChart,
   LineChart,
   FlaskConical,
   Newspaper,
@@ -24,6 +25,9 @@ import { useAppStore } from '@/hooks/useStore';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/signals', label: 'สัญญาณ AI', icon: Zap },
+  // วางถัดจาก "สัญญาณ AI" เพราะเป็นหน้าคู่กัน: ที่นั่นคือรายการสัญญาณ ที่นี่คือ
+  // สัญญาณชุดเดียวกันแต่ปักบนกราฟราคา — ไฮไลต์ใช้ startsWith จึงติดไฟทั้ง /chart และ /chart/*
+  { href: '/chart', label: 'กราฟทอง', icon: CandlestickChart },
   { href: '/markets', label: 'ตลาด', icon: LineChart },
   { href: '/backtest', label: 'Backtest', icon: FlaskConical },
   // ผลจริงของสัญญาณที่ระบบยิงออกไป — คนละชั้นหลักฐานกับ Backtest ซึ่งวัดบนอดีต
