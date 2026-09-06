@@ -12,6 +12,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import GoldChart from '@/components/trading/GoldChart';
+import ChartIndicatorToggles from '@/components/trading/ChartIndicatorToggles';
+import SignalEngineSnapshot from '@/components/trading/SignalEngineSnapshot';
 import { useSignals } from '@/hooks/useData';
 import { buildSignalMarkers } from '@/lib/chart-markers';
 import type { ChartSignalMarker } from '@/lib/chart-markers';
@@ -21,10 +23,17 @@ import {
   resolveTimeframe,
 } from '@/lib/chart-timeframes';
 import type { ChartBar, ChartTimeframe } from '@/lib/chart-timeframes';
+import { computeChartIndicators } from '@/lib/chart-indicators';
+import {
+  DEFAULT_CHART_INDICATOR_PREFS,
+  loadChartIndicatorPrefs,
+  saveChartIndicatorPrefs,
+} from '@/lib/chart-indicator-prefs';
+import type { ChartIndicatorPrefs } from '@/lib/chart-indicator-prefs';
 import { lookupEvidence } from '@/lib/signal-evidence';
 import { errorMessage } from '@/lib/errors';
 import { cn } from '@/lib/utils';
-import type { MarketPrice } from '@/types';
+import type { MarketPrice, Signal } from '@/types';
 
 /**
  * /chart — หน้ากราฟทอง
@@ -33,6 +42,13 @@ import type { MarketPrice } from '@/types';
  * หมุดหนึ่งอัน = "ระบบเคยออกสัญญาณตรงจุดนี้" เท่านั้น ไม่ใช่คำแนะนำให้เข้าไม้
  * และหน้านี้ไม่วาดเส้นทำนายอนาคตหรือลูกศรชี้ทิศราคาใด ๆ — เส้นประที่ขึ้นเมื่อเลือกหมุด
  * คือราคาสามค่าที่สัญญาณใบนั้นระบุไว้จริงในฐานข้อมูล (จุดเข้า / SL / TP) ไม่ใช่การคาดการณ์
+ *
+ * ═══ อินดิเคเตอร์บนกราฟ ═════════════════════════════════════════════════════════
+ * เส้นที่วาดทับกราฟคือชุดเดียวกับที่เครื่องยนต์ใช้ตัดสิน คำนวณด้วยฟังก์ชันตัวเดียวกัน
+ * (src/lib/indicators.ts) และคาบชุดเดียวกัน — ดู src/lib/chart-indicators.ts
+ * มันคำนวณจากราคาย้อนหลังล้วน ๆ ไม่ใช่การคาดการณ์ และหน้านี้ไม่รวมคะแนนอะไรขึ้นมาเอง
+ * ส่วนตัวเลขในกล่อง "ค่าที่เครื่องยนต์เห็นตอนออกใบนี้" มาจากคอลัมน์ signals.indicators
+ * ของแถวนั้นตรง ๆ ไม่ได้คำนวณใหม่ — นั่นคือของชิ้นเดียวที่ตรวจสอบเครื่องยนต์ได้จริง
  *
  * ═══ ความสดของราคา ══════════════════════════════════════════════════════════════
  * ราคามาจาก /api/chart → fetchChart → Yahoo ซึ่งมีชั้นแคชฝั่ง server อยู่
@@ -103,6 +119,62 @@ export default function ChartPage() {
    * หมายเหตุ: มันคืนแค่ "กรอบที่มอง" ไม่ได้ดึงข้อมูลใหม่ นั่นเป็นหน้าที่ของปุ่มดึงใหม่
    */
   const [viewResetKey, setViewResetKey] = useState(0);
+  /**
+   * เส้นอินดิเคเตอร์ที่ผู้ใช้เปิดไว้
+   *
+   * เริ่มด้วยค่าเริ่มต้นเสมอ แล้วค่อยอ่านของจริงจากเครื่องใน effect — ห้ามอ่าน
+   * localStorage ตอน render แรก เพราะ server ไม่มีทางรู้ค่านั้น เนื้อหาที่ render
+   * ออกมาจะไม่ตรงกัน (hydration mismatch) แล้ว React จะทิ้ง DOM ฝั่ง server ทั้งก้อน
+   * วิธีเดียวกับที่ ThemeToggle ของรีโปนี้ใช้อยู่แล้ว
+   */
+  const [prefs, setPrefs] = useState<ChartIndicatorPrefs>(DEFAULT_CHART_INDICATOR_PREFS);
+  /** อ่านค่าจากเครื่องมาแล้วหรือยัง (ref เพราะตัวอ่านต้องเห็นค่าล่าสุดทันที ไม่ใช่รอเรนเดอร์) */
+  const prefsHydrated = useRef(false);
+  /**
+   * ค่าล่าสุดแบบอ่านได้ทันที — ตัวจัดการปุ่มต้องผสมจากของจริง ไม่ใช่จากรอบเรนเดอร์เก่า
+   * (กดสองปุ่มรัว ๆ ในเฟรมเดียวกันแล้วปุ่มแรกหายไป คือบั๊กที่ ref ตัวนี้ปิดอยู่)
+   */
+  const prefsRef = useRef<ChartIndicatorPrefs>(DEFAULT_CHART_INDICATOR_PREFS);
+
+  /**
+   * ═══ การเขียนลงเครื่องเกิดตอน "ผู้ใช้กดปุ่ม" เท่านั้น ไม่ใช่ใน effect ═══════════
+   *
+   * ⚠ ห้ามย้ายการเรียก saveChartIndicatorPrefs กลับเข้าไปใน useEffect ที่ผูกกับ prefs
+   *   ของเดิมทำแบบนั้นแล้วอ้างว่า "ประกาศ effect ตัวเขียนก่อนตัวโหลด" ปิดปัญหาได้
+   *   คำอ้างนั้นไม่จริง และวัดมาแล้วว่าพังจริงบน `npm run dev`:
+   *     React StrictMode ของ Next dev รัน effect รอบสองทันทีหลังรอบแรก โดยที่ผลของ
+   *     setPrefs() จากตัวโหลดยังไม่ถูกนำไปใช้ — ตอนนั้น prefsHydrated เป็น true แล้ว
+   *     แต่ state ยังเป็นค่าเริ่มต้น ตัวเขียนจึงเขียน "ค่าเริ่มต้น" ทับสิ่งที่ผู้ใช้ตั้งไว้
+   *     ทดสอบตรง ๆ: ตั้ง {ma20:false, lowerPane:'macd'} แล้วรีโหลด → ได้ค่าเริ่มต้นคืนมา
+   *     ทั้งชุด (บิลด์โปรดักชันไม่มีอาการ เพราะไม่มี StrictMode — จึงเป็นบั๊กที่เจ้าของ
+   *     เจอก่อนใครเพื่อน เพราะเปิดด้วย dev)
+   *   การเขียนตอนกดปุ่มไม่มีช่องนั้นเลย: ไม่มี effect ไหนเขียนได้ตอน mount อีกต่อไป
+   *   ลำดับการประกาศ effect จึงไม่ใช่เรื่องที่ต้องมาระวังอีก
+   */
+  useEffect(() => {
+    // StrictMode เรียกซ้ำ (หรือผู้ใช้กดปุ่มทันก่อน effect แรก) → อ่านซ้ำไม่มีประโยชน์
+    // และที่สำคัญคือ **ไม่เขียนอะไรทั้งนั้น** จึงทับของผู้ใช้ไม่ได้ไม่ว่ารันกี่รอบ
+    if (prefsHydrated.current) return;
+    const stored = loadChartIndicatorPrefs();
+    prefsHydrated.current = true;
+    prefsRef.current = stored;
+    setPrefs(stored);
+  }, []);
+
+  /**
+   * รับเป็น "ส่วนที่เปลี่ยน" ไม่ใช่ก้อนใหม่ทั้งชุด แล้วผสมกับค่าล่าสุดใน ref
+   * เพื่อให้การกดสองปุ่มรัว ๆ ในจังหวะเดียวกันไม่ทำให้ปุ่มแรกหายไป
+   */
+  const changePrefs = useCallback((patch: Partial<ChartIndicatorPrefs>) => {
+    // กดเร็วกว่า effect แรกได้ในทางทฤษฎี (passive effect รันหลังวาดจอ) — ถ้าเกิดขึ้น
+    // ต้องอ่านของเก่าจากเครื่องมาเป็นฐานก่อน ไม่ใช่ผสมทับค่าเริ่มต้นแล้วลบของผู้ใช้ทิ้ง
+    const base = prefsHydrated.current ? prefsRef.current : loadChartIndicatorPrefs();
+    prefsHydrated.current = true;
+    const next: ChartIndicatorPrefs = { ...base, ...patch };
+    prefsRef.current = next;
+    setPrefs(next);
+    saveChartIndicatorPrefs(next);
+  }, []);
 
   const { data: signals } = useSignals();
 
@@ -216,6 +288,28 @@ export default function ChartPage() {
   const selected = useMemo(
     () => markers.find((m) => m.id === selectedId) ?? null,
     [markers, selectedId]
+  );
+
+  /**
+   * แถวสัญญาณตัวเต็มของใบที่เลือก — ต้องใช้ `indicators` กับ `reasons` ที่หมุดไม่ได้พกมา
+   * (ChartSignalMarker เก็บเฉพาะสิ่งที่ตัววาดกราฟต้องใช้ โดยตั้งใจ)
+   */
+  const selectedRow = useMemo<Signal | null>(
+    () => (selectedId ? signals.find((s) => s.id === selectedId) ?? null : null),
+    [signals, selectedId]
+  );
+
+  /**
+   * ค่าอินดิเคเตอร์ของกราฟ — คำนวณจาก **แท่งปิดแล้วเท่านั้น** (ไม่ต่อ shown.forming)
+   * เหตุผลเต็มอยู่ที่หัวไฟล์ src/lib/chart-indicators.ts
+   * useMemo ผูกกับชุดแท่งอย่างเดียว จึงไม่คำนวณใหม่ตอนผู้ใช้เปิด/ปิดเส้นหรือเลือกหมุด
+   * (คำนวณใหม่รอบละ ~1,000 แท่งทุกครั้งที่แตะปุ่ม จะทำให้ปุ่มหน่วงบนมือถือรุ่นเก่า)
+   * ชุดแท่งเป็นอาร์เรย์ก้อนใหม่ทุกรอบ poll อยู่แล้ว ค่าจึงสดตามข้อมูลเสมอ
+   */
+  const bars = shown?.bars;
+  const indicators = useMemo(
+    () => (bars && bars.length ? computeChartIndicators(bars) : null),
+    [bars]
   );
 
   const quote = shown?.quote ?? null;
@@ -357,6 +451,14 @@ export default function ChartPage() {
               onSelect={setSelectedId}
               timeframeKey={tfKey}
               resetToken={viewResetKey}
+              prefs={prefs}
+              indicators={indicators}
+            />
+            <ChartIndicatorToggles
+              prefs={prefs}
+              onChange={changePrefs}
+              ma200Available={indicators?.hasMA200 ?? false}
+              closedBars={indicators?.closedBars ?? 0}
             />
             {/* error ที่เกิดตอน poll ขณะที่ยังมีกราฟเก่าอยู่บนจอ — เตือนแบบไม่ล้างกราฟทิ้ง
                 (ล้างทิ้งเพราะเน็ตสะดุดหนึ่งรอบคือการลงโทษผู้ใช้เกินเหตุ) */}
@@ -436,10 +538,16 @@ export default function ChartPage() {
             </div>
 
             {selected ? (
-              <SignalDetail marker={selected} symbol={shown?.symbol ?? 'XAUUSD'} viewTf={tfKey} />
+              <SignalDetail
+                marker={selected}
+                symbol={shown?.symbol ?? 'XAUUSD'}
+                viewTf={tfKey}
+                row={selectedRow}
+              />
             ) : (
               <p className="text-xs text-[rgb(var(--text-muted))]">
                 แตะหมุดบนกราฟหรือปุ่มด้านบน เพื่อดูราคาเข้า/SL/TP ของสัญญาณใบนั้น
+                พร้อมค่าอินดิเคเตอร์ที่เครื่องยนต์บันทึกไว้ตอนออกใบนั้น
               </p>
             )}
           </>
@@ -460,10 +568,13 @@ function SignalDetail({
   marker,
   symbol,
   viewTf,
+  row,
 }: {
   marker: ChartSignalMarker;
   symbol: string;
   viewTf: string;
+  /** แถวเต็มของสัญญาณใบนี้ — null = หาไม่เจอในชุดที่โหลดมา (กล่องค่าจะบอกตรง ๆ) */
+  row: Signal | null;
 }) {
   const buy = marker.action === 'BUY';
   const strength = STRENGTH_TH[marker.strength] ?? { label: marker.strength, stars: 0 };
@@ -581,6 +692,18 @@ function SignalDetail({
           </span>
         )}
       </div>
+
+      {/* ── ค่าที่เครื่องยนต์เห็นตอนออกใบนี้ ─────────────────────────────────
+          อ่านจากคอลัมน์ signals.indicators / signals.reasons ของแถวนั้นตรง ๆ
+          ไม่คำนวณใหม่ที่นี่ — เป็นของชิ้นเดียวในหน้านี้ที่ตรวจสอบเครื่องยนต์ได้จริง */}
+      <SignalEngineSnapshot
+        indicators={row?.indicators}
+        reasons={row?.reasons}
+        rowMissing={row === null}
+        signalTimeframe={marker.timeframe}
+        viewTimeframe={viewTf}
+        foreign={marker.foreign}
+      />
 
       {/* บรรทัดสถิติย้อนหลัง — ชุดเดียวกับที่ SignalCard แสดง พูดในรูป "ในอดีต…%"
           ไม่มีข้อมูลถึงเกณฑ์ = ไม่แสดงบล็อกนี้เลย ห้ามเดา */}

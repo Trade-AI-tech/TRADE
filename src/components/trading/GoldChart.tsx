@@ -8,11 +8,15 @@ import type {
   ISeriesMarkersPluginApi,
   MouseEventParams,
   SeriesMarker,
+  SeriesType,
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
 import type { ChartBar } from '@/lib/chart-timeframes';
 import type { ChartSignalMarker } from '@/lib/chart-markers';
+import { RSI_LEVELS } from '@/lib/chart-indicators';
+import type { ChartIndicatorData } from '@/lib/chart-indicators';
+import type { ChartIndicatorPrefs } from '@/lib/chart-indicator-prefs';
 
 /**
  * GoldChart.tsx — ตัววาดแท่งเทียน + หมุดสัญญาณ
@@ -55,6 +59,41 @@ import type { ChartSignalMarker } from '@/lib/chart-markers';
  * หมุด = ระบบเคยออกสัญญาณตรงนั้น ไม่ใช่คำแนะนำให้เข้า และไฟล์นี้ไม่วาดเส้นทำนาย
  * อนาคตหรือลูกศรชี้ทิศราคาใด ๆ ทั้งสิ้น — เส้นที่วาดมีแค่ราคาที่สัญญาณระบุไว้จริง
  * (entry / SL / TP) ซึ่งเป็นตัวเลขที่มีอยู่แล้วในฐานข้อมูล ไม่ใช่การคาดการณ์
+ *
+ * ═══ เส้นอินดิเคเตอร์ที่วาดทับ ════════════════════════════════════════════════════
+ * ทุกเส้นมาจาก src/lib/chart-indicators.ts ซึ่งเรียกฟังก์ชันของ src/lib/indicators.ts
+ * ตัวเดียวกับที่เครื่องยนต์เรียก ด้วยคาบชุดเดียวกัน — ไฟล์นี้ไม่คำนวณอะไรเองสักตัว
+ * และไม่รวมคะแนน ไม่สรุปทิศทาง ไม่ติดป้ายแนะนำ · ค่าทั้งหมดคิดจากราคาย้อนหลังล้วน ๆ
+ *
+ * ── ทำไมแผงล่างถึงไม่มีจุดบอกตำแหน่งสัญญาณ (ถอดออกแล้ว อย่าใส่กลับ) ─────────────
+ * เคยมีจุดกลมปักบนเส้น RSI/MACD ตรงแท่งที่สัญญาณที่เลือกไว้เกิด ด้วย position:'inBar'
+ * จุดนั้นอ่านด้วยตาได้ทางเดียวคือ "ตอนออกใบนี้ RSI อยู่ตรงนี้" ซึ่งไม่จริง:
+ *   วัดจริงกับใบหนึ่ง — ค่าที่บันทึกไว้กับสัญญาณคือ RSI 42.00 แต่เส้น RSI บนกราฟ
+ *   ที่แท่งเดียวกันอยู่ที่ 61.36 (ต่างกัน 19 จุด) และช่องว่างกว้างได้อีกมากเมื่อใบนั้น
+ *   มาจากคนละกรอบเวลากับกราฟที่กำลังดู (ตัวสแกนเดิน 1D/1H/15m ส่วนกราฟดูกรอบไหนก็ได้)
+ * คำกำกับมีอยู่แล้วในกล่องค่าใต้กราฟ แต่สายตาไปถึงจุดบนเส้นก่อนเสมอ — จุดที่ชวนให้
+ * อ่านผิดตั้งแต่แรกเห็น แล้วค่อยไปแก้ด้วยข้อความข้างล่าง ไม่ใช่การออกแบบที่ซื่อสัตย์
+ * เวลาของสัญญาณยังอ่านได้อยู่: หมุดบนแผงราคาอยู่แกนเวลาเดียวกันกับแผงล่างพอดี
+ * ตัวเลขที่เครื่องยนต์เห็นจริงอยู่ในกล่องใต้กราฟ ซึ่งอ่านจากฐานข้อมูลตรง ๆ
+ *
+ * ── ความสูงเมื่อเปิดแผงล่าง (เรื่องของมือถือโดยเฉพาะ) ────────────────────────────
+ * แผงล่างเปิดได้ **ทีละหนึ่ง** และเมื่อเปิด กล่องกราฟจะสูงขึ้น (380→448 บนมือถือ ·
+ * 440→580 บนจอกว้าง) แต่ความสูงบนมือถือมี **เพดานแข็ง** ที่ห้ามข้าม:
+ *
+ *   ⚠ 448px ไม่ใช่ตัวเลขที่เลือกตามใจ — มันคือเพดานที่วัดมาจากหน้าจริง
+ *     บนจอ 375×812 ขอบบนของกล่องกราฟอยู่ที่ y = 344 (หัวหน้า + ราคา + ปุ่มกรอบเวลา)
+ *     กล่องสูง 512px จึงจบที่ 856 ซึ่ง **เลยขอบจอไป 44px** ผลคือแถบแกนเวลาทั้งแถว
+ *     (สูง 28px อยู่ที่ 828-856) จมอยู่ใต้ขอบจอทั้งหมด — เปิดหน้ามาไม่เห็นวันที่/เวลา
+ *     เลยสักตัวจนกว่าจะเลื่อน ทั้งที่ก่อนมีแผงล่างมันเห็นครบและยังเหลือที่อีก 88px
+ *     448px ทำให้กล่องจบที่ 792 คือแกนเวลาอยู่ในจอครบ และแถวปุ่มเปิด/ปิดโผล่มาให้เห็น
+ *     ว่ามีของอยู่ข้างล่าง · scripts/test-chart-indicators.mjs คุมเพดานนี้ไว้
+ *
+ * ราคาที่จ่ายไปกับเพดานนั้นต้องพูดตรง ๆ: แผงล่างกินสัดส่วน 1 ใน 4 (ดู *_PANE_STRETCH)
+ * แผงราคาจึงเหลือ (448−28)×3/4 ≈ 315px เทียบกับ 352px ตอนไม่เปิดแผงล่าง คือ **เล็กลง
+ * จริงราว 10%** ไม่ใช่ "ไม่เล็กลงเลย" อย่างที่เคยเขียนไว้ตอนกล่องยังสูง 512px
+ * แลกกับการที่ทั้งกราฟอยู่ในจอ ซึ่งสำคัญกว่า 37px ของแผงราคา
+ * · จำนวนแท่งที่เห็นไม่เกี่ยวกับความสูงเลย (มันมาจากความกว้าง — ดู visibleBarCount)
+ *   การเปิดแผงล่างจึงไม่ทำให้เห็นแท่งน้อยลงแม้แต่แท่งเดียว
  */
 
 interface Props {
@@ -78,6 +117,15 @@ interface Props {
    */
   resetToken?: number;
   heightClass?: string;
+  /** ความสูงตอนเปิดแผงล่าง — สูงกว่าปกติเพื่อไม่ให้แผงราคาถูกบีบ (ดูหัวไฟล์) */
+  lowerPaneHeightClass?: string;
+  /** ผู้ใช้เปิดเส้นไหนไว้ (จำค่าไว้ที่หน้าเว็บ ไม่ใช่ที่นี่) */
+  prefs: ChartIndicatorPrefs;
+  /**
+   * ค่าอินดิเคเตอร์ที่คำนวณจาก **แท่งปิดแล้ว** ของชุดที่กำลังแสดง
+   * null = ยังไม่มีข้อมูลให้คำนวณ → ไม่วาดเส้นอะไรเลย (ห้ามวาดเส้นจากค่าเดา)
+   */
+  indicators: ChartIndicatorData | null;
 }
 
 /** ไทยไม่มี DST มาตั้งแต่ พ.ศ. 2488 — บวกตายตัวได้ ผลจึงเท่ากันทุกเครื่องทุก runtime */
@@ -137,10 +185,34 @@ function readPalette() {
     // เพราะตัวแปรนั้นเก็บเป็น rgb(... / a) ทั้งก้อน ไม่ใช่ช่องสีดิบเหมือนตัวอื่น
     grid: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
     border: dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.12)',
+    // สีของเส้นอินดิเคเตอร์ — หยิบจากพาเลตต์ของแอปเหมือนทุกสีในไฟล์นี้ จะได้เปลี่ยนตามธีมเอง
+    // สามเส้น MA ต้องแยกออกจากกันด้วย "สี" ไม่ใช่แค่ความหนา เพราะบนจอ 375px
+    // เส้นหนา 1px กับ 2px ดูเหมือนกันหมดเมื่อมันทับกันอยู่
+    ma20: token('--accent-glow', dark ? 'rgb(37 244 238)' : 'rgb(14 116 144)'),
+    ma50: token('--accent-gold', dark ? 'rgb(255 215 0)' : 'rgb(161 98 7)'),
+    ma200: token('--accent-purple', dark ? 'rgb(123 97 255)' : 'rgb(109 40 217)'),
+    // แบนด์กับระดับแนวรับ/แนวต้านใช้สีกลาง ๆ โดยตั้งใจ: สีเขียว/แดงบนเส้นระดับ
+    // อ่านเป็นคำสั่งให้ลงมือทำทันที ซึ่งไม่ใช่สิ่งที่ตัวเลขชุดนี้บอก
+    band: dark ? 'rgba(148,163,184,0.85)' : 'rgba(100,116,139,0.9)',
+    level: dark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.65)',
   };
 }
 
 type Palette = ReturnType<typeof readPalette>;
+
+/**
+ * สัดส่วนความสูงระหว่างแผงราคากับแผงล่าง (ค่านี้เป็น "อัตราส่วน" ไม่ใช่พิกเซล)
+ *
+ * ใช้ stretch factor แทนการสั่งความสูงเป็นพิกเซลโดยตั้งใจ: พิกเซลที่ตั้งไว้ตอนกล่องยัง
+ * ไม่ได้ขนาดจริง (หรือก่อนที่ className ความสูงใหม่จะมีผล) จะถูกไลบรารีแปลงเป็นสัดส่วน
+ * ของ "ความสูงตอนนั้น" แล้วค้างอย่างนั้น พอกล่องขยายทีหลัง แผงล่างจะโตตามจนกินที่แผงราคา
+ * สัดส่วนไม่มีปัญหานั้นเพราะมันเป็นสัดส่วนอยู่แล้ว — หมุนจอ/เปลี่ยนขนาดหน้าต่างก็ยังถูก
+ *   3 : 1 = แผงล่างได้ 25% · บนมือถือความสูงกล่อง 512px หักแถบเวลา ~28px เหลือ 484px
+ *   → แผงล่าง ~121px (พอเห็นรูปคลื่นของ RSI) · แผงราคา ~363px ซึ่ง **มากกว่า** 352px
+ *     ที่แผงราคาเคยได้ตอนไม่มีแผงล่าง คือเปิดแผงล่างแล้วแผงราคาไม่ได้เล็กลงเลย
+ */
+const PRICE_PANE_STRETCH = 3;
+const LOWER_PANE_STRETCH = 1;
 
 /**
  * ═══ กี่แท่งถึงจะ "อ่านออก" ในความกว้างที่มีอยู่จริง ═══════════════════════════════
@@ -179,12 +251,42 @@ export default function GoldChart({
   timeframeKey,
   resetToken = 0,
   heightClass = 'h-[380px] sm:h-[440px]',
+  // ⚠ 448px คือเพดานที่วัดมาจากจอ 375×812 — ห้ามเพิ่มโดยไม่วัดใหม่ (ดูหัวไฟล์)
+  lowerPaneHeightClass = 'h-[448px] sm:h-[580px]',
+  prefs,
+  indicators,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
+  /**
+   * โมดูลไลบรารีที่โหลดมาแล้ว — ต้องเก็บไว้เพราะ effect ที่สร้างเส้นอินดิเคเตอร์
+   * ต้องใช้ตัวนิยามซีรีส์ (LineSeries / HistogramSeries) ซึ่งอยู่ในโมดูล
+   * และ dynamic import ครั้งที่สองจะได้ของจากแคชของ bundler ก็จริง แต่เป็น Promise
+   * ทำให้ effect กลายเป็น async ซึ่งเปิดช่องให้ทำงานหลังกราฟถูกทิ้งไปแล้ว
+   */
+  const lwcRef = useRef<typeof import('lightweight-charts') | null>(null);
+  /** เส้นบนแผงราคา: คีย์ = ชื่อเส้น (ma20/ma50/ma200/bbUpper/bbMiddle/bbLower) */
+  const overlayRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
+  /** เส้นแนวนอนของแนวรับ/แนวต้าน — แยกจาก priceLinesRef ของ entry/SL/TP คนละชุดกัน */
+  const srLinesRef = useRef<IPriceLine[]>([]);
+  /**
+   * สิ่งที่อยู่บนแผงล่างตอนนี้ (เปิดได้ทีละหนึ่ง)
+   *
+   * ⚠ ห้ามเพิ่มหมุด/จุดใด ๆ ลงบนซีรีส์ของแผงล่างอีก — เหตุผลเต็มอยู่ที่หัวข้อ
+   *   "ทำไมแผงล่างถึงไม่มีจุดบอกตำแหน่งสัญญาณ" ในบล็อกคอมเมนต์หัวไฟล์
+   */
+  const lowerRef = useRef<{
+    kind: 'rsi' | 'macd';
+    series: ISeriesApi<SeriesType>[];
+  } | null>(null);
+  /**
+   * ธีมเปลี่ยนกี่ครั้งแล้ว — ขยับค่านี้เพื่อให้ effect ที่วาดเส้นทาสีใหม่
+   * (สีของฮิสโตแกรม MACD อยู่ "ต่อจุด" จึงต้องป้อนข้อมูลใหม่ ไม่ใช่แค่ applyOptions)
+   */
+  const [themeTick, setThemeTick] = useState(0);
   /** กรอบเวลาที่ชุดข้อมูลบนจอตอนนี้เป็นของมัน — ต่างเมื่อไหร่ = ต้องจัดกรอบมองใหม่ */
   const drawnTfRef = useRef<string | null>(null);
   /**
@@ -273,6 +375,11 @@ export default function GoldChart({
     let disposed = false;
     const box = boxRef.current;
     if (!box) return;
+    // จับ Map ของเส้นอินดิเคเตอร์ไว้เป็นตัวแปรท้องถิ่นตั้งแต่ตอนนี้ เพื่อให้ cleanup
+    // ล้างของ "ก้อนเดียวกับที่ effect นี้ทำงานด้วย" ไม่ใช่ก้อนที่ ref ชี้อยู่ตอนถูกทิ้ง
+    // (Map ตัวนี้ถูกสร้างครั้งเดียวและไม่เคยถูกแทนที่ ผลจึงเท่ากัน แต่เขียนแบบนี้
+    //  ทำให้กติกาของ react-hooks เห็นได้ว่าปลอดภัยจริง)
+    const overlays = overlayRef.current;
 
     // โหลดไลบรารีแบบ dynamic: มันแตะ DOM ตอนสร้างกราฟ และเป็นก้อนที่ใหญ่ที่สุด
     // ของหน้านี้ — โหลดในเบราว์เซอร์เท่านั้น หน้าอื่นในแอปจึงไม่ต้องแบกไปด้วย
@@ -378,6 +485,7 @@ export default function GoldChart({
 
         chartRef.current = chart;
         seriesRef.current = series;
+        lwcRef.current = LWC;
         markersRef.current = LWC.createSeriesMarkers(series, []);
 
         // แตะหมุดแล้วเลือกใบนั้น — ลองอ่าน id ที่ไลบรารีบอกก่อน ถ้าไม่มี
@@ -417,8 +525,14 @@ export default function GoldChart({
       sizeWaitRef.current?.disconnect();
       sizeWaitRef.current = null;
       priceLinesRef.current = [];
+      srLinesRef.current = [];
+      // ทิ้งทั้งกราฟอยู่แล้ว จึงไม่ต้อง removeSeries ทีละตัว แค่ล้างสมุดอ้างอิงไม่ให้
+      // effect รอบหน้าหยิบซีรีส์ของกราฟที่ตายไปแล้วมาใช้ (ซึ่งจะโยนตอนเรียกเมธอด)
+      overlays.clear();
+      lowerRef.current = null;
       markersRef.current = null;
       seriesRef.current = null;
+      lwcRef.current = null;
       drawnTfRef.current = null;
       chartRef.current?.remove();
       chartRef.current = null;
@@ -473,7 +587,12 @@ export default function GoldChart({
         wickDownColor: p.down,
       });
     };
-    const mo = new MutationObserver(apply);
+    const mo = new MutationObserver(() => {
+      apply();
+      // ปลุก effect ที่วาดเส้นอินดิเคเตอร์ให้ทาสีใหม่ด้วย — ถ้าไม่ปลุก เส้น MA/RSI/MACD
+      // จะค้างสีของธีมเก่าจนกว่าข้อมูลจะเปลี่ยน (บนธีมมืด สีของธีมสว่างอ่านแทบไม่ออก)
+      setThemeTick((t) => t + 1);
+    });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => mo.disconnect();
   }, []);
@@ -616,10 +735,242 @@ export default function GoldChart({
     }
   }, [ready, markers, selectedId]);
 
+  // ── 7. เส้นอินดิเคเตอร์บนแผงราคา (MA20 / MA50 / MA200 / Bollinger) ──────────
+  //
+  // เส้นทุกเส้นจบที่แท่งปิดใบสุดท้าย ไม่ต่อไปถึงแท่งที่ยังก่อตัว — เหตุผลอยู่ที่หัวไฟล์
+  // src/lib/chart-indicators.ts (ค่าจากแท่งครึ่งใบเปลี่ยนได้จนกว่าแท่งจะปิด)
+  useEffect(() => {
+    const chart = chartRef.current;
+    const LWC = lwcRef.current;
+    if (!chart || !LWC) return;
+    const p = readPalette();
+
+    const specs = [
+      { key: 'ma20', on: prefs.ma20, color: p.ma20, width: 2 as const, dashed: false, data: indicators?.ma20 },
+      { key: 'ma50', on: prefs.ma50, color: p.ma50, width: 2 as const, dashed: false, data: indicators?.ma50 },
+      { key: 'ma200', on: prefs.ma200, color: p.ma200, width: 2 as const, dashed: false, data: indicators?.ma200 },
+      { key: 'bbUpper', on: prefs.bb, color: p.band, width: 1 as const, dashed: false, data: indicators?.bbUpper },
+      // เส้นกลางของแบนด์เป็น SMA20 ซึ่ง **ไม่มีน้ำหนักแยกในเครื่องยนต์** (กฎ BB ให้คะแนน
+      // เฉพาะตอนราคาปิดหลุดออกนอกแบนด์) จึงวาดเป็นเส้นประบาง ๆ ให้ต่างจากสองเส้นที่มีน้ำหนัก
+      { key: 'bbMiddle', on: prefs.bb, color: p.band, width: 1 as const, dashed: true, data: indicators?.bbMiddle },
+      { key: 'bbLower', on: prefs.bb, color: p.band, width: 1 as const, dashed: false, data: indicators?.bbLower },
+    ];
+
+    for (const s of specs) {
+      const existing = overlayRef.current.get(s.key);
+      const points = s.data ?? [];
+      // ปิดอยู่ หรือยังไม่มีค่าให้วาด (เช่น MA200 ตอนแท่งไม่ถึง 200) → เอาเส้นออกให้หมด
+      // เส้นเปล่าที่ยังค้างอยู่ทำให้แกนราคาถูกดึงโดยข้อมูลที่มองไม่เห็น
+      if (!s.on || points.length === 0) {
+        if (existing) {
+          try {
+            chart.removeSeries(existing);
+          } catch {
+            // กราฟถูกทิ้งไปก่อนแล้ว — ไม่มีอะไรต้องเก็บกวาดต่อ
+          }
+          overlayRef.current.delete(s.key);
+        }
+        continue;
+      }
+
+      let series = existing;
+      if (!series) {
+        series = chart.addSeries(
+          LWC.LineSeries,
+          {
+            color: s.color,
+            lineWidth: s.width,
+            lineStyle: s.dashed ? LWC.LineStyle.Dashed : LWC.LineStyle.Solid,
+            // ปิดป้ายค่าล่าสุดกับเส้นราคาแนวนอนของเส้นพวกนี้ทั้งหมด: บนจอ 375px
+            // แกนราคากว้าง ~55px ป้ายหกอันจะทับกันจนอ่านราคาของแท่งเทียนไม่ออก
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+          },
+          0
+        );
+        overlayRef.current.set(s.key, series);
+      } else {
+        series.applyOptions({ color: s.color });
+      }
+      series.setData(points.map((d) => ({ time: d.time as UTCTimestamp, value: d.value })));
+    }
+  }, [ready, prefs.ma20, prefs.ma50, prefs.ma200, prefs.bb, indicators, themeTick]);
+
+  // ── 8. เส้นแนวรับ / แนวต้าน ─────────────────────────────────────────────────
+  //
+  // ⚠ ระดับพวกนี้คำนวณจาก "แท่งชุดที่โหลดอยู่ตอนนี้" จึงไม่ใช่ระดับชุดเดียวกับที่
+  //   เครื่องยนต์เห็นตอนออกสัญญาณใบใดใบหนึ่ง (มันใช้หน้าต่างข้อมูลของมันเอง)
+  //   หน้าเว็บมีข้อความกำกับเรื่องนี้ไว้ที่แถบเปิด/ปิด — ห้ามถอดออก
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+
+    for (const line of srLinesRef.current) {
+      try {
+        series.removePriceLine(line);
+      } catch {
+        // ซีรีส์ถูกทิ้งไปแล้ว — ข้าม
+      }
+    }
+    srLinesRef.current = [];
+    if (!prefs.sr || !indicators) return;
+
+    const p = readPalette();
+    const draw = (price: number, title: string) => {
+      srLinesRef.current.push(
+        series.createPriceLine({
+          price,
+          color: p.level,
+          lineWidth: 1,
+          lineStyle: 1, // LineStyle.Dotted — จุดไข่ปลา ให้ต่างจากเส้นประของ entry/SL/TP
+          axisLabelVisible: false,
+          title,
+        })
+      );
+    };
+    for (const s of indicators.supports) draw(s, 'แนวรับ');
+    for (const r of indicators.resistances) draw(r, 'แนวต้าน');
+  }, [ready, prefs.sr, indicators, themeTick]);
+
+  // ── 9. แผงล่าง: RSI หรือ MACD (ทีละหนึ่ง) ───────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    const LWC = lwcRef.current;
+    if (!chart || !LWC) return;
+
+    const want = prefs.lowerPane;
+    const cur = lowerRef.current;
+
+    // เปลี่ยนใจ (หรือปิด) → รื้อของเดิมทิ้งก่อนเสมอ ไลบรารีจะเก็บแผงเปล่าให้เองเมื่อ
+    // ซีรีส์สุดท้ายในแผงนั้นถูกลบ (ยืนยันจากซอร์สของ 5.2.1)
+    if (cur && cur.kind !== want) {
+      for (const s of cur.series) {
+        try {
+          chart.removeSeries(s);
+        } catch {
+          // กราฟถูกทิ้งไปแล้ว
+        }
+      }
+      lowerRef.current = null;
+    }
+
+    if (want === 'none') {
+      applyPaneSizing(chart, false);
+      return;
+    }
+
+    const p = readPalette();
+    let holder = lowerRef.current;
+
+    if (!holder) {
+      if (want === 'rsi') {
+        const rsi = chart.addSeries(
+          LWC.LineSeries,
+          {
+            color: p.accent,
+            lineWidth: 2,
+            priceLineVisible: false,
+            priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
+          },
+          1
+        );
+        /**
+         * เส้น 30 / 50 / 70 ไม่ใช่ของตกแต่ง — เป็นเกณฑ์ที่เครื่องยนต์ให้คะแนนจริง
+         * (ดู RSI_LEVELS ใน src/lib/chart-indicators.ts)
+         *
+         * ── ทำไมไม่ติดป้ายบนแกน (บั๊กจริง วัดแล้วบนจอ 375px) ────────────────────
+         * ของเดิมตั้ง axisLabelVisible: true ซึ่งวาดป้ายค่าลงบนแกนราคาของแผงล่าง
+         * แต่แกนนั้นมีป้ายขีดของไลบรารีอยู่แล้ว และไลบรารีเลือกขีดเองตามความสูงแผง
+         * (วัดจริง: ได้ 25/50/75/100 ที่แผงสูง 121px · 40/80 ที่แผงสูง 105px)
+         * ผลคือป้าย "70.0" ทับป้าย "75.0" และ "30.0" ทับ "25.0" อ่านไม่ออกทั้งคู่
+         * บนแกนที่กว้างแค่ ~58px ไม่มีที่ให้หลบ และเลขที่ไลบรารีเลือกก็ขยับไปมาตามความสูง
+         * จึงไม่มีค่าคงที่ไหนที่ปลอดภัยถาวร
+         *
+         * ── แล้วทำไมไม่ใช้ title ให้ป้ายไปอยู่บนเส้นแทน ─────────────────────────
+         * ใช้ไม่ได้ ตรวจซอร์สของ 5.2.1 แล้ว (CustomPriceLinePriceAxisView บรรทัด
+         * 2380-2387 ของ dist): มัน `return` ทิ้งทั้งก้อนเมื่อ axisLabelVisible เป็น false
+         * ก่อนจะถึงบรรทัดที่วาด title ด้วยซ้ำ — title จึงขึ้นได้เฉพาะตอนที่ป้ายบนแกน
+         * ขึ้นด้วย ซึ่งพาป้ายที่ทับกันกลับมาทั้งชุด
+         *
+         * ⇒ ทางที่เหลือและซื่อสัตย์ที่สุด: ไม่ติดป้ายบนกราฟเลย แล้วบอกด้วยข้อความ
+         *   ที่อ่านได้จริงใต้กราฟแทน (ChartIndicatorToggles เขียนระดับทั้งสามไว้ตอนเปิด
+         *   แผง RSI) — ข้อความที่อ่านออก ดีกว่าป้ายบนจอที่ทับกันจนอ่านไม่ออก
+         */
+        for (const level of [RSI_LEVELS.overbought, RSI_LEVELS.middle, RSI_LEVELS.oversold]) {
+          rsi.createPriceLine({
+            price: level,
+            color: p.level,
+            lineWidth: 1,
+            lineStyle: 2, // LineStyle.Dashed
+            axisLabelVisible: false,
+          });
+        }
+        holder = { kind: 'rsi', series: [rsi] };
+      } else {
+        // ฮิสโตแกรมถูกสร้างก่อนเส้น เพื่อให้เส้นวาดทับแท่งไม่ใช่ถูกแท่งบัง
+        const hist = chart.addSeries(
+          LWC.HistogramSeries,
+          {
+            priceLineVisible: false,
+            lastValueVisible: false,
+            priceFormat: { type: 'price', precision: 3, minMove: 0.001 },
+          },
+          1
+        );
+        const line = chart.addSeries(
+          LWC.LineSeries,
+          {
+            color: p.ma20,
+            lineWidth: 2,
+            priceLineVisible: false,
+            priceFormat: { type: 'price', precision: 3, minMove: 0.001 },
+          },
+          1
+        );
+        const signal = chart.addSeries(
+          LWC.LineSeries,
+          {
+            color: p.ma50,
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            priceFormat: { type: 'price', precision: 3, minMove: 0.001 },
+          },
+          1
+        );
+        holder = { kind: 'macd', series: [hist, line, signal] };
+      }
+      lowerRef.current = holder;
+    }
+
+    if (holder.kind === 'rsi') {
+      const line = holder.series[0] as ISeriesApi<'Line'>;
+      line.applyOptions({ color: p.accent });
+      line.setData((indicators?.rsi ?? []).map((d) => ({ time: d.time as UTCTimestamp, value: d.value })));
+    } else {
+      const [hist, line, signal] = holder.series as [ISeriesApi<'Histogram'>, ISeriesApi<'Line'>, ISeriesApi<'Line'>];
+      line.applyOptions({ color: p.ma20 });
+      signal.applyOptions({ color: p.ma50 });
+      // สีของฮิสโตแกรมอยู่ต่อจุด (บวก/ลบคนละสี) จึงต้องป้อนใหม่ทุกครั้งที่ธีมเปลี่ยน
+      hist.setData(
+        (indicators?.macdHistogram ?? []).map((d) => ({
+          time: d.time as UTCTimestamp,
+          value: d.value,
+          color: d.positive ? p.up : p.down,
+        }))
+      );
+      line.setData((indicators?.macdLine ?? []).map((d) => ({ time: d.time as UTCTimestamp, value: d.value })));
+      signal.setData((indicators?.macdSignal ?? []).map((d) => ({ time: d.time as UTCTimestamp, value: d.value })));
+    }
+
+    applyPaneSizing(chart, true);
+  }, [ready, prefs.lowerPane, indicators, themeTick]);
+
   return (
     <div
       ref={boxRef}
-      className={`w-full ${heightClass} rounded-xl overflow-hidden`}
+      className={`w-full ${prefs.lowerPane === 'none' ? heightClass : lowerPaneHeightClass} rounded-xl overflow-hidden`}
       style={{
         // pan-y = แนวตั้งเป็นของหน้าเว็บ (เลื่อนอ่านเนื้อหาใต้กราฟได้) · แนวนอนกับ
         // สองนิ้วเป็นของกราฟ · **ห้ามเปลี่ยนเป็น none** โดยไม่เปิด vertTouchDrag พร้อมกัน
@@ -637,6 +988,25 @@ export default function GoldChart({
       }}
     />
   );
+}
+
+/**
+ * แบ่งพื้นที่ระหว่างแผงราคากับแผงล่างตามสัดส่วนที่ตั้งไว้
+ *
+ * ต้องเรียกทุกครั้งที่จำนวนแผงเปลี่ยน เพราะไลบรารีให้แผงใหม่ที่เพิ่งสร้าง stretch = 1
+ * เท่ากับแผงราคา ผลคือเปิด RSI แล้วแผงราคาหดเหลือครึ่งจอทันที (แท่งเทียนสูงไม่ถึง 180px
+ * บนมือถือ = อ่านไส้เทียนไม่ออก ซึ่งคือสิ่งเดียวที่หน้านี้มีหน้าที่แสดง)
+ * ครอบ try/catch เพราะการเรียกบนกราฟที่เพิ่งถูกทิ้งจะโยน — ไม่ใช่เหตุให้ทั้งหน้าล้ม
+ */
+function applyPaneSizing(chart: IChartApi, hasLower: boolean): void {
+  try {
+    const panes = chart.panes();
+    if (!panes.length) return;
+    panes[0].setStretchFactor(PRICE_PANE_STRETCH);
+    if (hasLower && panes[1]) panes[1].setStretchFactor(LOWER_PANE_STRETCH);
+  } catch {
+    // กราฟถูกทิ้งไประหว่างนี้ — ปล่อยให้สัดส่วนเป็นค่าเดิมของไลบรารี
+  }
 }
 
 /** ความยาวหนึ่งแท่งของกรอบที่กำลังดู — ใช้คิดระยะยอมพลาดตอนแตะหมุด */
