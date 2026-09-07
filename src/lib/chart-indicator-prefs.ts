@@ -26,6 +26,8 @@ export interface ChartIndicatorPrefs {
   bb: boolean;
   /** แนวรับ-แนวต้านจากแท่งชุดที่โหลดอยู่ */
   sr: boolean;
+  /** โซนดีมาน/ซัพพลาย — ขอบบน/ล่างของแต่ละโซน ฝั่งละไม่เกิน 3 ใบ */
+  zones: boolean;
   lowerPane: LowerPaneKey;
 }
 
@@ -44,6 +46,12 @@ export interface ChartIndicatorPrefs {
  *   · sr — เป็นเส้นแนวนอนพาดทั้งจอ 6 เส้น รกกว่าทุกตัว และเป็นระดับที่ขึ้นกับหน้าต่างข้อมูล
  *     ที่โหลดอยู่ จึงต้องอ่านคำกำกับก่อนถึงจะตีความถูก — เหมาะเป็นตัวที่ผู้ใช้ "เลือกเปิด"
  *   · macd — แผงล่างเปิดได้ทีละหนึ่ง และ RSI มีประโยชน์กว่าเมื่อดูตัวเดียว
+ *
+ * ที่ **เปิด** ไว้ทั้งที่เป็นเส้นแนวนอนเหมือน sr:
+ *   · zones — เจ้าของขอให้เน้นดีมาน/ซัพพลายเป็นหลัก (2026-09-07) และต่างจาก sr ตรงที่
+ *     วัดแล้วว่ามีข้อมูลจริง: ตำแหน่งโซนไม่สุ่ม (permutation p = 0.002 บน 1H) และทิศถูก
+ *     (กลับทิศแล้วแย่ลง 0.55 R) — ดู scripts/research/report/exp-zones-gold.md
+ *     จำนวนเส้นถูกคุมไว้ที่ฝั่งละ 3 โซน (CHART_MAX_ZONES_PER_SIDE) จึงไม่รกเท่า sr
  */
 export const DEFAULT_CHART_INDICATOR_PREFS: Readonly<ChartIndicatorPrefs> = {
   ma20: true,
@@ -51,6 +59,7 @@ export const DEFAULT_CHART_INDICATOR_PREFS: Readonly<ChartIndicatorPrefs> = {
   ma200: false,
   bb: false,
   sr: false,
+  zones: true,
   lowerPane: 'rsi',
 };
 
@@ -92,6 +101,7 @@ export function parseChartIndicatorPrefs(raw: unknown): ChartIndicatorPrefs {
     ma200: bool(obj.ma200, d.ma200),
     bb: bool(obj.bb, d.bb),
     sr: bool(obj.sr, d.sr),
+    zones: bool(obj.zones, d.zones),
     lowerPane: LOWER_PANES.includes(pane as LowerPaneKey) ? (pane as LowerPaneKey) : d.lowerPane,
   };
 }

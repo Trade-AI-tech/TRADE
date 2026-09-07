@@ -211,6 +211,15 @@ function readPalette() {
     band: dark ? 'rgba(148,163,184,0.85)' : 'rgba(100,116,139,0.9)',
     level: dark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.65)',
     /**
+     * ขอบโซนดีมาน/ซัพพลาย — ใช้เขียว/แดงแบบ **จาง** ไม่ใช่สีเต็ม
+     *
+     * ฝั่งของโซนเป็นข้อมูลจริง (วัดแล้ว: กลับทิศแล้วแย่ลง 0.55 R) จึงต้องอ่านออกด้วยสี
+     * แต่สีเต็มบนเส้นแนวนอนอ่านเป็น "เข้าไม้ตรงนี้" ซึ่งเกินกว่าที่ตัวเลขรองรับ —
+     * เหตุผลเดียวกับที่ band/level ใช้สีกลาง ๆ · ความจางคือการบอกว่า "นี่คือบริบท"
+     */
+    zoneDemand: dark ? 'rgba(52,211,153,0.55)' : 'rgba(4,120,87,0.55)',
+    zoneSupply: dark ? 'rgba(248,113,113,0.55)' : 'rgba(220,38,38,0.55)',
+    /**
      * สีของหมุดตามผลที่ ledger บันทึกไว้ — ชื่อตัวแปรมาจาก MARKER_STATUS_META
      * ค่าถอย (ตอนอ่านตัวแปรไม่ได้ เช่นสไตล์ยังไม่ถูกใช้กับ <html>) คือค่าเดียวกับที่
      * globals.css ประกาศไว้ทั้งสองธีม จึงไม่มีทางได้สีที่ระบบไม่มีอยู่จริง
@@ -308,6 +317,8 @@ export default function GoldChart({
   const overlayRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   /** เส้นแนวนอนของแนวรับ/แนวต้าน — แยกจาก priceLinesRef ของ entry/SL/TP คนละชุดกัน */
   const srLinesRef = useRef<IPriceLine[]>([]);
+  /** ขอบบน/ล่างของโซนดีมาน-ซัพพลาย — แยกอีกชุดเพราะเปิด/ปิดคนละสวิตช์กับแนวรับ/แนวต้าน */
+  const zoneLinesRef = useRef<IPriceLine[]>([]);
   /**
    * สิ่งที่อยู่บนแผงล่างตอนนี้ (เปิดได้ทีละหนึ่ง)
    *
@@ -562,6 +573,7 @@ export default function GoldChart({
       sizeWaitRef.current = null;
       priceLinesRef.current = [];
       srLinesRef.current = [];
+      zoneLinesRef.current = [];
       // ทิ้งทั้งกราฟอยู่แล้ว จึงไม่ต้อง removeSeries ทีละตัว แค่ล้างสมุดอ้างอิงไม่ให้
       // effect รอบหน้าหยิบซีรีส์ของกราฟที่ตายไปแล้วมาใช้ (ซึ่งจะโยนตอนเรียกเมธอด)
       overlays.clear();
@@ -886,6 +898,60 @@ export default function GoldChart({
     for (const s of indicators.supports) draw(s, 'แนวรับ');
     for (const r of indicators.resistances) draw(r, 'แนวต้าน');
   }, [ready, prefs.sr, indicators, themeTick]);
+
+  // ── 8b. โซนดีมาน/ซัพพลาย ────────────────────────────────────────────────────
+  //
+  // วาดโซนละสองเส้น: **ทึบ** ที่ขอบใน (proximal — ฝั่งที่ราคาแตะก่อน) และ **จุด**
+  // ที่ขอบนอก (distal — ฝั่งที่ใช้วาง SL ให้พ้นออกไป) ช่องว่างระหว่างสองเส้นคือตัวโซน
+  //
+  // ทำไมเป็นเส้นคู่ ไม่ใช่กล่องทึบ: lightweight-charts ไม่มีสี่เหลี่ยมในตัว ต้องเขียน
+  // series primitive เองซึ่งเป็นโค้ดวาดบน canvas อีกชั้น · เส้นคู่ใช้ createPriceLine
+  // ตัวเดียวกับที่ไฟล์นี้ใช้อยู่แล้วทุกที่ จึงได้พฤติกรรมเรื่องธีม/การทิ้งซีรีส์ฟรี
+  //
+  // ⚠ โซนพวกนี้คำนวณจากแท่งชุดที่โหลดอยู่ เหมือนแนวรับ/แนวต้าน — ไม่ใช่ชุดเดียวกับที่
+  //   เครื่องยนต์เห็นตอนออกสัญญาณ และ **เครื่องยนต์ไม่ได้ใช้โซนตัดสินใจเลย**
+  //   ข้อความกำกับอยู่ที่แถบเปิด/ปิด (ChartIndicatorToggles) — ห้ามถอดออก
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+
+    for (const line of zoneLinesRef.current) {
+      try {
+        series.removePriceLine(line);
+      } catch {
+        // ซีรีส์ถูกทิ้งไปแล้ว — ข้าม
+      }
+    }
+    zoneLinesRef.current = [];
+    if (!prefs.zones || !indicators) return;
+
+    const p = readPalette();
+    for (const z of indicators.zones) {
+      const color = z.side === 'demand' ? p.zoneDemand : p.zoneSupply;
+      const name = z.side === 'demand' ? 'ดีมาน' : 'ซัพพลาย';
+      // โซนที่ยังไม่เคยถูกแตะแรงกว่าโซนที่เคยถูกทดสอบแล้ว — บอกด้วยคำ ไม่ใช่ด้วยสี
+      // (สีถูกใช้บอกฝั่งไปแล้ว การใช้สีบอกสองเรื่องพร้อมกันทำให้อ่านผิดทั้งคู่)
+      const fresh = z.touches === 0 ? ' สด' : ` แตะ ${z.touches}`;
+      zoneLinesRef.current.push(
+        series.createPriceLine({
+          price: z.proximal,
+          color,
+          lineWidth: 1,
+          lineStyle: 0, // LineStyle.Solid — ขอบในคือระดับที่ราคาจะไปถึงก่อน
+          axisLabelVisible: false,
+          title: `${name}${fresh}`,
+        }),
+        series.createPriceLine({
+          price: z.distal,
+          color,
+          lineWidth: 1,
+          lineStyle: 2, // LineStyle.Dashed — ขอบนอก ต่างจากเส้นจุดของแนวรับ/แนวต้าน
+          axisLabelVisible: false,
+          title: '',
+        })
+      );
+    }
+  }, [ready, prefs.zones, indicators, themeTick]);
 
   // ── 9. แผงล่าง: RSI หรือ MACD (ทีละหนึ่ง) ───────────────────────────────────
   useEffect(() => {

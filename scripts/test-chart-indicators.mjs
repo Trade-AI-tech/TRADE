@@ -657,8 +657,17 @@ await check('lowerPane ที่ไม่รู้จัก → ถอยไป�
 });
 
 await check('เขียนไปแล้วอ่านกลับได้ค่าเดิม', () => {
-  const mine = { ma20: false, ma50: true, ma200: true, bb: true, sr: true, lowerPane: 'macd' };
-  assertEqual(JSON.stringify(parseChartIndicatorPrefs(JSON.stringify(mine))), JSON.stringify(mine), 'ค่าที่บันทึกไว้ต้องกลับมาครบ');
+  // สร้างชุดทดสอบจากค่าเริ่มต้นโดย **กลับค่าบูลีนทุกช่อง** แทนการเขียนคีย์ไว้ตายตัว
+  // เหตุผล: เขียนตายตัวแล้ววันไหนเพิ่มตัวเลือกใหม่ เทสต์จะแดงเพราะ "ยังไม่ได้อัปเดตเทสต์"
+  // ซึ่งเป็นความแดงที่ไม่ได้บอกอะไรเลย · การกลับค่าทุกช่องยังคงพิสูจน์สิ่งเดิมได้ครบ
+  // คือ "ไม่ได้คืนค่าเริ่มต้นมาเฉย ๆ" และตอนนี้ครอบคลุมตัวเลือกใหม่ให้อัตโนมัติด้วย
+  const mine = {};
+  for (const [k, v] of Object.entries(D)) mine[k] = typeof v === 'boolean' ? !v : 'macd';
+  const back = parseChartIndicatorPrefs(JSON.stringify(mine));
+  for (const k of Object.keys(mine)) {
+    assertEqual(back[k], mine[k], `ค่าของ ${k} ที่บันทึกไว้ต้องกลับมาเหมือนเดิม`);
+  }
+  assertEqual(Object.keys(back).length, Object.keys(D).length, 'จำนวนช่องที่อ่านกลับมาต้องเท่ากับค่าเริ่มต้น');
 });
 
 /**

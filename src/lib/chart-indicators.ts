@@ -1,5 +1,7 @@
 import type { CandleData } from '@/types';
 import { BollingerBands, EMA, MACD, RSI, SMA, findSupportResistance } from './indicators';
+import { findZones } from './supply-demand';
+import type { Zone } from './supply-demand';
 import type { ChartBar } from './chart-timeframes';
 
 /**
@@ -95,7 +97,18 @@ export interface ChartIndicatorData {
   /** ระดับแนวรับ (มาก→น้อย) และแนวต้าน (น้อย→มาก) ที่หาได้จากแท่งชุดนี้ อย่างละไม่เกิน 3 */
   supports: number[];
   resistances: number[];
+  /**
+   * โซนดีมาน/ซัพพลายที่ยังใช้ได้ — ใกล้ราคาล่าสุดที่สุดฝั่งละไม่เกิน CHART_MAX_ZONES_PER_SIDE
+   *
+   * ต่างจาก supports/resistances ตรงที่มัน **มีความกว้าง** จึงอ่านเป็นพื้นที่ได้
+   * ไม่ใช่เส้นเดียว · ที่จำกัดฝั่งละ 3 เพราะบนจอ 375px โซนละสองเส้นแนวนอน
+   * เกินกว่านี้จะบังแท่งเทียนจนอ่านตัวราคาไม่ออก
+   */
+  zones: Zone[];
 }
+
+/** โซนที่วาดบนกราฟ ฝั่งละไม่เกินเท่านี้ (เหตุผลเรื่องพื้นที่จออยู่ที่ ChartIndicatorData) */
+export const CHART_MAX_ZONES_PER_SIDE = 3;
 
 const EMPTY: ChartIndicatorData = {
   closedBars: 0,
@@ -112,6 +125,7 @@ const EMPTY: ChartIndicatorData = {
   macdHistogram: [],
   supports: [],
   resistances: [],
+  zones: [],
 };
 
 /**
@@ -173,7 +187,25 @@ export function computeChartIndicators(closedBars: readonly ChartBar[]): ChartIn
     if (Number.isFinite(v)) hist.push({ time: times[i], value: v, positive: v >= 0 });
   }
 
-  const sr = findSupportResistance(toCandles(closedBars), P.srLookback);
+  const candles = toCandles(closedBars);
+  const sr = findSupportResistance(candles, P.srLookback);
+
+  // โซนดีมาน/ซัพพลาย — findZones คืนเฉพาะใบที่ "รู้ได้แล้วและยังไม่ถูกทะลุ" ณ แท่งปิดใบสุดท้าย
+  // แล้วเลือกเฉพาะใบที่อยู่ถูกฝั่งของราคาและใกล้ที่สุด: โซนที่ราคาทะลุเข้าไปแล้วไม่ใช่
+  // แนวรับ/แนวต้านของราคาปัจจุบันอีกต่อไป (บทเรียนเดียวกับ nearSupport ในเครื่องยนต์
+  // ที่เคยกลายเป็น SL สูงกว่าราคาเข้าเพราะไม่กรองฝั่ง)
+  const lastClose = closedBars[closedBars.length - 1].c;
+  const allZones = findZones(candles);
+  const zones = [
+    ...allZones
+      .filter((z) => z.side === 'demand' && z.proximal < lastClose)
+      .sort((a, b) => b.proximal - a.proximal)
+      .slice(0, CHART_MAX_ZONES_PER_SIDE),
+    ...allZones
+      .filter((z) => z.side === 'supply' && z.proximal > lastClose)
+      .sort((a, b) => a.proximal - b.proximal)
+      .slice(0, CHART_MAX_ZONES_PER_SIDE),
+  ];
 
   return {
     closedBars: closedBars.length,
@@ -190,6 +222,7 @@ export function computeChartIndicators(closedBars: readonly ChartBar[]): ChartIn
     macdHistogram: hist,
     supports: sr.supports,
     resistances: sr.resistances,
+    zones,
   };
 }
 

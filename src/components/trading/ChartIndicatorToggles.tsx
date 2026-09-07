@@ -36,7 +36,7 @@ const P = CHART_INDICATOR_PERIODS;
 
 /** ปุ่มบนแผงราคา — `dotClass` ต้องเป็นสีเดียวกับเส้นจริงใน GoldChart.tsx */
 const PRICE_TOGGLES: ReadonlyArray<{
-  key: 'ma20' | 'ma50' | 'ma200' | 'bb' | 'sr';
+  key: 'ma20' | 'ma50' | 'ma200' | 'bb' | 'sr' | 'zones';
   label: string;
   dotClass: string;
   title: string;
@@ -72,6 +72,14 @@ const PRICE_TOGGLES: ReadonlyArray<{
     label: 'แนวรับ-แนวต้าน',
     dotClass: 'bg-slate-400',
     title: `ระดับ swing high/low ที่หาได้จากแท่งชุดที่โหลดอยู่ตอนนี้ (lookback ${P.srLookback})`,
+  },
+  {
+    key: 'zones',
+    label: 'ดีมาน/ซัพพลาย',
+    dotClass: 'bg-gradient-to-r from-[rgb(var(--up))] to-[rgb(var(--down))]',
+    title:
+      'โซนที่ราคาเคยวิ่งออกไปแรงจนเหลือออเดอร์ค้างไว้ — เขียวคือโซนซื้อ (ใต้ราคา) ' +
+      'แดงคือโซนขาย (เหนือราคา) · เส้นทึบคือขอบที่ราคาแตะก่อน เส้นจุดคือขอบนอกสำหรับวาง SL',
   },
 ];
 
@@ -172,6 +180,13 @@ export default function ChartIndicatorToggles({ prefs, onChange, ma200Available,
             : ''}
           {prefs.sr
             ? ' · ระดับแนวรับ/แนวต้านคิดจากแท่งชุดที่โหลดอยู่ตอนนี้ จึงไม่ใช่ระดับชุดเดียวกับที่เครื่องยนต์เห็นตอนออกสัญญาณแต่ละใบ'
+            : ''}
+          {/* ข้อความนี้ต้องอยู่ตรงนี้เสมอเมื่อเปิดโซน — วัดแล้วว่าตำแหน่งโซนไม่ได้สุ่ม
+              (permutation p = 0.002 บน 1H) แต่ยังพิสูจน์ไม่ได้ว่าเทรดตามแล้วเหลือกำไร
+              หลังหักต้นทุน การเขียนแค่ครึ่งแรกจะทำให้คนอ่านว่าเป็นจุดให้ลงมือ
+              ดู scripts/research/report/exp-zones-gold.md */}
+          {prefs.zones
+            ? ' · โซนดีมาน/ซัพพลายคำนวณจากแท่งชุดที่โหลดอยู่เช่นกัน เป็นบริบทให้อ่านประกอบ ไม่ใช่จุดที่ระบบบอกให้ลงมือ — เครื่องยนต์ไม่ได้ใช้โซนตัดสินใจ'
             : ''}
         </span>
       </p>
