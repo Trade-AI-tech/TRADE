@@ -13,7 +13,8 @@ import type {
   UTCTimestamp,
 } from 'lightweight-charts';
 import type { ChartBar } from '@/lib/chart-timeframes';
-import type { ChartSignalMarker } from '@/lib/chart-markers';
+import { MARKER_STATUS_META } from '@/lib/chart-markers';
+import type { ChartMarkerStatus, ChartSignalMarker } from '@/lib/chart-markers';
 import { RSI_LEVELS } from '@/lib/chart-indicators';
 import type { ChartIndicatorData } from '@/lib/chart-indicators';
 import type { ChartIndicatorPrefs } from '@/lib/chart-indicator-prefs';
@@ -59,6 +60,20 @@ import type { ChartIndicatorPrefs } from '@/lib/chart-indicator-prefs';
  * หมุด = ระบบเคยออกสัญญาณตรงนั้น ไม่ใช่คำแนะนำให้เข้า และไฟล์นี้ไม่วาดเส้นทำนาย
  * อนาคตหรือลูกศรชี้ทิศราคาใด ๆ ทั้งสิ้น — เส้นที่วาดมีแค่ราคาที่สัญญาณระบุไว้จริง
  * (entry / SL / TP) ซึ่งเป็นตัวเลขที่มีอยู่แล้วในฐานข้อมูล ไม่ใช่การคาดการณ์
+ *
+ * ── สองมิติของหมุดหนึ่งอัน: รูปทรงบอกทิศ · สีบอกว่าจบยังไง ────────────────────────
+ * รูปทรงกับตำแหน่งบอก "คำสั่งที่ระบบเคยออก": ▲ ใต้แท่งคือ BUY · ▼ เหนือแท่งคือ SELL
+ * สีบอก "ผลที่ ledger บันทึกไว้" (ยังเปิด / ถึง TP / โดน SL / หมดเวลา) โดยอ่านชื่อ
+ * ตัวแปรสีจาก MARKER_STATUS_META ใน chart-markers.ts — ที่เดียวกับที่คำอธิบายสัญลักษณ์
+ * ใต้กราฟอ่าน ทั้งสองฝั่งจึงเพี้ยนจากกันไม่ได้
+ * ⚠ ห้ามทำให้ใบที่โดน SL จางกว่าใบที่ถึง TP ไม่ว่าด้วยสี ความทึบ หรือขนาด — คุณค่า
+ *   ทั้งหมดของการปักใบที่ปิดแล้วอยู่ที่การเห็นทั้งสองฝั่งเท่ากัน
+ *
+ * ── ทำไมหมุดที่ถูกเลือกถึงไม่เปลี่ยนสี (เปลี่ยนเมื่อ 2026-09-06) ──────────────────
+ * ของเดิมทาหมุดที่เลือกด้วยสี accent ทั้งอัน ตอนนั้นทำได้เพราะสีไม่ได้แบกความหมายอะไร
+ * แต่ตอนนี้สี = ผลลัพธ์ของใบนั้น การทาทับจึงเท่ากับลบข้อเท็จจริงข้อเดียวที่สีมีหน้าที่บอก
+ * การเลือกจึงแสดงด้วย (ก) ขนาดที่ใหญ่ขึ้น (ข) ป้ายที่ยาวขึ้นมีคำว่าจบยังไง
+ * (ค) เส้น entry/SL/TP ที่โผล่มา (ง) ชิปใต้กราฟที่ติดไฟ — สี่อย่างพร้อมกัน
  *
  * ═══ เส้นอินดิเคเตอร์ที่วาดทับ ════════════════════════════════════════════════════
  * ทุกเส้นมาจาก src/lib/chart-indicators.ts ซึ่งเรียกฟังก์ชันของ src/lib/indicators.ts
@@ -195,8 +210,29 @@ function readPalette() {
     // อ่านเป็นคำสั่งให้ลงมือทำทันที ซึ่งไม่ใช่สิ่งที่ตัวเลขชุดนี้บอก
     band: dark ? 'rgba(148,163,184,0.85)' : 'rgba(100,116,139,0.9)',
     level: dark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.65)',
+    /**
+     * สีของหมุดตามผลที่ ledger บันทึกไว้ — ชื่อตัวแปรมาจาก MARKER_STATUS_META
+     * ค่าถอย (ตอนอ่านตัวแปรไม่ได้ เช่นสไตล์ยังไม่ถูกใช้กับ <html>) คือค่าเดียวกับที่
+     * globals.css ประกาศไว้ทั้งสองธีม จึงไม่มีทางได้สีที่ระบบไม่มีอยู่จริง
+     */
+    markerStatus: Object.fromEntries(
+      (Object.keys(MARKER_STATUS_META) as ChartMarkerStatus[]).map((k) => [
+        k,
+        token(MARKER_STATUS_META[k].colorVar, MARKER_FALLBACK[k][dark ? 0 : 1]),
+      ])
+    ) as Record<ChartMarkerStatus, string>,
   };
 }
+
+/** [ธีมมืด, ธีมสว่าง] ของแต่ละสถานะ — ลอกจาก src/styles/globals.css ตรง ๆ */
+const MARKER_FALLBACK: Record<ChartMarkerStatus, [string, string]> = {
+  open: ['rgb(37 244 238)', 'rgb(14 116 144)'],
+  tp: ['rgb(52 211 153)', 'rgb(4 120 87)'],
+  sl: ['rgb(248 113 113)', 'rgb(220 38 38)'],
+  timeout: ['rgb(255 215 0)', 'rgb(161 98 7)'],
+  unresolvable: ['rgb(255 255 255)', 'rgb(18 19 26)'],
+  unknown: ['rgb(156 163 175)', 'rgb(75 85 99)'],
+};
 
 type Palette = ReturnType<typeof readPalette>;
 
@@ -665,15 +701,30 @@ export default function GoldChart({
         // ทิศของหัวลูกศรบอกทิศของคำสั่งที่ระบบเคยออก ไม่ได้บอกว่าราคาจะไปทางไหน
         position: m.action === 'BUY' ? 'belowBar' : 'aboveBar',
         shape: m.action === 'BUY' ? 'arrowUp' : 'arrowDown',
-        color: on ? p.accent : m.action === 'BUY' ? p.up : p.down,
+        // สี = ผลที่ ledger บันทึกไว้ (ไม่ใช่ทิศ — ทิศอ่านจากรูปทรงและตำแหน่งไปแล้ว)
+        // ใบที่ถูกเลือกก็ใช้สีของผลตัวเอง ห้ามทาทับ ดูเหตุผลที่บล็อกคอมเมนต์หัวไฟล์
+        color: p.markerStatus[m.status],
         size: on ? 2 : 1,
         // ป้ายบอกกรอบเวลาต้นทางเสมอ — หมุดของ 1D ที่ลอยบนกราฟ 15m โดยไม่บอกที่มา
         // อ่านได้ว่ามันเกิดจากกราฟที่กำลังดูอยู่ ซึ่งไม่จริง
-        text: `${m.action} ${m.timeframe || '?'}`,
+        // คำว่าจบยังไงต่อท้ายเฉพาะใบที่ถูกเลือก: ถ้าติดทุกใบ ป้ายจะยาวจนทับกันเองบนจอ
+        // 375px (ป้ายกว้างขึ้นเกือบเท่าตัว) แล้วอ่านไม่ออกทั้งกระดาน
+        text: on
+          ? `${m.action} ${m.timeframe || '?'} · ${MARKER_STATUS_META[m.status].label}`
+          : `${m.action} ${m.timeframe || '?'}`,
       };
     });
     plugin.setMarkers(list);
-  }, [ready, markers, selectedId]);
+    // ⚠ themeTick ต้องอยู่ใน deps — effect นี้อ่าน readPalette() ซึ่งให้ค่าคนละชุดในแต่ละธีม
+    //   แต่หมุดถูกทาสีตอน setMarkers() ครั้งเดียว ไม่มี applyOptions ให้เรียกทีหลังเหมือน
+    //   ซีรีส์อื่น การไม่ผูก themeTick จึงแปลว่าหมุดค้างสีของธีมเก่าจนกว่าชุด markers
+    //   จะเปลี่ยน (= รอบ poll ถัดไป: 15m 60 วิ · 1H 120 วิ · 1D 300 วิ และค้างไม่มี
+    //   กำหนดถ้าแท็บถูกซ่อนอยู่ เพราะตัวจับเวลา poll ถูกล้างทิ้งตอนแท็บไม่ถูกแสดง)
+    //   วัดจริง: สลับจากธีมมืดไปสว่าง แท่งเทียน/เส้น MA/จุดสีในคำอธิบายเปลี่ยนทันที
+    //   แต่หมุด open ยังเป็น #25F4EE และ timeout ยังเป็น #FFD700 อยู่บนพื้นขาว
+    //   ซึ่งคือคู่คอนทราสต์ที่ globals.css เขียนเตือนไว้เอง — และตอนนี้ "สี" คือตัวเดียว
+    //   ที่บอกว่าใบนั้นจบยังไงบนกราฟ คำอธิบายใต้กราฟจึงชี้ผิดสีตลอดช่วงที่ค้าง
+  }, [ready, markers, selectedId, themeTick]);
 
   // ── 6. เส้น entry / SL / TP ของใบที่เลือก ────────────────────────────────────
   useEffect(() => {
@@ -733,7 +784,10 @@ export default function GoldChart({
     } catch {
       // เลื่อนไม่ได้ (หมุดอยู่นอกข้อมูลที่โหลดมา) — ไม่ใช่เหตุให้ทั้งหน้าพัง
     }
-  }, [ready, markers, selectedId]);
+    // themeTick อยู่ใน deps ด้วยเหตุผลเดียวกับ effect ข้อ 5: เส้น entry/SL/TP ถูกกำหนดสี
+    // ตอน createPriceLine() แล้วอยู่อย่างนั้น ธีมเปลี่ยนแล้วไม่รื้อสร้างใหม่ = เส้นค้างสีเก่า
+    // (การรื้อสร้างใหม่ไม่กระทบมุมมองของผู้ใช้ — effect นี้ทำแบบเดิมอยู่แล้วทุกรอบ poll)
+  }, [ready, markers, selectedId, themeTick]);
 
   // ── 7. เส้นอินดิเคเตอร์บนแผงราคา (MA20 / MA50 / MA200 / Bollinger) ──────────
   //

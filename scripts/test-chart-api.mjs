@@ -558,6 +558,14 @@ function signal(over = {}) {
 }
 
 const build = (signals, tf = '15m') => buildSignalMarkers(signals, BARS, { symbol: 'XAUUSD', timeframe: tf });
+/**
+ * โหมด include:'open' — ตัวกรอง "เฉพาะใบที่ยังเปิดอยู่" ที่เคยเป็นพฤติกรรมเดียวของตัวจัดหมุด
+ * ยังต้องทำงานเป๊ะเหมือนเดิม เพราะ isLiveSignalRow ตัวเดียวกันนี้คือคำนิยาม "ยังเปิดอยู่"
+ * ของทั้งระบบ (หน้า /signals · ตัวแจ้งเตือน · และป้ายสถานะของหมุดในโหมด 'all')
+ * ส่วนพฤติกรรมของโหมด 'all' (ค่าเริ่มต้นตั้งแต่ 2026-09-06) อยู่ที่ scripts/test-chart-markers.mjs
+ */
+const buildOpen = (signals, tf = '15m') =>
+  buildSignalMarkers(signals, BARS, { symbol: 'XAUUSD', timeframe: tf, include: 'open' });
 
 await check('สัญญาณปกติ → ได้หมุดหนึ่งอัน เกาะ "แท่งท้ายสุดที่เปิดไปแล้วตอนสัญญาณเกิด"', () => {
   const m = build([signal()]);
@@ -587,26 +595,38 @@ await check('สัญญาณที่เกิดหลังแท่งท�
   assertEqual(m[0].time, LAST_BAR, 'ต้องเกาะแท่งที่ตลาดเคลื่อนไหวล่าสุด');
 });
 
-await check('ใบที่ ledger ปิดบัญชีไปแล้ว (outcome=sl/tp/timeout) → ไม่ขึ้น', () => {
+await check("include:'open' — ใบที่ ledger ปิดบัญชีไปแล้ว (outcome=sl/tp/timeout) → ไม่ขึ้น", () => {
   for (const outcome of ['sl', 'tp', 'timeout', 'unresolvable']) {
-    const m = build([signal({ outcome })]);
-    assertEqual(m.length, 0, `outcome='${outcome}' คือใบที่ปิดแล้ว ต้องไม่ปักบนกราฟ`);
+    const m = buildOpen([signal({ outcome })]);
+    assertEqual(m.length, 0, `outcome='${outcome}' คือใบที่ปิดแล้ว ต้องไม่ผ่านตัวกรอง "เฉพาะใบที่ยังเปิด"`);
   }
 });
 
-await check("outcome='open' ยังนับว่าเปิดอยู่", () => {
-  assertEqual(build([signal({ outcome: 'open' })]).length, 1, "'open' คือยังไม่ปิดบัญชี");
+await check("include:'open' — outcome='open' ยังนับว่าเปิดอยู่", () => {
+  assertEqual(buildOpen([signal({ outcome: 'open' })]).length, 1, "'open' คือยังไม่ปิดบัญชี");
 });
 
 await check('โหมดถอย: ยังไม่ได้รัน migration 007 (ไม่มีคอลัมน์ outcome) → ยังนับว่าเปิด', () => {
   const s = signal();
   delete s.outcome;
-  assertEqual(build([s]).length, 1, 'คอลัมน์ที่ไม่มี = ไม่เคยมีการปิดบัญชี ต้องไม่ทำให้หมุดหายทั้งกระดาน');
+  assertEqual(buildOpen([s]).length, 1, 'คอลัมน์ที่ไม่มี = ไม่เคยมีการปิดบัญชี ต้องไม่ทำให้หมุดหายทั้งกระดาน');
+  assertEqual(build([s]).length, 1, 'โหมด all ก็ต้องยังปักใบนี้ ไม่ใช่ตกไปเพราะไม่มีคอลัมน์');
 });
 
-await check('ใบที่หมดอายุ/ถูกยกเลิก (status ไม่ใช่ active) → ไม่ขึ้น', () => {
+await check("include:'open' — ใบที่หมดอายุ/ถูกยกเลิก (status ไม่ใช่ active) → ไม่ขึ้น", () => {
   for (const status of ['expired', 'cancelled', 'triggered', null]) {
-    assertEqual(build([signal({ status })]).length, 0, `status='${status}' ต้องไม่ปักบนกราฟ`);
+    assertEqual(buildOpen([signal({ status })]).length, 0, `status='${status}' ต้องไม่ผ่านตัวกรอง "เฉพาะใบที่ยังเปิด"`);
+  }
+});
+
+// ── ค่าเริ่มต้นเปลี่ยนเป็น 'all' เมื่อ 2026-09-06 ─────────────────────────────────
+// ของเดิมกรองใบที่ปิดแล้วทิ้งเสมอ ผลคือวันไหนไม่มีใบเปิดเลย กราฟว่างเปล่าสนิท
+// จนเจ้าของนึกว่าฟีเจอร์หมุดไม่มีอยู่จริง — ด่านนี้ล็อกไว้ว่าค่าเริ่มต้นต้องไม่กลับไปเป็น 'open'
+await check("ค่าเริ่มต้น (ไม่ส่ง include) = 'all' — ใบที่ปิดบัญชีแล้วยังปักอยู่พร้อมป้ายผล", () => {
+  for (const outcome of ['sl', 'tp', 'timeout', 'unresolvable']) {
+    const m = build([signal({ outcome })]);
+    assertEqual(m.length, 1, `outcome='${outcome}' ต้องยังปักอยู่ เพื่อให้เห็นว่าระบบเคยออกใบนี้และจบยังไง`);
+    assertEqual(m[0].status, outcome, 'หมุดต้องพกผลจริงมาด้วย ไม่ใช่ปักเฉย ๆ');
   }
 });
 
@@ -682,7 +702,7 @@ await check('ไม่มีแท่งเลย → ไม่มีหมุ�
 //
 // ตัวตรวจที่เขียวตลอดเพราะจับอะไรไม่ได้ อันตรายกว่าไม่มีตัวตรวจ — ป้อน "ตัวจัดหมุดปลอม"
 // ที่ตัดด่าน "ยังเปิดอยู่" กับด่าน "อยู่ในช่วงเวลา" ทิ้ง แล้วต้องมีข้อแดงจริง
-await check('negative control: ตัวจัดหมุดที่ไม่กรองใบที่ปิดแล้ว/นอกช่วงเวลา ต้องสอบตก', () => {
+await check("negative control: ตัวจัดหมุดที่ไม่กรองใบที่ปิดแล้ว/นอกช่วงเวลา ต้องสอบตกในโหมด 'open'", () => {
   const bypass = (signals, barTimes) =>
     signals
       .filter((s) => s.action === 'BUY' || s.action === 'SELL')

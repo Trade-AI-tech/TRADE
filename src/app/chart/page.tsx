@@ -15,7 +15,13 @@ import GoldChart from '@/components/trading/GoldChart';
 import ChartIndicatorToggles from '@/components/trading/ChartIndicatorToggles';
 import SignalEngineSnapshot from '@/components/trading/SignalEngineSnapshot';
 import { useSignals } from '@/hooks/useData';
-import { buildSignalMarkers } from '@/lib/chart-markers';
+import {
+  buildSignalMarkerSet,
+  countMarkerStatuses,
+  MARKER_STATUS_ALWAYS_SHOWN,
+  MARKER_STATUS_META,
+  MARKER_STATUS_ORDER,
+} from '@/lib/chart-markers';
 import type { ChartSignalMarker } from '@/lib/chart-markers';
 import {
   CHART_TIMEFRAMES,
@@ -42,6 +48,13 @@ import type { MarketPrice, Signal } from '@/types';
  * หมุดหนึ่งอัน = "ระบบเคยออกสัญญาณตรงจุดนี้" เท่านั้น ไม่ใช่คำแนะนำให้เข้าไม้
  * และหน้านี้ไม่วาดเส้นทำนายอนาคตหรือลูกศรชี้ทิศราคาใด ๆ — เส้นประที่ขึ้นเมื่อเลือกหมุด
  * คือราคาสามค่าที่สัญญาณใบนั้นระบุไว้จริงในฐานข้อมูล (จุดเข้า / SL / TP) ไม่ใช่การคาดการณ์
+ *
+ * ═══ หมุดรวมใบที่ปิดบัญชีแล้วด้วย (2026-09-06) ═══════════════════════════════════
+ * กราฟแสดงสัญญาณทุกใบที่อยู่ในช่วงเวลาที่มันครอบคลุม พร้อมบอกว่าแต่ละใบจบยังไง
+ * (ยังเปิด / ถึง TP / โดน SL / หมดเวลา) — ใบที่แพ้กับใบที่ชนะเห็นชัดเท่ากันเสมอ
+ * ตัวเลขในบรรทัดสรุปนับจาก **หมุดที่แสดงอยู่จริง** เท่านั้น (countMarkerStatuses
+ * ตัวเดียวกับที่เทสต์ใช้) และหน้านี้ไม่ตีความว่าตัวเลขชุดนั้นดีหรือแย่ — ปล่อยให้มันพูดเอง
+ * ถ้าใบในช่วงนั้นเกินเพดาน MARKER_CAP หน้าเว็บต้องพิมพ์ยอดเต็มไว้ด้วย ห้ามตัดเงียบ ๆ
  *
  * ═══ อินดิเคเตอร์บนกราฟ ═════════════════════════════════════════════════════════
  * เส้นที่วาดทับกราฟคือชุดเดียวกับที่เครื่องยนต์ใช้ตัดสิน คำนวณด้วยฟังก์ชันตัวเดียวกัน
@@ -93,6 +106,13 @@ function thClock(ms: number, withSeconds = false): string {
 function thDateTime(ms: number): string {
   const d = new Date(ms + TH_OFFSET_MS);
   return `${d.getUTCDate()}/${pad(d.getUTCMonth() + 1)} ${thClock(ms)}`;
+}
+
+/** ISO จาก DB → เวลาโซนไทย · อ่านไม่ออก/ไม่มีค่า = null (ห้ามเดาเวลาแล้วพิมพ์ออกจอ) */
+function thDateTimeIso(iso: string | null): string | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? thDateTime(ms) : null;
 }
 
 /** "ทุก 1 นาที" / "ทุก 5 นาที" — พูดเป็นนาทีเพราะทุกเลนตั้งไว้เป็นนาทีเต็มอยู่แล้ว */
@@ -270,13 +290,31 @@ export default function ChartPage() {
     return t;
   }, [shown]);
 
-  const markers = useMemo(
+  /**
+   * ชุดหมุดของรอบนี้ — ทั้งของที่วาดจริงและยอดที่ถูกตัดออกเพราะเพดาน
+   * ต้องใช้ buildSignalMarkerSet (ไม่ใช่ buildSignalMarkers) เพราะหน้านี้ต้องพิมพ์ให้ผู้ใช้
+   * เห็นว่าแสดงกี่ใบจากทั้งหมดกี่ใบ — การตัดเงียบ ๆ คือการซ่อนข้อมูลจากเจ้าของ
+   */
+  const markerSet = useMemo(
     () =>
-      buildSignalMarkers(signals, barTimes, {
+      buildSignalMarkerSet(signals, barTimes, {
         symbol: shown?.symbol ?? 'XAUUSD',
         timeframe: tfKey,
+        // 'all' = ใบที่ปิดบัญชีแล้วก็ยังปักอยู่ พร้อมป้ายว่าจบยังไง (ดูหัวไฟล์)
+        include: 'all',
       }),
     [signals, barTimes, shown?.symbol, tfKey]
+  );
+  const markers = markerSet.markers;
+  /** นับจากหมุดที่แสดงอยู่จริงเท่านั้น — ห้ามนับจากชุดก่อนตัดเพดาน */
+  const statusCounts = useMemo(() => countMarkerStatuses(markers), [markers]);
+  /** แถวคำอธิบายสัญลักษณ์: สี่สถานะหลักขึ้นเสมอ ที่เหลือขึ้นเฉพาะตอนมีจริง */
+  const legendRows = useMemo(
+    () =>
+      MARKER_STATUS_ORDER.filter(
+        (s) => MARKER_STATUS_ALWAYS_SHOWN.includes(s) || statusCounts[s] > 0
+      ),
+    [statusCounts]
   );
 
   // ใบที่เลือกไว้หายไปจากชุด (หมดอายุ/ถูกปิดบัญชีระหว่างที่เปิดหน้าค้างไว้) → ล้างการเลือก
@@ -326,7 +364,7 @@ export default function ChartPage() {
             กราฟทอง
           </h1>
           <p className="text-sm text-[rgb(var(--text-muted))] mt-0.5">
-            {shown?.name ?? 'ทองคำ'} · {shown?.symbol ?? 'XAUUSD'} · แท่งเทียนพร้อมหมุดสัญญาณที่ยังเปิดอยู่
+            {shown?.name ?? 'ทองคำ'} · {shown?.symbol ?? 'XAUUSD'} · แท่งเทียนพร้อมหมุดสัญญาณที่ระบบเคยออกในช่วงนี้
           </p>
         </div>
 
@@ -498,15 +536,67 @@ export default function ChartPage() {
           </span>
         </p>
 
-        {markers.length === 0 ? (
+        {barTimes.length === 0 ? (
+          // ยังไม่มีแท่งให้ปักหมุด (กำลังโหลด / ดึงไม่สำเร็จ / กรอบนี้ไม่มีข้อมูล)
+          // ต้องแยกจากกรณี "ไม่มีสัญญาณ" ให้ชัด ไม่งั้นตอนโหลดหน้าจะขึ้นข้อความที่ยังไม่จริง
           <p className="text-sm text-[rgb(var(--text-secondary))]">
-            ตอนนี้ไม่มีสัญญาณที่ยังเปิดอยู่ในช่วงเวลาที่กราฟนี้ครอบคลุม — ใบที่ปิดบัญชีแล้วดูผลได้ที่หน้า &quot;ผลจริง&quot;
+            ยังไม่มีแท่งเทียนให้ปักหมุด — เมื่อกราฟโหลดเสร็จ หมุดของสัญญาณในช่วงนั้นจะขึ้นเอง
+          </p>
+        ) : markers.length === 0 ? (
+          <p className="text-sm text-[rgb(var(--text-secondary))]">
+            ในช่วงเวลาที่กราฟนี้ครอบคลุม ยังไม่มีสัญญาณของ {shown?.symbol ?? 'XAUUSD'} ที่ระบบออกไว้เลย
+            ทั้งใบที่ยังเปิดอยู่และใบที่ปิดบัญชีไปแล้ว — ลองสลับกรอบเวลาเพื่อดูช่วงที่ยาวกว่านี้
           </p>
         ) : (
           <>
-            {/* แถวหมุดแบบเลื่อนแนวนอน — บนมือถือแตะที่นี่ง่ายกว่าเล็งหมุดบนกราฟ */}
+            {/* ── บรรทัดสรุป + คำอธิบายสัญลักษณ์ ─────────────────────────────
+                ตัวเลขทุกตัวมาจาก countMarkerStatuses ซึ่งนับจากหมุดที่แสดงอยู่จริง
+                ห้ามเติมคำตีความว่าดีหรือแย่ลงในบล็อกนี้ — ตัวเลขพูดเองได้แล้ว */}
+            <div className="rounded-lg border border-[var(--border-subtle)] bg-surface-2 px-2.5 py-2 space-y-1.5">
+              <p className="text-[11px] leading-relaxed text-[rgb(var(--text-secondary))]">
+                {markerSet.hidden > 0 ? (
+                  <>
+                    ในช่วงที่กราฟนี้ครอบคลุม ระบบออกสัญญาณ{' '}
+                    <span className="font-mono tabular-nums text-[rgb(var(--text-primary))]">{markerSet.matched}</span> ใบ ·
+                    กราฟปักไว้ {markers.length} ใบใหม่สุด (อีก {markerSet.hidden} ใบเก่ากว่านั้นไม่ได้ปัก)
+                    ตัวเลขข้างล่างนับจากหมุดที่ปักอยู่เท่านั้น
+                  </>
+                ) : (
+                  <>
+                    ในช่วงที่กราฟนี้ครอบคลุม ระบบออกสัญญาณ{' '}
+                    <span className="font-mono tabular-nums text-[rgb(var(--text-primary))]">{markers.length}</span> ใบ
+                    นับจากหมุดที่ปักอยู่ทั้งหมด
+                  </>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                {legendRows.map((s) => (
+                  <span key={s} className="inline-flex items-center gap-1 text-[rgb(var(--text-muted))]">
+                    {/* จุดสีอ่านค่าจากตัวแปรเดียวกับที่ตัววาดกราฟอ่าน — สองฝั่งจึงเพี้ยนจากกันไม่ได้ */}
+                    <span
+                      aria-hidden
+                      className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: `rgb(var(${MARKER_STATUS_META[s].colorVar}))` }}
+                    />
+                    {MARKER_STATUS_META[s].label}{' '}
+                    <span className="font-mono tabular-nums text-[rgb(var(--text-primary))] font-medium">
+                      {statusCounts[s]}
+                    </span>
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] leading-relaxed text-[rgb(var(--text-dim))]">
+                ▲ ใต้แท่ง = BUY · ▼ เหนือแท่ง = SELL · สีของหมุดบอกว่าใบนั้นจบยังไงตามที่ระบบบันทึกไว้
+                ไม่ได้บอกว่าราคาจะไปทางไหนต่อ
+              </p>
+            </div>
+
+            {/* แถวหมุดแบบเลื่อนแนวนอน — บนมือถือแตะที่นี่ง่ายกว่าเล็งหมุดบนกราฟ
+                เรียงใบใหม่สุดไว้ซ้าย (สลับทางกับกราฟโดยตั้งใจ) เพราะแถวนี้ยาวได้ถึง
+                60 ชิป ถ้าเรียงตามกราฟ ใบล่าสุดจะไปอยู่สุดขวาซึ่งต้องกวาดหลายสิบจอถึงจะถึง */}
+            <p className="text-[10px] text-[rgb(var(--text-dim))]">แถวหมุดข้างล่างเรียงใบใหม่สุดก่อน</p>
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              {markers.map((m) => {
+              {[...markers].reverse().map((m) => {
                 const on = m.id === selectedId;
                 return (
                   <button
@@ -529,6 +619,14 @@ export default function ChartPage() {
                       {m.action === 'BUY' ? '▲' : '▼'} {m.action}
                     </span>
                     <span className="ml-1.5 font-mono tabular-nums">{m.entry.toFixed(2)}</span>
+                    {/* ผลของใบนี้ต้องอยู่บนชิปด้วย ไม่ใช่รอให้แตะเข้าไปดู — ใบที่โดน SL
+                        ต้องอ่านออกตั้งแต่แถวนี้ เท่ากับใบที่ถึง TP */}
+                    <span
+                      className="ml-1.5 font-medium"
+                      style={{ color: `rgb(var(${MARKER_STATUS_META[m.status].colorVar}))` }}
+                    >
+                      {MARKER_STATUS_META[m.status].label}
+                    </span>
                     <span className="ml-1.5 opacity-70">
                       {m.timeframe || '?'} · {thDateTime(m.createdSec * 1000)}
                     </span>
@@ -693,6 +791,11 @@ function SignalDetail({
         )}
       </div>
 
+      {/* ── ใบนี้จบยังไง ────────────────────────────────────────────────────
+          ทุกช่องอ่านจากคอลัมน์ที่ scripts/resolve-signals.mjs เขียนไว้ตรง ๆ
+          ไม่มีช่องไหนคำนวณใหม่ที่นี่ · ค่าที่ไม่มีจะไม่แสดงเลย ไม่ใช่เติมด้วยการเดา */}
+      <MarkerOutcome marker={marker} />
+
       {/* ── ค่าที่เครื่องยนต์เห็นตอนออกใบนี้ ─────────────────────────────────
           อ่านจากคอลัมน์ signals.indicators / signals.reasons ของแถวนั้นตรง ๆ
           ไม่คำนวณใหม่ที่นี่ — เป็นของชิ้นเดียวในหน้านี้ที่ตรวจสอบเครื่องยนต์ได้จริง */}
@@ -726,6 +829,92 @@ function SignalDetail({
             {evidence.level !== 'symbol' ? ', รวมทุกสินทรัพย์ในจักรวาล' : ''})
           </span>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * "ใบนี้จบยังไง" — บล็อกเดียวในหน้านี้ที่พูดถึงผลลัพธ์ของสัญญาณใบหนึ่ง
+ *
+ * ═══ กติกาของบล็อกนี้ ═══════════════════════════════════════════════════════════
+ * · ทุกช่องอ่านจากคอลัมน์ที่ scripts/resolve-signals.mjs เขียนไว้ (outcome / realized_r /
+ *   exit_price / bars_held / resolved_at) **ไม่คำนวณใหม่ที่นี่** — ตัวเลข R มีกติกาของมัน
+ *   อยู่ในตัวเก็บผล (หักต้นทุนแล้ว) ถ้าหน้าเว็บคิดเอง จะได้เลขที่ไม่มีใครตรวจสอบได้
+ * · ค่าที่ไม่มี = ไม่แสดงช่องนั้น ไม่ใช่เติมด้วยการเดาหรือขีดกลางที่ดูเหมือนมีข้อมูล
+ * · ใบที่โดน SL ต้องอ่านออกด้วยน้ำหนักสายตาเท่ากับใบที่ถึง TP — สีคนละสีได้ แต่ความเข้ม
+ *   ต้องเท่ากัน และห้ามซ่อนบล็อกนี้เมื่อผลออกมาไม่สวย
+ * · ห้ามตีความว่าผลนี้ดีหรือแย่ และห้ามโยงไปถึงผลของใบถัดไปไม่ว่าทางใด
+ */
+function MarkerOutcome({ marker }: { marker: ChartSignalMarker }) {
+  const meta = MARKER_STATUS_META[marker.status];
+  const color = `rgb(var(${meta.colorVar}))`;
+  const resolvedTh = thDateTimeIso(marker.resolvedAt);
+  const r = marker.realizedR;
+
+  return (
+    <div className="rounded-lg bg-surface-1 px-2.5 py-2 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+        <span className="text-[rgb(var(--text-muted))]">
+          ผลของใบนี้{' '}
+          <span className="font-semibold" style={{ color }}>
+            {meta.label}
+          </span>
+        </span>
+
+        {r !== null && (
+          <span
+            className="text-[rgb(var(--text-muted))]"
+            title="ผลจริงเป็นหน่วย R ที่ตัวเก็บผลบันทึกไว้ = ผลดิบหักต้นทุนไป-กลับแล้ว (1R = เงินที่เสี่ยงไว้ตั้งแต่แรก)"
+          >
+            ผลจริง{' '}
+            <span className="font-mono tabular-nums font-medium" style={{ color }}>
+              {r > 0 ? '+' : ''}
+              {r.toFixed(2)}R
+            </span>
+          </span>
+        )}
+
+        {marker.exitPrice !== null && (
+          <span className="text-[rgb(var(--text-muted))]">
+            ราคาออก{' '}
+            <span className="font-mono tabular-nums text-[rgb(var(--text-primary))] font-medium">
+              {marker.exitPrice.toFixed(2)}
+            </span>
+          </span>
+        )}
+
+        {marker.barsHeld !== null && (
+          <span className="text-[rgb(var(--text-muted))]" title="จำนวนแท่งที่ถือไว้ก่อนใบนี้จบ นับด้วยแท่งของกรอบเวลาที่ออกใบ">
+            ถือ{' '}
+            <span className="font-mono tabular-nums text-[rgb(var(--text-primary))] font-medium">
+              {marker.barsHeld}
+            </span>{' '}
+            แท่ง
+          </span>
+        )}
+
+        {resolvedTh !== null && (
+          <span className="text-[rgb(var(--text-muted))]">ปิดบัญชี {resolvedTh} น.</span>
+        )}
+      </div>
+
+      {/* ใบที่ยังเปิด: คงคำเดิมของหน้านี้ไว้ — ยังไม่มีผล ไม่ใช่ผลเป็นศูนย์ */}
+      {marker.status === 'open' && (
+        <p className="text-[10px] leading-relaxed text-[rgb(var(--text-dim))]">
+          ใบนี้ยังเปิดอยู่ในบัญชีของระบบ จึงยังไม่มีผลปิดบัญชีให้ดู
+        </p>
+      )}
+      {marker.status === 'unknown' && (
+        <p className="text-[10px] leading-relaxed text-[rgb(var(--text-dim))]">
+          ระบบไม่มีผลของใบนี้บันทึกไว้ — เป็นได้ทั้งแถวที่สร้างก่อนระบบเริ่มเก็บผล
+          และใบที่พ้นอายุไปโดยที่ตัวเก็บผลยังไม่ได้ปิดบัญชีให้
+        </p>
+      )}
+      {marker.status === 'unresolvable' && (
+        <p className="text-[10px] leading-relaxed text-[rgb(var(--text-dim))]">
+          ตัวเก็บผลเดินราคาไปข้างหน้าแล้วแต่ข้อมูลไม่พอจะสรุปว่าใบนี้จบแบบไหน จึงบันทึกไว้ตามนั้น
+        </p>
       )}
     </div>
   );
