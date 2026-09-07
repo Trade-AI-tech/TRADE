@@ -148,6 +148,8 @@ export async function GET(req: NextRequest) {
         forming: null,
         quote: null,
         servedAt: new Date().toISOString(),
+        // โหมด demo ไม่มีแหล่งข้อมูลจริง จึงไม่มีเวลาของราคาให้บอก (ไม่ใช่ 0 หรือเวลาปัจจุบัน)
+        marketTime: null,
       },
       { headers: NO_STORE }
     );
@@ -212,6 +214,17 @@ export async function GET(req: NextRequest) {
         forming,
         quote: chart.quote,
         servedAt: new Date().toISOString(),
+        /**
+         * เวลาที่ราคานั้นเกิดจริงตาม Yahoo (ISO) — ไม่ใช่เวลาที่เราไปดึง
+         *
+         * เจ้าของรายงาน 2026-09-07 ว่า "กราฟไม่วิ่ง ราคาไม่ขยับเลย" ทั้งที่หน้าเว็บ
+         * ขึ้นเวลาดึงล่าสุดใหม่ทุกนาที · ต้นเหตุคือจอบอกแต่ servedAt (เวลาเราดึง)
+         * ส่วนตัวราคาอาจเก่ากว่านั้นมาก — วัดจริงตอนนั้น 10.2 นาที (ตลาดเอเชียบาง)
+         * ผู้ใช้จึงอ่านว่า "สดแล้วแต่ไม่ขยับ = พัง" ทั้งที่ระบบทำงานถูกทุกอย่าง
+         * ส่งออกไปให้หน้าเว็บบอกอายุของราคาได้ตรง ๆ
+         */
+        marketTime:
+          chart.marketTimeSec !== null ? new Date(chart.marketTimeSec * 1000).toISOString() : null,
       },
       { headers: NO_STORE }
     );

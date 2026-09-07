@@ -183,9 +183,20 @@ interface ChartPayload {
    * (หุ้นไทยตอนตลาดปิด ค่านี้ชี้ไปรอบพรุ่งนี้) — ดู resolveSessionStart ใน position-monitor.ts
    */
   regularStart: string | null;
+  /**
+   * เวลาที่ราคานั้นเกิดจริงตามที่ Yahoo ประทับมา (epoch วินาที) · null = ไม่มีข้อมูล
+   * ห้ามสับสนกับ quote.updated_at ซึ่งเป็นเวลาที่ "เราไปดึง" — ดูเหตุผลตรงที่ประกอบค่านี้
+   */
+  marketTimeSec: number | null;
 }
 
-const EMPTY: ChartPayload = { quote: null, candles: [], formingCandle: null, regularStart: null };
+const EMPTY: ChartPayload = {
+  quote: null,
+  candles: [],
+  formingCandle: null,
+  regularStart: null,
+  marketTimeSec: null,
+};
 
 /**
  * อายุแคชเริ่มต้นของคำตอบจาก Yahoo (วินาที) — ค่าที่ทุกเส้นทางเดิมใช้มาตลอด
@@ -290,7 +301,16 @@ export async function fetchChart(
       const price = Number(
         meta.regularMarketPrice ?? formingCandle?.close ?? candles[candles.length - 1]?.close
       );
-      if (!price || !Number.isFinite(price)) return { quote: null, candles, formingCandle, regularStart };
+      if (!price || !Number.isFinite(price)) {
+        const mt = Number(meta.regularMarketTime);
+        return {
+          quote: null,
+          candles,
+          formingCandle,
+          regularStart,
+          marketTimeSec: Number.isFinite(mt) && mt > 0 ? mt : null,
+        };
+      }
 
       // ใช้แท่งก่อนหน้าเป็นฐานคำนวณการเปลี่ยนแปลง (เชื่อถือได้กว่า meta.chartPreviousClose
       // ซึ่งเป็นราคาปิดก่อนเริ่มช่วงที่ขอมา ไม่ใช่ของเมื่อวาน)
@@ -327,7 +347,26 @@ export async function fetchChart(
         updated_at: new Date().toISOString(),
       };
 
-      return { quote, candles, formingCandle, regularStart };
+      /**
+       * เวลาที่ "ราคานั้นเกิดขึ้นจริง" ตามที่ Yahoo ประทับมา — คนละอย่างกับ
+       * quote.updated_at ซึ่งเป็นเวลาที่ "เราไปดึง" (new Date() บรรทัดข้างบน)
+       *
+       * ทำไมต้องแยก: เจ้าของรายงาน 2026-09-07 ว่า "กราฟไม่วิ่ง ราคาไม่ขยับเลย"
+       * ทั้งที่หน้าเว็บขึ้นเวลาดึงล่าสุดใหม่เอี่ยมทุกนาที · วัดจริงตอนนั้น
+       * (03:06 UTC ช่วงตลาดเอเชียบาง) regularMarketTime เก่ากว่าเวลาจริง 10.2 นาที
+       * — ราคาไม่ขยับเพราะแหล่งข้อมูลยังไม่มีราคาใหม่ ไม่ใช่เพราะหน้าเว็บค้าง
+       * แต่จอบอกแค่เวลาที่เราดึง ผู้ใช้จึงอ่านว่า "สดแล้วแต่ไม่ขยับ = พัง"
+       * ส่งค่านี้ออกไปให้ UI บอกอายุของตัวราคาได้ตรง ๆ
+       */
+      const marketTimeSec = Number(meta.regularMarketTime);
+
+      return {
+        quote,
+        candles,
+        formingCandle,
+        regularStart,
+        marketTimeSec: Number.isFinite(marketTimeSec) && marketTimeSec > 0 ? marketTimeSec : null,
+      };
     } catch (err) {
       console.error('fetchChart error:', yahooSymbol, err);
     }

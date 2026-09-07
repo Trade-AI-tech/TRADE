@@ -84,6 +84,11 @@ interface ChartResponse {
   forming: ChartBar | null;
   quote: MarketPrice | null;
   servedAt: string;
+  /**
+   * เวลาที่ราคานั้นเกิดจริงตาม Yahoo (ISO) · null = โหมด demo หรือแหล่งข้อมูลไม่ได้ส่งมา
+   * คนละอย่างกับ servedAt ซึ่งเป็นเวลาที่ "เราไปดึง" — ดูเหตุผลที่ /api/chart
+   */
+  marketTime?: string | null;
 }
 
 const STRENGTH_TH: Record<string, { label: string; stars: number }> = {
@@ -332,6 +337,23 @@ export default function ChartPage() {
    * แถวสัญญาณตัวเต็มของใบที่เลือก — ต้องใช้ `indicators` กับ `reasons` ที่หมุดไม่ได้พกมา
    * (ChartSignalMarker เก็บเฉพาะสิ่งที่ตัววาดกราฟต้องใช้ โดยตั้งใจ)
    */
+  /**
+   * ราคาที่เห็นอยู่ "เก่าไปแล้วกี่นาที" นับจากเวลาที่แหล่งข้อมูลประทับมา
+   * ผูกกับ fetchedAt ด้วยเพื่อให้คำนวณใหม่ทุกรอบ poll ไม่ใช่ค้างที่ค่าตอนโหลดแรก
+   */
+  const marketAgeMin = useMemo<number | null>(() => {
+    const iso = shown?.marketTime;
+    if (!iso || fetchedAt === null) return null;
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return null;
+    // ใช้ fetchedAt เป็นนาฬิกาอ้างอิง ไม่ใช่ Date.now() — ค่านี้แปลว่า "ตอนที่เราไปดึง
+    // ราคานั้นเก่าไปแล้วกี่นาที" ซึ่งเป็นข้อเท็จจริงที่ตรึงอยู่กับคำตอบชุดนั้นจริง ๆ
+    // (ถ้าใช้ Date.now() ตัวเลขจะเดินไปเรื่อยระหว่างรอบ poll โดยที่ข้อมูลไม่ได้เปลี่ยน
+    //  และ useMemo ก็ไม่คำนวณใหม่อยู่ดีจนกว่า deps จะขยับ = ตัวเลขค้างแบบเงียบ ๆ)
+    const mins = (fetchedAt - t) / 60_000;
+    return mins >= 0 ? mins : 0;
+  }, [shown?.marketTime, fetchedAt]);
+
   const selectedRow = useMemo<Signal | null>(
     () => (selectedId ? signals.find((s) => s.id === selectedId) ?? null : null),
     [signals, selectedId]
@@ -423,6 +445,18 @@ export default function ChartPage() {
             {shown ? ` (ข้อมูลหน่วงได้ถึง ${shown.cacheSec} วินาที)` : ''}
           </span>
           {fetchedAt !== null && <span>· ดึงล่าสุด {thClock(fetchedAt, true)} น.</span>}
+          {/*
+            อายุของ "ตัวราคา" ไม่ใช่ของ "การดึง" — สองอย่างนี้ต่างกันได้มาก
+            เจ้าของรายงาน 2026-09-07 ว่าราคาไม่ขยับทั้งที่เวลาดึงเดินตลอด · ต้นเหตุคือ
+            แหล่งข้อมูลเองยังไม่มีราคาใหม่ (วัดจริงตอนนั้น 10.2 นาที ช่วงตลาดเอเชียบาง)
+            ถ้าจอบอกแต่เวลาดึง ผู้ใช้จะสรุปว่าหน้าเว็บค้าง ทั้งที่ระบบทำงานถูกทุกอย่าง
+          */}
+          {marketAgeMin !== null && (
+            <span className={cn(marketAgeMin >= 15 && 'text-[rgb(var(--text-secondary))]')}>
+              · ราคาจากแหล่งข้อมูล{' '}
+              {marketAgeMin < 1 ? 'เมื่อครู่' : `${Math.round(marketAgeMin)} นาทีที่แล้ว`}
+            </span>
+          )}
           {/* ปุ่มคืนมุมมองขึ้นเฉพาะเมื่อมีกราฟให้คืนจริง — ปุ่มที่กดแล้วไม่เกิดอะไรคือปุ่มที่โกหก */}
           {shown && shown.bars.length > 0 && (
             <button
