@@ -38,7 +38,10 @@
     "check:determinism:self": "node scripts/research/check-determinism.mjs --self-test",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts",
+    "measure:freshness": "node scripts/measure-quote-freshness.mjs",
+    "measure:freshness:report": "node scripts/measure-quote-freshness.mjs --report",
+    "test:freshness-probe": "node scripts/measure-quote-freshness.mjs --self-test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

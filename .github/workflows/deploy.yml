@@ -92,6 +92,10 @@ jobs:
       # เพราะเจ้าของรายงานเรื่องซูม/ลากบนมือถือมาแล้วสองรอบ
       - run: npm run test:chart-markers
 
+      # ตัววัดความสดของราคา — ตรวจแค่ตรรกะแบ่งช่วงตลาดกับเปอร์เซ็นไทล์
+      # (ไม่ยิงเครือข่าย จึงไม่ทำให้ CI ช้าหรือพึ่ง Yahoo)
+      - run: npm run test:freshness-probe
+
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

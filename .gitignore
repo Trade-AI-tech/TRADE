@@ -53,6 +53,10 @@ supabase/.temp/
 !.research-cache/candles/
 .research-cache/candles/*
 !.research-cache/candles/GOLD__XAUUSD__15m.json
+# ข้อยกเว้นที่สอง (2026-09-07): ผลวัดความสดของราคาจาก Yahoo
+# เหตุผลเดียวกับไฟล์ 15m — เก็บย้อนหลังใหม่ไม่ได้ ต้องสะสมไปเรื่อย ๆ ถึงจะมีข้อมูล
+# ข้ามช่วงตลาดพอให้ตัดสินใจเรื่องค่า data feed ได้ · ไฟล์เล็ก (~120 ไบต์/ตัวอย่าง)
+!.research-cache/quote-freshness.jsonl
 
 # ผลผลิตจากการ build ที่ใช้ dist dir อื่น (NEXT_DIST_DIR) — เคยถูก commit เข้ามาโดยไม่ตั้งใจ
 # 220 ไฟล์ ทำให้ทุกครั้งที่ build แล้ว git status เต็มไปด้วยไฟล์ที่ไม่มีใครอ่าน

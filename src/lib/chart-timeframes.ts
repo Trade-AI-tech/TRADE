@@ -56,9 +56,9 @@ export interface ChartTimeframe {
 }
 
 export const CHART_TIMEFRAMES: readonly ChartTimeframe[] = [
-  { key: '15m', label: '15 นาที', interval: '15m', range: '1mo', barSec: 900, pollMs: 60_000 },
-  { key: '1H', label: '1 ชั่วโมง', interval: '1h', range: '3mo', barSec: 3600, pollMs: 120_000 },
-  { key: '1D', label: '1 วัน', interval: '1d', range: '1y', barSec: 86_400, pollMs: 300_000 },
+  { key: '15m', label: '15 นาที', interval: '15m', range: '1mo', barSec: 900, pollMs: 20_000 },
+  { key: '1H', label: '1 ชั่วโมง', interval: '1h', range: '3mo', barSec: 3600, pollMs: 30_000 },
+  { key: '1D', label: '1 วัน', interval: '1d', range: '1y', barSec: 86_400, pollMs: 60_000 },
 ];
 
 /**
@@ -111,5 +111,9 @@ export const CHART_MAX_BARS = 1000;
  * แคช 5 นาทีทำให้ราคาบนจอค้างเป็นก้อน ๆ จนดูเหมือนกราฟแข็ง
  * ยังคงต้องมีแคชอยู่ (ไม่ใช่ 0) เพราะหลายแท็บ/หลายคนเปิดหน้าเดียวกันพร้อมกัน
  * ต้องไม่กลายเป็นคำขอไป Yahoo หลายสิบครั้งต่อนาที
+ *
+ * ลดจาก 30 เหลือ 15 เมื่อ 2026-09-07 พร้อมกับการเร่ง pollMs · เพดานคำขอที่แย่ที่สุด
+ * คือ 4 ครั้ง/นาที ต่อหนึ่งกรอบเวลาที่มีคนเปิดอยู่ (= 240/ชม.) ซึ่งยังห่างจากระดับที่
+ * Yahoo เคยตอบ 429 มาก และจักรวาลเหลือ symbol เดียวจึงไม่มีคำขออื่นมาแย่งโควตา
  */
-export const CHART_CACHE_SEC = 30;
+export const CHART_CACHE_SEC = 15;

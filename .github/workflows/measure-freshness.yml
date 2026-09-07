@@ -1,0 +1,85 @@
+name: วัดความสดของราคาทองจาก Yahoo
+
+# ═══ ทำไมมี workflow นี้ ══════════════════════════════════════════════════════
+# 2026-09-07 เจ้าของถามว่าควรจ่ายค่า data feed แบบเรียลไทม์ไหม ($19–99/เดือน
+# บวกค่าเซิร์ฟเวอร์ที่ต้องเปิดตลอด) — คำถามนั้นตอบไม่ได้ถ้าไม่รู้ว่าแหล่งข้อมูลฟรี
+# ที่ใช้อยู่ช้าแค่ไหน "ในช่วงที่เขาเทรดจริง" ไม่ใช่ช้าแค่ไหนตอนที่บังเอิญไปตรวจ
+#
+# ตัวอย่างเดียวที่วัดตอนถาม (03:06 UTC ช่วงเอเชียบาง) ได้ 10.2 นาที ซึ่งเป็นช่วง
+# ที่แย่ที่สุดของวันพอดี — เอาไปตัดสินใจเรื่องเงินไม่ได้ ต้องมีข้อมูลข้ามช่วงตลาด
+#
+# ═══ ทำไมสุ่มเป็นชุดสั้น ๆ แทนที่จะรันยาว ══════════════════════════════════════
+# สิ่งที่ต้องวัดคือ "Yahoo มีราคาใหม่ทุกกี่วินาที" ซึ่งต้องยิงถี่กว่าจังหวะอัปเดตมาก
+# ถึงจะเห็น (ยิงทุก 10 นาทีแล้ววัดจังหวะ 10 วินาทีไม่ได้) แต่การรันค้างตลอดวัน
+# กินเวลา runner โดยไม่จำเป็น · จึงยิงเป็นชุด 12 ครั้ง × 15 วินาที = 3 นาที
+# ทุกครึ่งชั่วโมง ได้ตัวอย่างละเอียดกระจายครบทุกช่วงตลาดโดยไม่ต้องรันค้าง
+#
+# repo นี้เป็น public → GitHub Actions ไม่คิดโควตา
+#
+# ═══ นาทีที่เลือก ═════════════════════════════════════════════════════════════
+# scan-universe ยิงนาทีที่ 2,17,32,47 · collect-15m ยิง 21:40 · fetch-news ยิงนาทีที่ 5
+# นาทีที่ 9,39 จึงไม่ชนใครและห่างจากทุกตัวอย่างน้อย 4 นาที
+# (ชนกันไม่ได้ทำให้ข้อมูลผิด แค่ทำให้ยิง Yahoo พร้อมกันโดยไม่จำเป็น)
+
+on:
+  schedule:
+    - cron: '9,39 * * * *'
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: 'จำนวนตัวอย่างในชุดนี้'
+        required: false
+        default: '12'
+      interval:
+        description: 'ห่างกันกี่วินาที'
+        required: false
+        default: '15'
+
+# ต้องเขียน repo ได้ ไม่งั้นข้อมูลหายทุกรอบ (เหมือน collect-15m.yml)
+permissions:
+  contents: write
+
+# กันสองรอบซ้อนกันเขียนไฟล์เดียวกัน — รอบที่มาทีหลังรอให้รอบก่อนจบ
+# ไม่ใช่ cancel-in-progress เพราะรอบที่กำลังเก็บอยู่มีข้อมูลที่ยังไม่ได้ commit
+concurrency:
+  group: measure-freshness
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    # ชุดหนึ่งใช้ ~3 นาที + เวลา checkout/commit — 10 นาทีคือเพดานกันค้าง
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ไม่ต้อง npm ci — สคริปต์ใช้ fetch กับ fs ของ node ล้วน ไม่มี dependency
+      - name: เก็บตัวอย่าง
+        run: |
+          node scripts/measure-quote-freshness.mjs \
+            --samples=${{ github.event.inputs.samples || '12' }} \
+            --interval=${{ github.event.inputs.interval || '15' }}
+
+      - name: สรุปผลสะสมลง log ของรอบนี้
+        run: node scripts/measure-quote-freshness.mjs --report
+
+      - name: commit ข้อมูลกลับ
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # ใช้ status --porcelain ไม่ใช่ diff --quiet เพราะรอบแรกสุดไฟล์ยังไม่ถูก track
+          # (diff จะมองไม่เห็นแล้วข้ามการ commit ตลอดไป — บทเรียนจาก collect-15m.yml)
+          if [ -z "$(git status --porcelain .research-cache/quote-freshness.jsonl)" ]; then
+            echo "ไม่มีข้อมูลใหม่ — ไม่สร้าง commit เปล่า"
+            exit 0
+          fi
+          COUNT=$(wc -l < .research-cache/quote-freshness.jsonl | tr -d ' ')
+          git add .research-cache/quote-freshness.jsonl
+          git commit -m "วัดความสดของราคาทอง (สะสม ${COUNT} ตัวอย่าง) [skip ci]"
+          # push ชนแล้ว rebase ลองใหม่ครั้งเดียว ห้าม push -f
+          # แดงหนึ่งรอบไม่ทำให้ข้อมูลหาย เพราะรอบถัดไปเก็บต่อได้
+          git push || (git pull --rebase --autostash && git push)
