@@ -121,8 +121,19 @@ function thDateTimeIso(iso: string | null): string | null {
 }
 
 /** "ทุก 1 นาที" / "ทุก 5 นาที" — พูดเป็นนาทีเพราะทุกเลนตั้งไว้เป็นนาทีเต็มอยู่แล้ว */
+/**
+ * "อัปเดตเองทุก …" — เลือกหน่วยตามความถี่จริง
+ *
+ * ⚠ ของเดิมปัดเป็นนาทีเสมอ (`Math.round(pollMs / 60_000)`) ซึ่งถูกตอนที่รอบดึงยัง
+ * เป็น 60/120/300 วินาที แต่พอเร่งรอบเป็น 20/30/60 วินาที (2026-09-07) บรรทัดนี้
+ * กลายเป็น **"อัปเดตเองทุก 0 นาที"** บนเลน 15m และ 1H ซึ่งอ่านว่าไม่อัปเดตเลย
+ * — ตรงข้ามกับความจริงที่มันอัปเดตถี่ขึ้นสามเท่า และเป็นข้อความที่ขึ้นบนโปรดักชันไปแล้ว
+ */
 function pollLabel(tf: ChartTimeframe): string {
-  return `${Math.round(tf.pollMs / 60_000)} นาที`;
+  const sec = Math.round(tf.pollMs / 1000);
+  if (sec < 60) return `${sec} วินาที`;
+  const min = sec / 60;
+  return `${Number.isInteger(min) ? min : min.toFixed(1)} นาที`;
 }
 
 export default function ChartPage() {
