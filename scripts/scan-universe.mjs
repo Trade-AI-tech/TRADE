@@ -143,6 +143,9 @@ const TIMEFRAMES = {
   '15m': { interval: '15m', range: '1mo' },
 };
 
+/** ความยาวแท่งของแต่ละกรอบ (วินาที) — ด่านแท่งค้างใช้บอกว่าแท่งปิดล่าสุดจบไปนานแค่ไหน */
+const BAR_SEC = { '1D': 86400, '1H': 3600, '15m': 900 };
+
 /** แท่งน้อยกว่านี้วิเคราะห์ไม่ได้ — เกณฑ์เดียวกับ route เดิม */
 const MIN_CANDLES = 50;
 
@@ -473,12 +476,14 @@ async function loadRealModules() {
       telegram: path.join(ROOT, 'src', 'lib', 'telegram.ts'),
       // ตรรกะ "แจ้งกลับทิศ" — pure ทั้งไฟล์ ทดสอบด้วย scripts/test-signal-flips.mjs
       flips: path.join(ROOT, 'src', 'lib', 'signal-flips.ts'),
+      // "ตลาดเปิดอยู่ไหม" + "ใบนี้คือใบเดิมไหม" — pure ทั้งไฟล์ ทดสอบด้วย scripts/test-market-session.mjs
+      session: path.join(ROOT, 'src', 'lib', 'market-session.ts'),
     };
     for (const p of Object.values(paths)) if (!existsSync(p)) fail(`ไม่พบไฟล์ต้นฉบับ ${p}`);
 
     transpileGraph(Object.values(paths), tmpDir);
     const load = (abs) => import(pathToFileURL(path.join(tmpDir, flatName(abs))).href);
-    const [universe, marketData, engine, costs, push, telegram, flips] = await Promise.all(Object.values(paths).map(load));
+    const [universe, marketData, engine, costs, push, telegram, flips, session] = await Promise.all(Object.values(paths).map(load));
 
     // ── ตัวให้คะแนนความเร็ว (ไม่บังคับ) ────────────────────────────────────────────
     // ทุกอย่างในบล็อกนี้ห่อ try ไว้ทั้งก้อนโดยตั้งใจ: ไฟล์ของคนอื่นที่ยังเขียนไม่เสร็จ
@@ -520,6 +525,11 @@ async function loadRealModules() {
       ...pick(push, ['sendPendingSignalsToUser', 'pushStateColumnAvailable'], 'src/lib/push-server.ts'),
       ...pick(telegram, ['sendSignalAlert'], 'src/lib/telegram.ts'),
       ...pick(flips, ['findFlipTargets', 'markFlipTargets'], 'src/lib/signal-flips.ts'),
+      ...pick(
+        session,
+        ['marketSessionState', 'intradayBarIsCurrent', 'sameSetupKey', 'MARKET_CLOSED_AFTER_SEC', 'SAME_SETUP_LOOKBACK_HOURS'],
+        'src/lib/market-session.ts'
+      ),
       speedScore,
       speedScoreSource,
     };
@@ -764,6 +774,9 @@ async function main() {
     const { interval, range } = TIMEFRAMES[job.tf];
     try {
       const chart = await lib.fetchChart(job.target.symbol, job.target.market, interval, range);
+      // เวลาซื้อขายจริงล่าสุด — ด่านตลาดปิด (ขั้นที่ 4) ใช้ตัดสินว่าจะออกสัญญาณรอบนี้ไหม
+      // เก็บจากทุกกรอบเวลา ไม่ใช่แค่ 1D: ถ้าคำขอใดล้ม อีกสองใบยังให้คำตอบได้
+      job.marketTimeSec = chart.marketTimeSec ?? null;
       // ราคาปัจจุบันเก็บจากรอบ 1D เท่านั้น (เหมือน route เดิม) — 1H ให้ quote ชุดเดียวกันอยู่แล้ว
       //
       // ⚠ เก็บได้เฉพาะ "ตัวที่สแกน" เท่านั้น แปลว่าแถว market_prices ของ 12 สัญลักษณ์ที่ถูก
@@ -820,12 +833,53 @@ async function main() {
         'สัญญาณที่ไม่มีเซลล์ของตัวเองจะไม่มีบล็อกหลักฐาน (ตั้งใจ — ดีกว่าอ้างสถิติของสินทรัพย์อื่น)'
     );
   }
+  // ── ด่านตลาดปิด (เจ้าของรายงาน 2026-09-14 "วันหยุด ทองไม่วิ่ง ก็มีแจ้งเตือนมา") ──────
+  //
+  // ตลาดไม่ได้ซื้อขาย = ไม่มีข้อมูลใหม่ให้ตัดสิน = ไม่ออกสัญญาณ ไม่ว่าเครื่องยนต์จะคำนวณได้อะไร
+  // วัดแล้วว่าสุดสัปดาห์ 12-13 ก.ย. ใบ 15m BUY เดียวกันเป๊ะเด้งเข้ามือถือ 9 ครั้ง
+  // เกณฑ์และตัวเลขที่รองรับทั้งหมดอยู่หัวไฟล์ src/lib/market-session.ts
+  //
+  // ⚠ ด่านนี้ปิด "การออกสัญญาณ" เท่านั้น — ราคายังเขียนลง market_prices ทุกรอบเหมือนเดิม
+  //   (scan-health ตัดสินว่าตัวสแกนตายไหมจากอายุของตารางนั้น ถ้าหยุดเขียนตอนตลาดปิด
+  //   หน้าเว็บจะขึ้น "ตัวสแกนหยุดทำงาน" ทุกสุดสัปดาห์ทั้งที่ปกติดี) · ตัวเก็บผลก็ยังรัน
+  //   และหน้าปัด cron ไม่ถูกแตะ — ตัวสแกนยังตื่นทุกรอบ แค่ไม่มีอะไรให้ส่ง
+  const session = lib.marketSessionState(Date.now(), jobs.map((j) => j.marketTimeSec));
+  const lastTradeSec = Math.max(0, ...jobs.map((j) => Number(j.marketTimeSec)).filter(Number.isFinite));
+  const ageText = (sec) => (sec < 3600 ? `${Math.round(sec / 60)} นาที` : `${(sec / 3600).toFixed(1)} ชม.`);
+  const sessionSkips = { closed: 0, staleBar: 0 };
+  if (session.state === 'closed') {
+    console.log(
+      `ตลาด   ปิด — ซื้อขายครั้งล่าสุดเมื่อ ${ageText(session.staleSec)} ที่แล้ว ` +
+        `(เกินเกณฑ์ ${lib.MARKET_CLOSED_AFTER_SEC / 60} นาที) · ไม่ออกสัญญาณรอบนี้ ราคายังอัปเดตตามปกติ`
+    );
+  } else if (session.state === 'unknown') {
+    ghaWarn(
+      'ไม่รู้เวลาซื้อขายล่าสุดจากคำขอใดเลย — ด่านตลาดปิดตัดสินไม่ได้รอบนี้ จึงปล่อยผ่าน ' +
+        '(กันซ้ำตามเนื้อหายังทำงาน) · ถ้าเห็นทุกรอบ แปลว่า Yahoo เปลี่ยนรูปแบบคำตอบ'
+    );
+  } else {
+    console.log(`ตลาด   เปิด — ซื้อขายครั้งล่าสุดเมื่อ ${ageText(session.staleSec)} ที่แล้ว`);
+  }
+
   const cpuComputeStart = process.cpuUsage();
   const candidates = []; // { signal: Signal|null, target }
   for (let i = 0; i < jobs.length; i++) {
     const candles = fetched[i];
     if (!candles) continue; // ดึงไม่สำเร็จ — นับไว้ใน fetchStats แล้ว ไม่เอามาปนกับ "ไม่มีสัญญาณ"
     const { target, tf } = jobs[i];
+    if (!session.open) {
+      sessionSkips.closed++;
+      continue;
+    }
+    // ด่านแท่งค้าง — ตลาดเพิ่งเปิด (เวลาซื้อขายสดแล้ว) แต่แท่งปิดใบสุดท้ายยังเป็นของก่อนปิด
+    // ไม่ใช้กับ 1D: เหตุผลอยู่ที่ intradayBarIsCurrent ใน src/lib/market-session.ts
+    if (tf !== '1D' && BAR_SEC[tf]) {
+      const lastStartSec = Date.parse(candles[candles.length - 1].timestamp) / 1000;
+      if (!lib.intradayBarIsCurrent(lastStartSec, BAR_SEC[tf], lastTradeSec || null)) {
+        sessionSkips.staleBar++;
+        continue;
+      }
+    }
     try {
       let signal = lib.generateSignal({
         symbol: target.symbol,
@@ -944,6 +998,35 @@ async function main() {
     }
   }
 
+  // ── กันซ้ำตามเนื้อหา — ใบที่ราคาเข้า/SL/TP ตรงกับใบเดิมเป๊ะ คือใบเดิมที่ถูกคำนวณซ้ำ ──────
+  //
+  // ตัวกันซ้ำข้างบนจำด้วยนาฬิกา (15m/1H 4 ชม. · 1D 20 ชม.) แต่ตัวตนของสัญญาณผูกกับแท่ง
+  // แท่งค้างนานกว่าหน้าต่างเมื่อไหร่ใบเดิมจะกลายเป็นใบใหม่ — สุดสัปดาห์ 12-13 ก.ย. คือ
+  // ตัวอย่างจริง (9 ใบเหมือนกันทุกตัวเลข) และ 1D ก็มีช่องแบบนี้ทุกวัน (หน้าต่าง 20 < แท่ง 24 ชม.)
+  // ด่านตลาดปิดกันสุดสัปดาห์ได้แล้ว ชั้นนี้กันกรณีที่ด่านนั้นมองไม่เห็น: แท่งค้างทั้งที่ราคา
+  // ยังอัปเดต · 1D ตอนตลาดเปิดคืนวันอาทิตย์ · และตอนที่ด่านตลาดปิดต้องปล่อยผ่านเพราะไม่รู้เวลา
+  //
+  // query แยกจากตัวกันซ้ำเดิมโดยตั้งใจ: ขยายหน้าต่างของ query นั้นจะเปลี่ยนชุดสำรองของ
+  // ตัวตรวจกลับทิศ (recentActive) ซึ่งมีคอมเมนต์ผูกพฤติกรรม 20 ชม. ไว้ · อันนี้ไม่กรอง status
+  // เพราะใบซ้ำสุดสัปดาห์ถูกตัวเก็บผลปั๊มเป็น triggered ไปแล้วทุกใบ ถ้ากรอง active จะมองไม่เห็น
+  // อ่านไม่สำเร็จ = หยุดรอบ ตามกติกาเดียวกับตัวกันซ้ำเดิม ("หยุดดีกว่าปล่อยให้สแปม")
+  const seenSetups = new Set();
+  if (sb) {
+    const setupSince = new Date(Date.now() - lib.SAME_SETUP_LOOKBACK_HOURS * 3600_000).toISOString();
+    const { data: setupRows, error: setupErr } = await sb
+      .from('signals')
+      .select('user_id, symbol, timeframe, action, entry_price, stop_loss, take_profit')
+      .gte('created_at', setupSince);
+    if (setupErr) {
+      fail(`อ่านสัญญาณเดิมเพื่อกันซ้ำตามเนื้อหาไม่สำเร็จ: ${setupErr.message} — หยุดรอบนี้ ไม่บันทึกอะไรเลย`);
+    }
+    for (const r of setupRows ?? []) {
+      const key = lib.sameSetupKey(r);
+      if (key) seenSetups.add(key);
+    }
+  }
+  let sameSetupSkipped = 0;
+
   // ── 6. ผ่านประตูคุณภาพ แล้วผูกกับผู้รับ ──────────────────────────────────────────
   //
   // selectSignals มีเพดาน maxSignalsPerRun "ต่อการเรียกหนึ่งครั้ง" จึงต้องเรียกแยกรายคน
@@ -977,6 +1060,13 @@ async function main() {
         dedupeSkipped++;
         return false;
       }
+      // ใบที่ตัวเลขเหมือนใบเดิมเป๊ะ — นับแยกจาก dedupeSkipped เพื่อให้ log บอกได้ว่า
+      // หน้าต่างเวลาเดิมหลุดไปแล้วกี่ครั้ง (ถ้าตัวนี้ขึ้นบ่อย แปลว่ามีแหล่งแท่งค้างที่ด่านอื่นมองไม่เห็น)
+      const sk = lib.sameSetupKey({ ...signal, user_id: userId });
+      if (sk && seenSetups.has(sk)) {
+        sameSetupSkipped++;
+        return false;
+      }
       return true;
     });
 
@@ -997,6 +1087,8 @@ async function main() {
     for (const signal of selection.accepted) {
       const dk = `${userId}:${signal.symbol}:${signal.action}:${signal.timeframe}`;
       seen.add(dk);
+      const acceptedSetup = lib.sameSetupKey({ ...signal, user_id: userId });
+      if (acceptedSetup) seenSetups.add(acceptedSetup);
       // id ใหม่ต่อคน — signals.id เป็น primary key จะใช้ค่าเดียวกันหลายแถวไม่ได้
       //
       // push_sent = false = "ตัวส่งกลางยังไม่ได้แจ้งแถวนี้" ตัวสแกนตัวนี้เป็นตัวเดียวที่เขียนค่านี้
@@ -1225,6 +1317,9 @@ async function main() {
     gateSummaryText: rejectionLine,
     overCapacity,
     dedupeSkipped,
+    sameSetupSkipped,
+    // ด่านตลาดปิด — state 'closed' = ไม่ได้ประเมินสัญญาณเลยทั้งรอบ (ตั้งใจ ไม่ใช่ความผิดพลาด)
+    marketSession: { state: session.state, staleSec: session.staleSec, skippedClosed: sessionSkips.closed, skippedStaleBar: sessionSkips.staleBar },
     signalsInserted: DRY_RUN ? 0 : signalsInserted,
     pricesUpdated,
     pushStateReady,
@@ -1247,7 +1342,11 @@ async function main() {
     console.log(`เวลา   ${(totalMs / 1000).toFixed(2)} วิ (ดึงข้อมูล ${(fetchMs / 1000).toFixed(2)} วิ) · CPU ${summary.cpuMs} ms (ส่วน generateSignal ล้วน ${summary.computeCpuMs} ms)`);
     console.log(`ดึง    สำเร็จ ${fetchStats.ok}/${jobs.length} (${pct(fetchStats.ok, jobs.length)}) · ดึงไม่ได้ ${fetchStats.httpFail} · ข้อมูลไม่พอ ${fetchStats.thin} · หมดงบเวลา ${fetchStats.budget}`);
     console.log(`เกณฑ์  พิจารณา ${evaluated} · ผ่าน ${allRows.length} · ${rejectionLine}`);
-    console.log(`บันทึก ${DRY_RUN ? `${allRows.length} (dry run ไม่ได้เขียน)` : signalsInserted} แถว · ซ้ำของเดิมข้าม ${dedupeSkipped} · ราคาอัปเดต ${pricesUpdated} · ผู้รับ ${recipients.size} คน`);
+    console.log(`บันทึก ${DRY_RUN ? `${allRows.length} (dry run ไม่ได้เขียน)` : signalsInserted} แถว · ซ้ำของเดิมข้าม ${dedupeSkipped} · เซ็ตอัพเดิมเป๊ะข้าม ${sameSetupSkipped} · ราคาอัปเดต ${pricesUpdated} · ผู้รับ ${recipients.size} คน`);
+    console.log(
+      `ด่าน   ตลาดปิดข้าม ${sessionSkips.closed} คำขอ · แท่งค้างข้าม ${sessionSkips.staleBar} คำขอ` +
+        (session.staleSec == null ? ' · ไม่รู้เวลาซื้อขายล่าสุด' : ` · ซื้อขายล่าสุดเมื่อ ${ageText(session.staleSec)} ที่แล้ว`)
+    );
     console.log(`ต้นทุน ขยาย SL ของ 15m ${stopsWidened} ตัว (เพดานต้นทุน ${lib.MAX_COST_R} R/ไม้) · ${costColumnReady ? 'ติดตัวเลขต้นทุนไปกับทุกสัญญาณ' : 'ยังไม่มีคอลัมน์ cost_r'}`);
     console.log(`หลักฐาน ${EVIDENCE_TABLE ? `แนบความถี่ในอดีตของเซ็ตอัพให้ ${evidenceAttached} สัญญาณ (ตาราง src/lib/signal-evidence.data.json)` : 'ไม่มีตาราง signal-evidence.data.json — สแกนต่อโดยไม่แนบ'}`);
     // ตัวเลขสองตัวนี้ต่างกันได้จริง (ตรวจพบแต่ยังไม่ได้ปั๊ม): dry run · insert ล้ม ·
@@ -1273,9 +1372,14 @@ async function main() {
   }
 
   // ── 11. สรุปขึ้นหน้า run ของ GitHub Actions ─────────────────────────────────────
+  // ตลาดปิดต้องเห็นได้จากหน้ารายการ run เลย ไม่ใช่ต้องเปิด log — ไม่งั้น "ผ่านเกณฑ์ 0/0"
+  // ทุกรอบตลอดสุดสัปดาห์จะอ่านเหมือนตัวสแกนเสีย
   const line =
     `สแกน ${targetList.length} ตัว · ดึงสำเร็จ ${fetchStats.ok}/${jobs.length} · ` +
-    `ผ่านเกณฑ์ ${allRows.length}/${evaluated} · บันทึก ${DRY_RUN ? 0 : signalsInserted} · ` +
+    (session.state === 'closed'
+      ? `ตลาดปิด (ซื้อขายล่าสุด ${ageText(session.staleSec)} ที่แล้ว) ไม่ออกสัญญาณ · `
+      : `ผ่านเกณฑ์ ${allRows.length}/${evaluated} · `) +
+    `บันทึก ${DRY_RUN ? 0 : signalsInserted} · ` +
     `เด้ง ${notify.notifications} ครั้ง · ${(totalMs / 1000).toFixed(1)} วิ`;
   ghaNotice(line);
   if (process.env.GITHUB_STEP_SUMMARY) {
