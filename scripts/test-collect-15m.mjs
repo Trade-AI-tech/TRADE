@@ -29,6 +29,8 @@ import {
   serializeDataset,
   assertYahooSymbolStillMatches,
   fetchChart,
+  isHolidayWeekendGap,
+  MAX_HOLIDAY_GAP_HOURS,
 } from './collect-15m.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -460,6 +462,39 @@ console.log('── ต่อสายกับของจริง ──');
         !(minutes[0] === 5 && new Set([0, 4, 8, 12, 16, 20]).has(hours[0])), cron[1]);
     }
   }
+}
+
+// ───────────── ช่องว่างวันหยุดยาว — บั๊กจริงที่ทำให้ตัวเก็บล้มทุกวันตั้งแต่ 8 ก.ย. 2026 ─────────────
+console.log('\nช่องว่างวันหยุดยาว (isHolidayWeekendGap)');
+{
+  // ของจริงที่ทำให้ล้ม: Labor Day 2026 — Yahoo ไม่มีแท่งจริงจากศุกร์ 20:45Z ถึงอังคาร 04:00Z
+  t('Labor Day 2026 ของจริง (ศ 20:45Z → อ 04:00Z · 79.25 ชม.) = วันหยุดยาว ไม่ต้องล้ม',
+    isHolidayWeekendGap('2026-09-04T20:45:00.000Z', '2026-09-08T04:00:00.000Z'));
+  t('สุดสัปดาห์ปกติ (ศ → อา) ก็เข้ารูปทรงนี้ด้วย (ด่าน 55 ชม. ไม่เคยล้มกับมันอยู่แล้ว)',
+    isHolidayWeekendGap('2026-09-11T20:45:00.000Z', '2026-09-13T22:00:00.000Z'));
+  t('Good Friday (พฤ ปิด → อา เปิด) = วันหยุดยาว',
+    isHolidayWeekendGap('2027-04-01T21:00:00.000Z', '2027-04-04T22:00:00.000Z'));
+  t('คริสต์มาสวันศุกร์ (พฤ ปิดเร็ว → จ เช้า) = วันหยุดยาว',
+    isHolidayWeekendGap('2026-12-24T18:45:00.000Z', '2026-12-28T04:00:00.000Z'));
+
+  // สิ่งที่ด่านต้องยังจับได้เหมือนเดิม
+  t('ข้อมูลหายกลางสัปดาห์ (อ → ศ 72 ชม.) = ไม่ใช่วันหยุด ต้องล้มตามเดิม',
+    !isHolidayWeekendGap('2026-09-08T12:00:00.000Z', '2026-09-11T12:00:00.000Z'));
+  t('เริ่มวันพุธ = ไม่ใช่รูปทรงวันหยุด',
+    !isHolidayWeekendGap('2026-09-09T20:00:00.000Z', '2026-09-13T22:00:00.000Z'));
+  t('จบวันพุธ = ไม่ใช่รูปทรงวันหยุด',
+    !isHolidayWeekendGap('2026-09-11T20:45:00.000Z', '2026-09-16T04:00:00.000Z'));
+  t(`ยาวเกิน ${MAX_HOLIDAY_GAP_HOURS} ชม. แม้รูปทรงถูก = วันหยุดอธิบายไม่ได้ ต้องล้ม`,
+    !isHolidayWeekendGap('2026-09-03T20:45:00.000Z', '2026-09-08T04:00:00.000Z'));
+  t('เวลาพัง / ย้อนกลับ = ไม่ยกเว้น',
+    !isHolidayWeekendGap('abc', '2026-09-08T04:00:00.000Z') && !isHolidayWeekendGap('2026-09-08T04:00:00.000Z', '2026-09-04T20:45:00.000Z'));
+
+  // ด่านต้องเรียกฟังก์ชันนี้จริง และยังล้มกับช่องที่ไม่ได้รับยกเว้น
+  const src = readFileSync(path.join(ROOT, 'scripts', 'collect-15m.mjs'), 'utf8');
+  const guard = src.slice(src.indexOf('const MAX_EXPECTED_GAP_HOURS = 55;'), src.indexOf('const built = buildDataset('));
+  t('ด่านช่องว่างเรียก isHolidayWeekendGap ก่อนตัดสินว่าจะล้ม', /isHolidayWeekendGap\(/.test(guard));
+  t('ช่องที่ไม่เข้ารูปทรงวันหยุดยังจบด้วย process.exit(1)', /process\.exit\(1\)/.test(guard.slice(guard.indexOf('continue;'))));
+  t('ช่องที่ได้รับยกเว้นต้องเตือนบนหน้า run (ไม่เงียบ)', /::warning::/.test(guard));
 }
 
 console.log('');
