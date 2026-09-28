@@ -213,12 +213,20 @@ function readPalette() {
     /**
      * ขอบโซนดีมาน/ซัพพลาย — ใช้เขียว/แดงแบบ **จาง** ไม่ใช่สีเต็ม
      *
-     * ฝั่งของโซนเป็นข้อมูลจริง (วัดแล้ว: กลับทิศแล้วแย่ลง 0.55 R) จึงต้องอ่านออกด้วยสี
+     * ฝั่งของโซนเป็นข้อมูลจริง (วัดแล้วบน 1H: กลับทิศแล้วแย่ลง 0.22–0.30 R — ไม่ใช่ 0.55 R ที่เคยเขียน
+     * ตัวเลขนั้นมาจากตัวเทียบที่ลำเอียง แก้เมื่อ 2026-09-28) จึงต้องอ่านออกด้วยสี
      * แต่สีเต็มบนเส้นแนวนอนอ่านเป็น "เข้าไม้ตรงนี้" ซึ่งเกินกว่าที่ตัวเลขรองรับ —
      * เหตุผลเดียวกับที่ band/level ใช้สีกลาง ๆ · ความจางคือการบอกว่า "นี่คือบริบท"
      */
     zoneDemand: dark ? 'rgba(52,211,153,0.55)' : 'rgba(4,120,87,0.55)',
     zoneSupply: dark ? 'rgba(248,113,113,0.55)' : 'rgba(220,38,38,0.55)',
+    // SMC — เส้นทะลุโครงสร้างใช้สีจางแบบเดียวกับโซน (เหตุผลเดียวกัน: เป็นบริบท ไม่ใช่คำสั่ง)
+    // กล่อง OB/FVG ที่ทิศตรงกับโครงสร้างตอนนี้เข้มกว่ากล่องที่สวน — ตัวที่สวนเทรนด์คือของที่
+    // ห้องแล็บวัดแล้วว่าไม่ได้อะไร (exp-smc-gold.md) จึงไม่ควรเด่นเท่า
+    smcUp: dark ? 'rgba(52,211,153,0.75)' : 'rgba(4,120,87,0.75)',
+    smcDown: dark ? 'rgba(248,113,113,0.75)' : 'rgba(220,38,38,0.75)',
+    smcFaintUp: dark ? 'rgba(52,211,153,0.35)' : 'rgba(4,120,87,0.35)',
+    smcFaintDown: dark ? 'rgba(248,113,113,0.35)' : 'rgba(220,38,38,0.35)',
     /**
      * สีของหมุดตามผลที่ ledger บันทึกไว้ — ชื่อตัวแปรมาจาก MARKER_STATUS_META
      * ค่าถอย (ตอนอ่านตัวแปรไม่ได้ เช่นสไตล์ยังไม่ถูกใช้กับ <html>) คือค่าเดียวกับที่
@@ -319,6 +327,10 @@ export default function GoldChart({
   const srLinesRef = useRef<IPriceLine[]>([]);
   /** ขอบบน/ล่างของโซนดีมาน-ซัพพลาย — แยกอีกชุดเพราะเปิด/ปิดคนละสวิตช์กับแนวรับ/แนวต้าน */
   const zoneLinesRef = useRef<IPriceLine[]>([]);
+  /** ซีรีส์เส้นสั้นของ SMC (เส้นทะลุโครงสร้าง + ขอบกล่อง) — สร้างใหม่ทั้งชุดทุกครั้งที่ข้อมูลเปลี่ยน */
+  const smcSeriesRef = useRef<ISeriesApi<'Line'>[]>([]);
+  /** ป้าย BOS/CHoCH/OB/FVG — แยกจาก markersRef ของหมุดสัญญาณ (ตัวนั้นมีเพดานและการนับของมันเอง) */
+  const smcMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   /**
    * สิ่งที่อยู่บนแผงล่างตอนนี้ (เปิดได้ทีละหนึ่ง)
    *
@@ -574,6 +586,8 @@ export default function GoldChart({
       priceLinesRef.current = [];
       srLinesRef.current = [];
       zoneLinesRef.current = [];
+      smcSeriesRef.current = [];
+      smcMarkersRef.current = null;
       // ทิ้งทั้งกราฟอยู่แล้ว จึงไม่ต้อง removeSeries ทีละตัว แค่ล้างสมุดอ้างอิงไม่ให้
       // effect รอบหน้าหยิบซีรีส์ของกราฟที่ตายไปแล้วมาใช้ (ซึ่งจะโยนตอนเรียกเมธอด)
       overlays.clear();
@@ -952,6 +966,86 @@ export default function GoldChart({
       );
     }
   }, [ready, prefs.zones, indicators, themeTick]);
+
+  // ── 8c. SMC — เส้นทะลุโครงสร้าง + กล่อง OB/FVG ────────────────────────────────
+  //
+  // ต่างจากโซนดีมาน/ซัพพลายตรงที่วาดเป็น "ช่วง" ไม่ใช่เส้นพาดทั้งจอ: BOS/CHoCH ลากจากแท่ง
+  // swing ไปถึงแท่งที่ปิดทะลุ · กล่องลากจากแท่งที่เกิดถึงแท่งปิดล่าสุด — ใช้ LineSeries สองจุด
+  // (lightweight-charts ไม่มีสี่เหลี่ยมในตัว) และป้ายวางด้วย marker แบบ atPrice ของ v5
+  //
+  // ⚠ ทุกอย่างคำนวณจากแท่งชุดที่โหลดอยู่ เครื่องยนต์ไม่ได้ใช้ SMC ตัดสินใจ — ข้อความกำกับอยู่
+  //   ที่ ChartIndicatorToggles ห้ามถอดออก
+  useEffect(() => {
+    const chart = chartRef.current;
+    const LWC = lwcRef.current;
+    const candles = seriesRef.current;
+    if (!chart || !LWC || !candles) return;
+
+    for (const s of smcSeriesRef.current) {
+      try {
+        chart.removeSeries(s);
+      } catch {
+        // กราฟถูกทิ้งไปแล้ว — ข้าม
+      }
+    }
+    smcSeriesRef.current = [];
+    if (!smcMarkersRef.current) smcMarkersRef.current = LWC.createSeriesMarkers(candles, []);
+    const markers = smcMarkersRef.current;
+    const smc = indicators?.smc;
+    const lastTime = bars && bars.length ? bars[bars.length - 1].t : null;
+    if (!prefs.smc || !smc || lastTime === null) {
+      markers.setMarkers([]);
+      return;
+    }
+
+    const p = readPalette();
+    const segment = (from: number, to: number, value: number, color: string, style: number) => {
+      if (!(to > from)) return; // สองจุดเวลาเดียวกัน = วาดไม่ได้ และ setData จะโยนถ้าเวลาไม่เพิ่มขึ้น
+      const line = chart.addSeries(
+        LWC.LineSeries,
+        { color, lineWidth: 1, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false },
+        0
+      );
+      line.setData([
+        { time: from as UTCTimestamp, value },
+        { time: to as UTCTimestamp, value },
+      ]);
+      smcSeriesRef.current.push(line);
+    };
+
+    const list: SeriesMarker<Time>[] = [];
+    for (const m of smc.structure) {
+      const color = m.dir === 1 ? p.smcUp : p.smcDown;
+      segment(m.fromTime, m.toTime, m.level, color, LWC.LineStyle.Dashed);
+      list.push({
+        time: m.toTime as UTCTimestamp,
+        position: m.dir === 1 ? 'atPriceTop' : 'atPriceBottom',
+        price: m.level,
+        shape: 'circle',
+        size: 0.1,
+        color,
+        text: m.kind,
+      });
+    }
+    for (const b of smc.boxes) {
+      const color = b.dir === 1 ? (b.withTrend ? p.smcUp : p.smcFaintUp) : (b.withTrend ? p.smcDown : p.smcFaintDown);
+      const style = b.type === 'OB' ? LWC.LineStyle.Solid : LWC.LineStyle.Dotted;
+      segment(b.fromTime, lastTime, b.top, color, style);
+      segment(b.fromTime, lastTime, b.bottom, color, style);
+      list.push({
+        time: b.fromTime as UTCTimestamp,
+        position: 'atPriceMiddle',
+        price: (b.top + b.bottom) / 2,
+        shape: 'square',
+        size: 0.1,
+        color,
+        text: b.type,
+      });
+    }
+    // markers ต้องเรียงตามเวลา — ไม่งั้นไลบรารีโยน error ทั้งชุด
+    list.sort((a, b) => (a.time as number) - (b.time as number));
+    markers.setMarkers(list);
+  }, [ready, prefs.smc, indicators, bars, themeTick]);
 
   // ── 9. แผงล่าง: RSI หรือ MACD (ทีละหนึ่ง) ───────────────────────────────────
   useEffect(() => {

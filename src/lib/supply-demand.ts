@@ -114,7 +114,7 @@ type CandleClass = 'up' | 'down' | 'base';
  * ซ้ำทีละแท่งได้ผลถูกแต่เป็น O(n²) และไฟล์นี้ต้องวิ่งบนแท่งหลักหมื่นในห้องแล็บ
  * สูตรตรงกันเป๊ะ (true range เฉลี่ยแบบ simple ไม่ใช่ Wilder) — test เทียบไว้แล้ว
  */
-function atrSeries(candles: CandleData[], period: number): number[] {
+export function atrSeries(candles: CandleData[], period: number): number[] {
   const out = new Array<number>(candles.length).fill(NaN);
   if (candles.length < 2) return out;
 

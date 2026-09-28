@@ -111,6 +111,14 @@ jobs:
       # ซึ่งเป็นบั๊กจริงที่เคยทำให้ผลออกมาบวกเกินจริงเกินเท่าตัว
       - run: npm run lab:zones:self
 
+      # ตัวจำลองไม้ที่แล็บทุกตัวใช้ร่วมกัน — กติกาแท่งเข้าไม้คือสิ่งที่ตัดสินผลวิจัยทั้งหมด
+      # (zone-lab เคยได้ +0.22 R ปลอมจาก TP ในแท่งเข้า และตัวเทียบเคยแพ้เกินจริงจาก SL ก่อนเข้า)
+      - run: npm run test:trade-sim
+
+      # SMC (BOS/CHoCH/OB/FVG/กวาด) — ด่านหลักคือ causality บนทองจริงพร้อม negative control
+      - run: npm run test:smc
+      - run: npm run lab:smc:self
+
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

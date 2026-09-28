@@ -757,6 +757,9 @@ const BANNED = ['แม่นยำ', 'ความแม่น', 'โอกา�
 const LANE_FILES = [
   'src/lib/chart-indicators.ts',
   'src/lib/chart-indicator-prefs.ts',
+  // สองไฟล์นี้ป้อนโซน/SMC เข้ากราฟโดยตรง — คอมเมนต์ในนั้นถูกลอกขึ้นจอได้เหมือนไฟล์อื่นในเลน
+  'src/lib/supply-demand.ts',
+  'src/lib/smc.ts',
   'src/lib/signal-snapshot.ts',
   'src/components/trading/ChartIndicatorToggles.tsx',
   'src/components/trading/SignalEngineSnapshot.tsx',

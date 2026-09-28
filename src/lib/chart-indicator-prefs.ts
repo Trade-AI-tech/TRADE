@@ -28,6 +28,8 @@ export interface ChartIndicatorPrefs {
   sr: boolean;
   /** โซนดีมาน/ซัพพลาย — ขอบบน/ล่างของแต่ละโซน ฝั่งละไม่เกิน 3 ใบ */
   zones: boolean;
+  /** SMC — เส้นทะลุโครงสร้าง (BOS/CHoCH) + กล่อง OB/FVG ที่ใกล้ราคาที่สุด */
+  smc: boolean;
   lowerPane: LowerPaneKey;
 }
 
@@ -49,9 +51,18 @@ export interface ChartIndicatorPrefs {
  *
  * ที่ **เปิด** ไว้ทั้งที่เป็นเส้นแนวนอนเหมือน sr:
  *   · zones — เจ้าของขอให้เน้นดีมาน/ซัพพลายเป็นหลัก (2026-09-07) และต่างจาก sr ตรงที่
- *     วัดแล้วว่ามีข้อมูลจริง: ตำแหน่งโซนไม่สุ่ม (permutation p = 0.002 บน 1H) และทิศถูก
- *     (กลับทิศแล้วแย่ลง 0.55 R) — ดู scripts/research/report/exp-zones-gold.md
+ *     วัดแล้วว่ามีข้อมูลบ้างบน 1H: ชนะการสุ่มเวลาเข้า ~0.1 R (p = 0.005 ที่ RR 1:1 แต่อ่อนลง
+ *     ที่ RR 1:2/1:3) และกลับทิศแล้วแย่ลง 0.22–0.30 R · บน 1D ไม่มีข้อมูลเลย
+ *     (ตัวเลขเดิม p = 0.002 / 0.55 R มาจากตัวเทียบที่ลำเอียง แก้ 2026-09-28)
+ *     — ดู scripts/research/report/exp-zones-gold.md
  *     จำนวนเส้นถูกคุมไว้ที่ฝั่งละ 3 โซน (CHART_MAX_ZONES_PER_SIDE) จึงไม่รกเท่า sr
+ *
+ * เปลี่ยนเมื่อ 2026-09-28 — **smc เปิด · zones ปิด** เป็นค่าเริ่มต้น:
+ *   · เจ้าของขอให้ใช้ SMC แทน และ OB ของ SMC คือแนวคิดเดียวกับโซนดีมาน/ซัพพลาย
+ *     (ที่ที่ออเดอร์ค้าง) เปิดทั้งคู่บนจอ 375px = กล่องซ้อนกันจนอ่านแท่งเทียนไม่ออก
+ *   · หลักฐานของโซนอ่อนลงหลังแก้ตัวเทียบ (exp-zones-gold.md) ส่วน FVG ตามเทรนด์ของ SMC
+ *     เป็นเซ็ตอัพเดียวที่วัดได้บวกบนทั้ง 1H และ 1D (exp-smc-gold.md — แต่ยังไม่รอด Holm)
+ *   ผู้ใช้ที่เคยกดเปิด/ปิดไว้เองไม่ถูกกระทบ — parseChartIndicatorPrefs อ่านค่าที่เก็บไว้ทีละช่อง
  */
 export const DEFAULT_CHART_INDICATOR_PREFS: Readonly<ChartIndicatorPrefs> = {
   ma20: true,
@@ -59,7 +70,8 @@ export const DEFAULT_CHART_INDICATOR_PREFS: Readonly<ChartIndicatorPrefs> = {
   ma200: false,
   bb: false,
   sr: false,
-  zones: true,
+  zones: false,
+  smc: true,
   lowerPane: 'rsi',
 };
 
@@ -102,6 +114,7 @@ export function parseChartIndicatorPrefs(raw: unknown): ChartIndicatorPrefs {
     bb: bool(obj.bb, d.bb),
     sr: bool(obj.sr, d.sr),
     zones: bool(obj.zones, d.zones),
+    smc: bool(obj.smc, d.smc),
     lowerPane: LOWER_PANES.includes(pane as LowerPaneKey) ? (pane as LowerPaneKey) : d.lowerPane,
   };
 }

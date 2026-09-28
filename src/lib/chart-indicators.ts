@@ -2,6 +2,7 @@ import type { CandleData } from '@/types';
 import { BollingerBands, EMA, MACD, RSI, SMA, findSupportResistance } from './indicators';
 import { findZones } from './supply-demand';
 import type { Zone } from './supply-demand';
+import { analyzeSmc, activeOrderBlocks, unfilledFvgs } from './smc';
 import type { ChartBar } from './chart-timeframes';
 
 /**
@@ -105,10 +106,44 @@ export interface ChartIndicatorData {
    * เกินกว่านี้จะบังแท่งเทียนจนอ่านตัวราคาไม่ออก
    */
   zones: Zone[];
+  /** Smart Money Concepts — ที่มาของนิยามทุกตัวอยู่หัวไฟล์ src/lib/smc.ts */
+  smc: SmcChartData;
 }
 
 /** โซนที่วาดบนกราฟ ฝั่งละไม่เกินเท่านี้ (เหตุผลเรื่องพื้นที่จออยู่ที่ ChartIndicatorData) */
 export const CHART_MAX_ZONES_PER_SIDE = 3;
+
+/** จุดทะลุโครงสร้างล่าสุดที่วาด — เก่ากว่านี้ไม่มีผลกับการอ่านราคาตอนนี้แล้ว และทับกันจนอ่านไม่ออก */
+export const CHART_MAX_STRUCTURE = 4;
+
+/** เส้นทะลุโครงสร้าง: ลากจากแท่ง swing ไปถึงแท่งที่ปิดทะลุ ที่ระดับเดียวกัน */
+export interface SmcStructureMark {
+  kind: 'BOS' | 'CHoCH';
+  dir: 1 | -1;
+  level: number;
+  fromTime: number;
+  toTime: number;
+}
+
+/** กล่อง OB/FVG: ลากจากแท่งที่เกิดไปถึงแท่งปิดใบสุดท้าย */
+export interface SmcBox {
+  type: 'OB' | 'FVG';
+  dir: 1 | -1;
+  top: number;
+  bottom: number;
+  proximal: number;
+  fromTime: number;
+  /** ทิศตรงกับโครงสร้างตอนนี้ (FVG ตามเทรนด์คือเซ็ตอัพเดียวที่วัดได้บวก — exp-smc-gold.md) */
+  withTrend: boolean;
+}
+
+export interface SmcChartData {
+  /** ทิศโครงสร้าง ณ แท่งปิดล่าสุด (0 = ยังไม่มีการทะลุในชุดนี้) */
+  trend: 0 | 1 | -1;
+  structure: SmcStructureMark[];
+  /** OB ที่ยังไม่ถูกปิดทะลุ + FVG ที่ยังไม่ถูกเติม — ใกล้ราคาที่สุด ฝั่งละ 1 ของแต่ละชนิด */
+  boxes: SmcBox[];
+}
 
 const EMPTY: ChartIndicatorData = {
   closedBars: 0,
@@ -126,6 +161,7 @@ const EMPTY: ChartIndicatorData = {
   supports: [],
   resistances: [],
   zones: [],
+  smc: { trend: 0, structure: [], boxes: [] },
 };
 
 /**
@@ -207,6 +243,28 @@ export function computeChartIndicators(closedBars: readonly ChartBar[]): ChartIn
       .slice(0, CHART_MAX_ZONES_PER_SIDE),
   ];
 
+  // ── SMC ────────────────────────────────────────────────────────────────────
+  // ทุกชิ้นคำนวณจากแท่งปิดชุดเดียวกับเส้นอื่น · ดัชนีใน analyzeSmc คือดัชนีของ closedBars
+  const smcA = analyzeSmc(candles);
+  const tAt = (i: number) => closedBars[i].t;
+  const structure: SmcStructureMark[] = smcA.events.slice(-CHART_MAX_STRUCTURE).map((e) => ({
+    kind: e.kind, dir: e.dir, level: e.level, fromTime: tAt(e.swingIndex), toTime: tAt(e.index),
+  }));
+  // ใกล้ราคาที่สุดฝั่งละหนึ่ง: ขาขึ้นต้องอยู่ใต้ราคา ขาลงต้องอยู่เหนือ (ทะลุเข้าไปแล้วไม่ใช่จุดรอ)
+  const nearest = <T extends { dir: 1 | -1; proximal: number }>(xs: T[]) => [
+    ...xs.filter((x) => x.dir === 1 && x.proximal < lastClose).sort((a, b) => b.proximal - a.proximal).slice(0, 1),
+    ...xs.filter((x) => x.dir === -1 && x.proximal > lastClose).sort((a, b) => a.proximal - b.proximal).slice(0, 1),
+  ];
+  const boxes: SmcBox[] = [
+    ...nearest(activeOrderBlocks(candles, smcA)).map((o) => ({
+      type: 'OB' as const, dir: o.dir, top: o.top, bottom: o.bottom, proximal: o.proximal, fromTime: tAt(o.index), withTrend: o.dir === smcA.trend,
+    })),
+    ...nearest(unfilledFvgs(candles, smcA)).map((f) => ({
+      // กล่อง FVG เริ่มที่แท่งแรกของรูปแบบสามแท่ง — ช่องว่างอยู่ระหว่างแท่งที่ 1 กับแท่งที่ 3
+      type: 'FVG' as const, dir: f.dir, top: f.top, bottom: f.bottom, proximal: f.proximal, fromTime: tAt(f.index - 2), withTrend: f.dir === smcA.trend,
+    })),
+  ];
+
   return {
     closedBars: closedBars.length,
     ma20: toPoints(times, ema20),
@@ -223,6 +281,7 @@ export function computeChartIndicators(closedBars: readonly ChartBar[]): ChartIn
     supports: sr.supports,
     resistances: sr.resistances,
     zones,
+    smc: { trend: smcA.trend, structure, boxes },
   };
 }
 
