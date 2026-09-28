@@ -42,20 +42,21 @@ import path from 'node:path';
 import { loadSrcModules, ROOT } from './load-src-modules.mjs';
 import { holmFromEntries } from './holm.mjs';
 import { MAX_HOLD_BARS, clusterStats, summarize, loadMeasurable, createTradeSim, mulberry32 } from './trade-sim.mjs';
+import { createSmcTrades } from './smc-trades.mjs';
 
 const args = process.argv.slice(2);
 const AS_JSON = args.includes('--json');
 const SELF_TEST = args.includes('--self-test');
 
-const mods = await loadSrcModules(['src/lib/supply-demand.ts', 'src/lib/smc.ts', 'src/lib/costs.ts']);
+const mods = await loadSrcModules(['src/lib/supply-demand.ts', 'src/lib/smc.ts', 'src/lib/costs.ts', 'src/lib/smc-setups.ts']);
 const { analyzeSmc, SMC_PARAMS } = mods['smc'];
-const { costRFor, applyStopFloor } = mods['costs'];
+const { costRFor } = mods['costs'];
+// กติกาเข้าไม้ทั้งหมดมาจากไฟล์เดียวกับที่ตัวสแกนจริงใช้ — เหตุผลอยู่หัวไฟล์ smc-setups.ts
+const SETUP = mods['smc-setups'];
 
 const SYMBOL = 'XAUUSD';
 const MARKET = 'GOLD';
-const RR = 2;
-const STOP_BUFFER = 0.25;
-const EXPIRY_BARS = 50;
+const { rr: RR, stopBuffer: STOP_BUFFER, expiryBars: EXPIRY_BARS } = SETUP.SMC_SETUP_PARAMS;
 const MIN_TESTED_TRADES = 30;
 const SEED = 20260928;
 const NULL_ROUNDS = 400;
@@ -63,75 +64,9 @@ const SETUPS = ['ob-bos', 'ob-bos-disp', 'fvg-trend', 'sweep-choch'];
 
 const sim = createTradeSim({ costRFor, symbol: SYMBOL, market: MARKET });
 
-/** ทิศโครงสร้าง ณ ปิดแท่ง i (0 = ยังไม่เคยทะลุ) */
-function trendSeries(n, events) {
-  const out = new Array(n).fill(0);
-  let k = 0, cur = 0;
-  const evs = [...events].sort((a, b) => a.knownAt - b.knownAt);
-  for (let i = 0; i < n; i++) {
-    while (k < evs.length && evs[k].knownAt <= i) cur = evs[k++].dir;
-    out[i] = cur;
-  }
-  return out;
-}
-
-/**
- * รอให้ราคาแตะโซนครั้งแรก → คืนดัชนีแท่งที่แตะ (หรือ -1)
- * ปิดทะลุขอบนอกก่อนหรือในแท่งที่แตะ = โซนพัง ไม่มีไม้
- */
-function firstTouch(bars, zone, fromIdx) {
-  const last = Math.min(fromIdx + EXPIRY_BARS, bars.length - 2); // ต้องเหลือแท่งถัดไปให้เข้า
-  for (let k = fromIdx + 1; k <= last; k++) {
-    const c = bars[k];
-    const broken = zone.dir === 1 ? c.close < zone.distal : c.close > zone.distal;
-    const touched = zone.dir === 1 ? c.low <= zone.proximal : c.high >= zone.proximal;
-    if (broken) return -1;
-    if (touched) return k;
-  }
-  return -1;
-}
-
-/** สร้างไม้จากโซน — เข้าที่ราคาเปิดแท่งถัดจากแท่งที่แตะ */
-function tradeFromZone(bars, zone, knownAt, tf, stopFloor, tag) {
-  const k = firstTouch(bars, zone, knownAt);
-  if (k < 0) return null;
-  const e = k + 1;
-  const isLong = zone.dir === 1;
-  const entry = bars[e].open;
-  const height = Math.abs(zone.proximal - zone.distal);
-  let stop = isLong ? zone.distal - height * STOP_BUFFER : zone.distal + height * STOP_BUFFER;
-  if (isLong ? !(entry > stop) : !(entry < stop)) return null; // เปิดทะลุ SL ไปแล้ว
-  let target = isLong ? entry + RR * (entry - stop) : entry - RR * (stop - entry);
-  if (stopFloor) {
-    const f = applyStopFloor(entry, stop, target, SYMBOL, MARKET);
-    if (f) { stop = f.stop_loss; target = f.take_profit; }
-  }
-  const risk = Math.abs(entry - stop);
-  return sim.toTrade(bars, { idx: e, entry, risk, rr: RR, isLong, entryBar: 'full', stop, target }, MAX_HOLD_BARS[tf], { ...tag, touchIdx: k });
-}
-
-function collectTrades(bars, tf, setup, stopFloor, analysis) {
-  const trades = [];
-  const a = analysis;
-  if (setup === 'fvg-trend') {
-    const trend = trendSeries(bars.length, a.events);
-    for (const f of a.fvgs) {
-      if (trend[f.knownAt] !== f.dir) continue;
-      const t = tradeFromZone(bars, f, f.knownAt, tf, stopFloor, { setup, sizeAtr: f.sizeAtr });
-      if (t) trades.push(t);
-    }
-    return trades;
-  }
-  for (const ev of a.events) {
-    if (!ev.ob) continue;
-    if (setup === 'ob-bos' && ev.kind !== 'BOS') continue;
-    if (setup === 'ob-bos-disp' && !(ev.kind === 'BOS' && ev.ob.displacement)) continue;
-    if (setup === 'sweep-choch' && !(ev.kind === 'CHoCH' && ev.sweptBefore)) continue;
-    const t = tradeFromZone(bars, ev.ob, ev.knownAt, tf, stopFloor, { setup, kind: ev.kind });
-    if (t) trades.push(t);
-  }
-  return trades;
-}
+const trendSeries = SETUP.trendSeries;
+// ไม้จำลองสร้างจากไฟล์เดียวกับที่ smc-testset.mjs ใช้ — ชุด test จึงวัดสิ่งเดียวกับแล็บเป๊ะ
+const { firstTouch, tradeFromZone, collectTrades } = createSmcTrades({ SETUP, sim, symbol: SYMBOL, market: MARKET, maxHoldBars: MAX_HOLD_BARS });
 
 // ─────────────────────────────── self-test ───────────────────────────────
 
