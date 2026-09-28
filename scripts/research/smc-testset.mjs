@@ -35,11 +35,28 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadSrcModules, ROOT } from './load-src-modules.mjs';
 import { MAX_HOLD_BARS, clusterStats, summarize, createTradeSim, SPLIT_FILE } from './trade-sim.mjs';
 import { createSmcTrades } from './smc-trades.mjs';
 
-const SELF_TEST = process.argv.includes('--self-test');
+// ── แก้หลังรัน (2026-09-28 · ไม่เปลี่ยนการคำนวณใด ๆ) ─────────────────────────────────
+// ไฟล์นี้เคยรันจริงเพราะถูก import เป็นโมดูล: ส่วนรันจริงอยู่ระดับบนสุดและกันไว้แค่ --self-test
+// ตอนนี้: (1) ทำงานเฉพาะตอนเป็นไฟล์หลักที่ node สั่งรัน (2) รันจริงต้องมีธงของตัวเอง
+// (3) ธงที่ไม่รู้จัก = แสดงวิธีใช้แล้วออก ไม่แตะข้อมูล · ดู exp-smc-testset.md
+const IS_MAIN = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const ARGS = IS_MAIN ? process.argv.slice(2) : [];
+const SELF_TEST = ARGS.includes('--self-test');
+const SPEND = ARGS.includes('--spend-test-set');
+if (IS_MAIN) {
+  const unknown = ARGS.filter((a) => a !== '--self-test' && a !== '--spend-test-set');
+  if (unknown.length || SELF_TEST === SPEND) {
+    console.error('ใช้: --self-test (ไม่แตะชุด test) | --spend-test-set (รันจริง — ชุดนี้ถูกใช้ไปแล้ว)' +
+      (unknown.length ? `
+ไม่รู้จัก: ${unknown.join(' ')}` : ''));
+    process.exit(1);
+  }
+}
 const OUT_FILE = path.join(ROOT, 'scripts', 'research', 'report', 'smc-testset.json');
 const SYMBOL = 'XAUUSD';
 const MARKET = 'GOLD';
@@ -166,8 +183,9 @@ if (SELF_TEST) {
   const neg = pos.map((x) => ({ ...x, rNet: -x.rNet }));
   t('ชุดติดลบได้ p ทางเดียวใกล้ 1 (ทางเดียวไม่ยืนยันผลลบ)', weeklyClusterT(neg).pOneSided > 0.95);
 
-  // แผนถูกล็อก: ไฟล์ผลยังไม่มี = ยังไม่เคยรันจริง
-  t('ยังไม่เคยรันชุด test (ไม่มีไฟล์ผล)', !fs.existsSync(OUT_FILE), OUT_FILE);
+  // ชุด test ถูกใช้ไปแล้ว 2026-09-28 — ไฟล์ผลต้องอยู่ตลอดไป เพราะมันคือตัวกันการรันซ้ำ
+  // (ก่อนรันข้อนี้ตรวจว่า "ยังไม่มีไฟล์ผล" · ดู exp-smc-testset.md)
+  t('ไฟล์ผลของชุด test ยังอยู่ (ตัวกันการรันซ้ำ)', fs.existsSync(OUT_FILE), OUT_FILE);
 
   console.log(`self-test — ผ่าน ${pass} · ตก ${fail}`);
   process.exit(fail ? 1 : 0);
@@ -175,6 +193,9 @@ if (SELF_TEST) {
 
 // ─────────────────────────────── รันจริง (ครั้งเดียว) ───────────────────────────────
 
+if (SPEND) await spend();
+
+async function spend() {
 if (fs.existsSync(OUT_FILE)) {
   console.error(`ชุด test ถูกใช้ไปแล้ว — ผลอยู่ที่ ${path.relative(ROOT, OUT_FILE)}\nรันซ้ำไม่ได้: ชุดที่เปิดดูแล้วใช้ยืนยันซ้ำไม่ได้ (เหตุผลอยู่หัวไฟล์)`);
   process.exit(2);
@@ -254,3 +275,4 @@ for (const o of [primary, secondary]) {
 }
 console.log(`\nผลตัดสินตามแผน: ${confirmed ? '✔ ยืนยัน' : '✘ ไม่ยืนยัน'} — ${result.decisionRule}`);
 console.log(`บันทึกแล้ว ${path.relative(ROOT, OUT_FILE)} · ชุด test นี้ใช้ยืนยันซ้ำไม่ได้แล้ว\n`);
+}
