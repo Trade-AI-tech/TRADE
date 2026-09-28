@@ -117,6 +117,8 @@ jobs:
 
       # SMC (BOS/CHoCH/OB/FVG/กวาด) — ด่านหลักคือ causality บนทองจริงพร้อม negative control
       - run: npm run test:smc
+      # กติกาเข้าไม้ SMC ชุดเดียวของแล็บ/ชุด test/ตัวสแกน — ส่วนเล่นประวัติจริงข้ามบน CI (ไม่มีแคช)
+      - run: npm run test:smc-setups
       - run: npm run lab:smc:self
 
       - run: npm run build

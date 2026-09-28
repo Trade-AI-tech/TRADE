@@ -133,7 +133,7 @@ export interface SmcBox {
   bottom: number;
   proximal: number;
   fromTime: number;
-  /** ทิศตรงกับโครงสร้างตอนนี้ (FVG ตามเทรนด์คือเซ็ตอัพเดียวที่วัดได้บวก — exp-smc-gold.md) */
+  /** ทิศตรงกับโครงสร้างตอนนี้ — ใช้แยกสีบนจอเท่านั้น ไม่ได้แปลว่ากล่องนั้นดีกว่า (FVG ตามเทรนด์ขาดทุนบนชุด test — exp-smc-testset.md) */
   withTrend: boolean;
 }
 
