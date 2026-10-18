@@ -7,38 +7,38 @@
   "yahooName": "Gold Dec 26",
   "timeframe": "15m",
   "interval": "15m",
-  "fetchedAt": "2026-10-17T23:21:08.069Z",
+  "fetchedAt": "2026-10-18T23:35:37.436Z",
   "request": {
     "mode": "range",
     "range": "1mo"
   },
   "actualFrom": "2026-08-02T22:00:00.000Z",
-  "actualTo": "2026-10-16T20:45:00.000Z",
-  "bars": 4949,
+  "actualTo": "2026-10-18T23:15:00.000Z",
+  "bars": 4955,
   "exchangeTimezone": "America/New_York",
   "firstTradeDate": "2000-08-30T04:00:00.000Z",
   "priceBasis": "indicators.quote[0] — ปรับ split ย้อนหลังแล้ว ไม่ได้หักปันผล (ชุดเดียวกับที่ src/lib/market-data.ts ใช้จริง)",
   "splits": [],
   "dividendCount": 0,
   "fetchIssues": {
-    "rawBars": 2496,
-    "unclosedDropped": 0,
-    "nullOrNaN": 493,
+    "rawBars": 2311,
+    "unclosedDropped": 1,
+    "nullOrNaN": 461,
     "outOfOrderFromSource": 0,
     "sanitizerDropped": 0,
     "sanitizerRepaired": 0
   },
   "coverage": {
-    "bars": 4949,
+    "bars": 4955,
     "from": "2026-08-02T22:00:00.000Z",
-    "to": "2026-10-16T20:45:00.000Z",
-    "spanDays": 74.95,
-    "tradingDays": 64,
-    "barsPerDay": 66,
-    "gapCount": 53,
+    "to": "2026-10-18T23:15:00.000Z",
+    "spanDays": 77.05,
+    "tradingDays": 65,
+    "barsPerDay": 64.3,
+    "gapCount": 54,
     "gapsByKind": {
       "พักรายวัน": 43,
-      "สุดสัปดาห์": 9,
+      "สุดสัปดาห์": 10,
       "อธิบายไม่ได้": 1
     },
     "unexplainedGaps": [
@@ -54,24 +54,24 @@
   "collector": {
     "script": "scripts/collect-15m.mjs",
     "note": "ไฟล์นี้สะสมทีละรอบ ตัวเลขในหัวจึงขยับเฉพาะรอบที่มีแท่งเปลี่ยนจริง",
-    "runsWithNewData": 30,
+    "runsWithNewData": 31,
     "firstRunAt": "2026-09-01T05:53:00.025Z",
-    "lastRunAt": "2026-10-17T23:21:08.069Z",
+    "lastRunAt": "2026-10-18T23:35:37.436Z",
     "lastRun": {
-      "added": 0,
-      "replaced": 3,
-      "identical": 2000,
-      "rawBars": 2496,
-      "unclosedDropped": 0,
-      "nullOrNaN": 493,
+      "added": 6,
+      "replaced": 0,
+      "identical": 1843,
+      "rawBars": 2311,
+      "unclosedDropped": 1,
+      "nullOrNaN": 461,
       "outOfOrderFromSource": 0,
       "sanitizerDropped": 0,
       "sanitizerRepaired": 0
     },
     "totals": {
-      "added": 4949,
+      "added": 4955,
       "replaced": 3985,
-      "unclosedDropped": 32,
+      "unclosedDropped": 33,
       "sanitizerDropped": 0,
       "sanitizerRepaired": 0
     }
@@ -5025,6 +5025,12 @@
     {"timestamp":"2026-10-16T20:00:00.000Z","open":4189.7998046875,"high":4189.7998046875,"low":4187.39990234375,"close":4188.39990234375,"volume":351},
     {"timestamp":"2026-10-16T20:15:00.000Z","open":4188.5,"high":4190.60009765625,"low":4187,"close":4189.60009765625,"volume":318},
     {"timestamp":"2026-10-16T20:30:00.000Z","open":4189.7998046875,"high":4190,"low":4187.7001953125,"close":4189.2998046875,"volume":470},
-    {"timestamp":"2026-10-16T20:45:00.000Z","open":4189,"high":4189.7998046875,"low":4181.10009765625,"close":4186.7001953125,"volume":1006}
+    {"timestamp":"2026-10-16T20:45:00.000Z","open":4189,"high":4189.7998046875,"low":4181.10009765625,"close":4186.7001953125,"volume":1006},
+    {"timestamp":"2026-10-18T22:00:00.000Z","open":4191.2998046875,"high":4195.89990234375,"low":4191.10009765625,"close":4195.7001953125,"volume":227},
+    {"timestamp":"2026-10-18T22:15:00.000Z","open":4195.89990234375,"high":4198.89990234375,"low":4194.10009765625,"close":4198.2001953125,"volume":885},
+    {"timestamp":"2026-10-18T22:30:00.000Z","open":4198.10009765625,"high":4199.5,"low":4195.7001953125,"close":4198.10009765625,"volume":683},
+    {"timestamp":"2026-10-18T22:45:00.000Z","open":4197.7998046875,"high":4198.7998046875,"low":4195.7998046875,"close":4196.60009765625,"volume":480},
+    {"timestamp":"2026-10-18T23:00:00.000Z","open":4196.39990234375,"high":4202,"low":4195.5,"close":4197,"volume":993},
+    {"timestamp":"2026-10-18T23:15:00.000Z","open":4196.7001953125,"high":4202.60009765625,"low":4196.2001953125,"close":4202.2001953125,"volume":465}
   ]
 }
