@@ -7,38 +7,38 @@
   "yahooName": "Gold Dec 26",
   "timeframe": "15m",
   "interval": "15m",
-  "fetchedAt": "2026-11-01T00:23:54.692Z",
+  "fetchedAt": "2026-11-02T00:59:42.295Z",
   "request": {
     "mode": "range",
     "range": "1mo"
   },
   "actualFrom": "2026-08-02T22:00:00.000Z",
-  "actualTo": "2026-10-30T20:45:00.000Z",
-  "bars": 5869,
+  "actualTo": "2026-11-02T00:30:00.000Z",
+  "bars": 5876,
   "exchangeTimezone": "America/New_York",
   "firstTradeDate": "2000-08-30T04:00:00.000Z",
   "priceBasis": "indicators.quote[0] — ปรับ split ย้อนหลังแล้ว ไม่ได้หักปันผล (ชุดเดียวกับที่ src/lib/market-data.ts ใช้จริง)",
   "splits": [],
   "dividendCount": 0,
   "fetchIssues": {
-    "rawBars": 2592,
-    "unclosedDropped": 0,
-    "nullOrNaN": 498,
+    "rawBars": 2502,
+    "unclosedDropped": 2,
+    "nullOrNaN": 566,
     "outOfOrderFromSource": 0,
     "sanitizerDropped": 0,
     "sanitizerRepaired": 0
   },
   "coverage": {
-    "bars": 5869,
+    "bars": 5876,
     "from": "2026-08-02T22:00:00.000Z",
-    "to": "2026-10-30T20:45:00.000Z",
-    "spanDays": 88.95,
-    "tradingDays": 76,
-    "barsPerDay": 66,
-    "gapCount": 63,
+    "to": "2026-11-02T00:30:00.000Z",
+    "spanDays": 91.1,
+    "tradingDays": 78,
+    "barsPerDay": 64.5,
+    "gapCount": 64,
     "gapsByKind": {
       "พักรายวัน": 51,
-      "สุดสัปดาห์": 11,
+      "สุดสัปดาห์": 12,
       "อธิบายไม่ได้": 1
     },
     "unexplainedGaps": [
@@ -54,24 +54,24 @@
   "collector": {
     "script": "scripts/collect-15m.mjs",
     "note": "ไฟล์นี้สะสมทีละรอบ ตัวเลขในหัวจึงขยับเฉพาะรอบที่มีแท่งเปลี่ยนจริง",
-    "runsWithNewData": 44,
+    "runsWithNewData": 45,
     "firstRunAt": "2026-09-01T05:53:00.025Z",
-    "lastRunAt": "2026-11-01T00:23:54.692Z",
+    "lastRunAt": "2026-11-02T00:59:42.295Z",
     "lastRun": {
-      "added": 0,
-      "replaced": 1180,
-      "identical": 914,
-      "rawBars": 2592,
-      "unclosedDropped": 0,
-      "nullOrNaN": 498,
+      "added": 7,
+      "replaced": 1,
+      "identical": 1926,
+      "rawBars": 2502,
+      "unclosedDropped": 2,
+      "nullOrNaN": 566,
       "outOfOrderFromSource": 0,
       "sanitizerDropped": 0,
       "sanitizerRepaired": 0
     },
     "totals": {
-      "added": 5869,
-      "replaced": 10577,
-      "unclosedDropped": 46,
+      "added": 5876,
+      "replaced": 10578,
+      "unclosedDropped": 48,
       "sanitizerDropped": 0,
       "sanitizerRepaired": 0
     }
@@ -4019,7 +4019,7 @@
     {"timestamp":"2026-10-01T23:00:00.000Z","open":4208.5,"high":4210.2998046875,"low":4207.10009765625,"close":4209.5,"volume":302},
     {"timestamp":"2026-10-01T23:15:00.000Z","open":4209.7001953125,"high":4212.39990234375,"low":4209.10009765625,"close":4210.7998046875,"volume":392},
     {"timestamp":"2026-10-01T23:30:00.000Z","open":4210.7998046875,"high":4212.60009765625,"low":4206.7001953125,"close":4208.7001953125,"volume":360},
-    {"timestamp":"2026-10-01T23:45:00.000Z","open":4208.89990234375,"high":4213.2998046875,"low":4207.7001953125,"close":4211.5,"volume":374},
+    {"timestamp":"2026-10-01T23:45:00.000Z","open":4212.10009765625,"high":4212.7001953125,"low":4211.5,"close":4211.5,"volume":0},
     {"timestamp":"2026-10-02T00:00:00.000Z","open":4211.39990234375,"high":4212,"low":4198.60009765625,"close":4199.7998046875,"volume":872},
     {"timestamp":"2026-10-02T00:15:00.000Z","open":4199.5,"high":4201,"low":4193.2998046875,"close":4194.2998046875,"volume":1054},
     {"timestamp":"2026-10-02T00:30:00.000Z","open":4193.5,"high":4196.2998046875,"low":4188.2998046875,"close":4188.7998046875,"volume":1232},
@@ -5945,6 +5945,13 @@
     {"timestamp":"2026-10-30T20:00:00.000Z","open":3892.800048828125,"high":3897.39990234375,"low":3889.39990234375,"close":3891.39990234375,"volume":1922},
     {"timestamp":"2026-10-30T20:15:00.000Z","open":3891.89990234375,"high":3892.800048828125,"low":3885.89990234375,"close":3889.5,"volume":778},
     {"timestamp":"2026-10-30T20:30:00.000Z","open":3889.300048828125,"high":3889.5,"low":3882.300048828125,"close":3882.5,"volume":891},
-    {"timestamp":"2026-10-30T20:45:00.000Z","open":3882.699951171875,"high":3898.89990234375,"low":3881.300048828125,"close":3898.89990234375,"volume":769}
+    {"timestamp":"2026-10-30T20:45:00.000Z","open":3882.699951171875,"high":3898.89990234375,"low":3881.300048828125,"close":3898.89990234375,"volume":769},
+    {"timestamp":"2026-11-01T23:00:00.000Z","open":3903,"high":3904.89990234375,"low":3900.89990234375,"close":3902.800048828125,"volume":258},
+    {"timestamp":"2026-11-01T23:15:00.000Z","open":3903,"high":3911.10009765625,"low":3901.10009765625,"close":3907.39990234375,"volume":1602},
+    {"timestamp":"2026-11-01T23:30:00.000Z","open":3907.300048828125,"high":3910.300048828125,"low":3904,"close":3909.300048828125,"volume":815},
+    {"timestamp":"2026-11-01T23:45:00.000Z","open":3910,"high":3910.5,"low":3905.10009765625,"close":3906.60009765625,"volume":1105},
+    {"timestamp":"2026-11-02T00:00:00.000Z","open":3907.39990234375,"high":3912.5,"low":3907.199951171875,"close":3910,"volume":1156},
+    {"timestamp":"2026-11-02T00:15:00.000Z","open":3910.300048828125,"high":3911.199951171875,"low":3905.699951171875,"close":3908.199951171875,"volume":717},
+    {"timestamp":"2026-11-02T00:30:00.000Z","open":3908,"high":3908,"low":3903.300048828125,"close":3904,"volume":529}
   ]
 }
